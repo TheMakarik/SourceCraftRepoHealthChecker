@@ -2,4 +2,7 @@
   <Folder Name="/Backend/">
     <Project Path="Backend/SourceCraftRepoHealthChecker.Presenter/SourceCraftRepoHealthChecker.Presenter.csproj" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/SourceCraftRepoHealthChecker.UnitTests/SourceCraftRepoHealthChecker.UnitTests.csproj" />
+  </Folder>
 </Solution>
