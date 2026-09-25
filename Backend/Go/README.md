@@ -32,6 +32,8 @@ docker compose up --build     # сервис на :8080 + MinIO на :9000 (ко
 
 | Метод и путь | Порт C# | Источник |
 |---|---|---|
+| `POST /auth/url` `{"state":"…"}` → `{"url":"…"}` | `GetAuthorizationUrlAsync` | ссылка на вход через Яндекс ID |
+| `POST /auth/token` `{"code":"…","state":"…"}` → `SourceCraftUser` | `CompleteAuthorizationAsync` | Яндекс ID: обмен кода, `login.yandex.ru/info` |
 | `GET /auth/me`, `GET /auth/repositories` | `ISourceCraftAuthentication` | API `/user`, `/me/repos` |
 | `GET /repositories?pageToken&pageSize&sortBy` | `ISourceCraftRepositoryCatalog` | API `/repos` (публичный каталог) |
 | `GET /repositories/{id}` | `ISourceCraftRepositoryCatalog` | API `/repos/id:{id}` |
@@ -56,6 +58,13 @@ docker compose up --build     # сервис на :8080 + MinIO на :9000 (ко
 - `status`: `Available`, `NoData` (пустой список, нет коммитов) или `Unavailable` (источник упал или репозиторий превысил лимит). Сбой одного источника отвечает `200` со статусом `Unavailable` и не роняет остальные категории.
 - HTTP-коды: `400`, `401`, `403`, `404`, `504` — по разделу 6 ТЗ.
 - Поля в camelCase, enum'ы строками. На стороне C# нужен `JsonStringEnumConverter`.
+
+## Вход через Яндекс ID
+
+1. Зарегистрировать приложение на [oauth.yandex.ru](https://oauth.yandex.ru/client/new) (платформа «Веб-сервисы», права `login:info`, `login:email`), указать Redirect URI — callback C#-бэкенда. Вписать `YANDEX_CLIENT_ID`, `YANDEX_CLIENT_SECRET`, `YANDEX_REDIRECT_URI`. Без них `/auth/url` и `/auth/token` отвечают `501`.
+2. C# генерирует случайный `state`, сохраняет его в сессии и вызывает `POST /auth/url`. Пользователь уходит по полученной ссылке.
+3. Яндекс возвращает пользователя на callback C# с `code` и `state`. **C# сверяет `state` с сессией** (защита от CSRF; Go-сервис stateless и сверить не может) и вызывает `POST /auth/token`.
+4. Ответ — `SourceCraftUser` с `id` из Яндекс ID. Код одноразовый и живёт 10 минут; повторный или просроченный код даёт `400 invalid_grant`.
 
 ## Снапшоты репозитория в S3
 
@@ -90,4 +99,4 @@ DELETE /repositories/r1/snapshots/run-42        # 204, идемпотентно
 - **CI**: у запусков нет ветки, `PipelineRun.Branch` пустой. У запусков нет публичного id, вместо него используется `slug`.
 - **Профиль пользователя** не отдаёт email, `SourceCraftUser.Email` всегда `null`.
 - **Лайки**: `LikesCount` — сумма всех rating-реакций (Like, Heart, Diamond).
-- **Я ID OAuth** (`/auth/url`, `/auth/token`) пока не реализован и отвечает `501`. Нужно выяснить, как SourceCraft выдаёт токен по Я ID.
+- **Яндекс ID не даёт доступа к API SourceCraft.** API принимает только PAT и IAM-токены Yandex Cloud, а обмен OAuth-токенов Яндекса на IAM закрыт для новых токенов с 01.06.2026. Поэтому вход через Яндекс ID только устанавливает личность, токен Яндекса сразу отбрасывается. Для приватных репозиториев (`/auth/me`, `/auth/repositories`, снапшоты) пользователь по-прежнему передаёт свой PAT SourceCraft.

@@ -19,25 +19,34 @@ import (
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/service"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/snapshot"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/sourcecraft"
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/yandexid"
 )
 
 type Server struct {
 	svc           *service.Service
+	yandexID      *yandexid.Client
 	serviceToken  string
 	internalToken string
 	log           *slog.Logger
 }
 
-// New собирает обработчики. serviceToken используется, если запрос пришёл без Authorization
-// (публичные данные); internalToken защищает служебные эндпоинты (таймер-триггер).
-func New(svc *service.Service, serviceToken, internalToken string, log *slog.Logger) http.Handler {
-	s := &Server{svc: svc, serviceToken: serviceToken, internalToken: internalToken, log: log}
+type Options struct {
+	// ServiceToken используется, если запрос пришёл без Authorization (публичные данные).
+	ServiceToken string
+	// InternalToken защищает служебные эндпоинты (таймер-триггер).
+	InternalToken string
+	// YandexID — вход через Яндекс ID; nil или без кредов — /auth/url и /auth/token отвечают 501.
+	YandexID *yandexid.Client
+}
+
+func New(svc *service.Service, opts Options, log *slog.Logger) http.Handler {
+	s := &Server{svc: svc, yandexID: opts.YandexID, serviceToken: opts.ServiceToken, internalToken: opts.InternalToken, log: log}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 
-	mux.HandleFunc("POST /auth/url", s.notImplemented)
-	mux.HandleFunc("POST /auth/token", s.notImplemented)
+	mux.HandleFunc("POST /auth/url", s.yandexIDOnly(s.authURL))
+	mux.HandleFunc("POST /auth/token", s.yandexIDOnly(s.authToken))
 	mux.HandleFunc("GET /auth/me", s.userOnly(s.me))
 	mux.HandleFunc("GET /auth/repositories", s.userOnly(s.myRepositories))
 
@@ -135,8 +144,77 @@ func (s *Server) internalOnly(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (s *Server) notImplemented(w http.ResponseWriter, r *http.Request) {
-	s.writeError(w, r, http.StatusNotImplemented, "not_implemented", "Yandex ID OAuth flow is not implemented yet; pass a SourceCraft PAT in Authorization")
+func (s *Server) yandexIDOnly(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.yandexID == nil || !s.yandexID.Configured() {
+			s.writeError(w, r, http.StatusNotImplemented, "not_configured", "Yandex ID OAuth app is not configured (YANDEX_CLIENT_ID, YANDEX_CLIENT_SECRET)")
+			return
+		}
+		h(w, r)
+	}
+}
+
+// maxStateLen ограничивает state: он целиком уходит в URL авторизации.
+const maxStateLen = 512
+
+// authURL — ссылка на вход через Яндекс ID. state генерирует и после callback проверяет C# (защита от CSRF).
+func (s *Server) authURL(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		State string `json:"state"`
+	}
+	if !s.decodeBody(w, r, &body) {
+		return
+	}
+	if body.State == "" || len(body.State) > maxStateLen {
+		s.writeError(w, r, http.StatusBadRequest, "bad_request", "state is required (up to 512 chars)")
+		return
+	}
+	s.writeJSON(w, http.StatusOK, s.envelope(r, map[string]string{"url": s.yandexID.AuthorizationURL(body.State)}))
+}
+
+// authToken обменивает код подтверждения Яндекс ID на профиль пользователя.
+// Токен Яндекса наружу не отдаётся: API SourceCraft его не принимает, для приватных данных нужен PAT.
+func (s *Server) authToken(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code  string `json:"code"`
+		State string `json:"state"`
+	}
+	if !s.decodeBody(w, r, &body) {
+		return
+	}
+	if body.Code == "" || body.State == "" || len(body.State) > maxStateLen {
+		s.writeError(w, r, http.StatusBadRequest, "bad_request", "code and state are required")
+		return
+	}
+
+	u, err := s.yandexID.Authenticate(r.Context(), body.Code)
+	switch {
+	case err == nil:
+		var email *string
+		if u.DefaultEmail != "" {
+			email = &u.DefaultEmail
+		}
+		s.writeJSON(w, http.StatusOK, s.envelope(r, contract.SourceCraftUser{ID: u.ID, Login: u.Login, DisplayName: u.DisplayName, Email: email}))
+	case errors.Is(err, yandexid.ErrInvalidGrant):
+		s.writeError(w, r, http.StatusBadRequest, "invalid_grant", "authorization code is invalid, expired or already used")
+	case errors.Is(err, context.DeadlineExceeded):
+		s.writeError(w, r, http.StatusGatewayTimeout, "timeout", "Yandex ID timed out")
+	case errors.Is(err, context.Canceled):
+	case errors.Is(err, yandexid.ErrUnavailable):
+		s.log.WarnContext(r.Context(), "yandex id unavailable", "requestId", requestID(r.Context()), "err", err)
+		s.writeError(w, r, http.StatusServiceUnavailable, "yandex_id_unavailable", "Yandex ID is temporarily unavailable")
+	default:
+		s.log.ErrorContext(r.Context(), "yandex id login failed", "requestId", requestID(r.Context()), "err", err)
+		s.writeError(w, r, http.StatusBadGateway, "yandex_id_error", "Yandex ID login failed")
+	}
+}
+
+func (s *Server) decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(v); err != nil {
+		s.writeError(w, r, http.StatusBadRequest, "bad_request", "invalid JSON body")
+		return false
+	}
+	return true
 }
 
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {

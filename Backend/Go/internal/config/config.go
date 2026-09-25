@@ -18,8 +18,17 @@ type Config struct {
 	ReapInterval time.Duration
 
 	SourceCraft SourceCraft
+	YandexID    YandexID
 	Storage     Storage
 	Git         Git
+}
+
+// YandexID — OAuth-приложение для входа через Яндекс ID (регистрируется на https://oauth.yandex.ru).
+type YandexID struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURI  string
+	Scope        string
 }
 
 type SourceCraft struct {
@@ -77,6 +86,12 @@ func Load() (Config, error) {
 			Timeout:        duration("SOURCECRAFT_TIMEOUT", 15*time.Second, &errs),
 			MaxRetries:     integer("SOURCECRAFT_MAX_RETRIES", 3, &errs),
 			RequestsPerSec: float("SOURCECRAFT_RPS", 10, &errs),
+		},
+		YandexID: YandexID{
+			ClientID:     os.Getenv("YANDEX_CLIENT_ID"),
+			ClientSecret: os.Getenv("YANDEX_CLIENT_SECRET"),
+			RedirectURI:  os.Getenv("YANDEX_REDIRECT_URI"),
+			Scope:        os.Getenv("YANDEX_SCOPE"),
 		},
 		Storage: Storage{
 			Endpoint:      os.Getenv("S3_ENDPOINT"),

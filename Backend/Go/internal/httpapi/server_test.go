@@ -16,6 +16,7 @@ import (
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/snapshot"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/sourcecraft"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/testutil"
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/yandexid"
 )
 
 type env struct {
@@ -60,7 +61,7 @@ func newEnv(t *testing.T, repoPath string, extra http.HandlerFunc) *env {
 	client := sourcecraft.NewClient(sourcecraft.Options{BaseURL: fake.URL, Timeout: 5 * time.Second, MaxRetries: 1})
 	svc := service.New(client, store, git, "", t.TempDir(), service.Limits{MaxResponseLookups: 10})
 
-	api := httptest.NewServer(New(svc, "", "internal-secret", log))
+	api := httptest.NewServer(New(svc, Options{InternalToken: "internal-secret"}, log))
 	t.Cleanup(api.Close)
 	return &env{api: api, objects: objects}
 }
@@ -187,6 +188,7 @@ func TestErrorMapping(t *testing.T) {
 		{"unknown repository", http.MethodGet, "/repositories/nope", "user-pat", http.StatusNotFound, ""},
 		{"bad token", http.MethodGet, "/repositories/r1", "wrong", http.StatusUnauthorized, ""},
 		{"auth needs user token", http.MethodGet, "/auth/me", "", http.StatusUnauthorized, ""},
+		{"yandex id not configured", http.MethodPost, "/auth/url", "", http.StatusNotImplemented, ""},
 		{"source down is Unavailable, not 5xx", http.MethodGet, "/repositories/r1/issues", "user-pat", http.StatusOK, "Unavailable"},
 		{"empty list is NoData", http.MethodGet, "/repositories/r1/activity/releases", "user-pat", http.StatusOK, "NoData"},
 		{"security is Unavailable", http.MethodGet, "/repositories/r1/security/findings", "user-pat", http.StatusOK, "Unavailable"},
@@ -206,5 +208,63 @@ func TestErrorMapping(t *testing.T) {
 				t.Fatalf("missing requestId: %v", body)
 			}
 		})
+	}
+}
+
+func TestYandexIDLogin(t *testing.T) {
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/token":
+			_ = r.ParseForm()
+			if r.PostForm.Get("code") != "good-code" {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"invalid_grant"}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"access_token":"ya-token"}`))
+		case "/info":
+			_, _ = w.Write([]byte(`{"id":"42","login":"ivan","display_name":"Ivan"}`))
+		}
+	}))
+	t.Cleanup(fake.Close)
+
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	yid := yandexid.New(yandexid.Options{ClientID: "app-id", ClientSecret: "app-secret", OAuthURL: fake.URL, LoginURL: fake.URL})
+	api := httptest.NewServer(New(nil, Options{YandexID: yid}, log))
+	t.Cleanup(api.Close)
+
+	post := func(path, body string) (int, map[string]any, string) {
+		t.Helper()
+		resp, err := http.Post(api.URL+path, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		var m map[string]any
+		_ = json.Unmarshal(raw, &m)
+		return resp.StatusCode, m, string(raw)
+	}
+
+	code, body, _ := post("/auth/url", `{"state":"xyz"}`)
+	data, _ := body["data"].(map[string]any)
+	if code != http.StatusOK || !strings.Contains(data["url"].(string), "state=xyz") {
+		t.Fatalf("auth url: %d %v", code, body)
+	}
+	if code, _, _ := post("/auth/url", `{}`); code != http.StatusBadRequest {
+		t.Fatalf("auth url without state: %d", code)
+	}
+
+	code, body, raw := post("/auth/token", `{"code":"good-code","state":"xyz"}`)
+	user, _ := body["data"].(map[string]any)
+	if code != http.StatusOK || user["id"] != "42" || user["login"] != "ivan" || user["displayName"] != "Ivan" || user["email"] != nil {
+		t.Fatalf("auth token: %d %v", code, body)
+	}
+	if strings.Contains(raw, "ya-token") {
+		t.Fatal("Yandex token leaked into response")
+	}
+
+	if code, body, _ := post("/auth/token", `{"code":"stale","state":"xyz"}`); code != http.StatusBadRequest || body["code"] != "invalid_grant" {
+		t.Fatalf("stale code: %d %v", code, body)
 	}
 }

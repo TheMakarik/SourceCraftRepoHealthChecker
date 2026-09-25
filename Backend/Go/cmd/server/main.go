@@ -18,6 +18,7 @@ import (
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/service"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/snapshot"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/sourcecraft"
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/yandexid"
 )
 
 func main() {
@@ -83,8 +84,17 @@ func run(log *slog.Logger) error {
 	}
 
 	srv := &http.Server{
-		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.New(svc, cfg.SourceCraft.ServiceToken, cfg.InternalToken, log),
+		Addr: cfg.HTTPAddr,
+		Handler: httpapi.New(svc, httpapi.Options{
+			ServiceToken:  cfg.SourceCraft.ServiceToken,
+			InternalToken: cfg.InternalToken,
+			YandexID: yandexid.New(yandexid.Options{
+				ClientID:     cfg.YandexID.ClientID,
+				ClientSecret: cfg.YandexID.ClientSecret,
+				RedirectURI:  cfg.YandexID.RedirectURI,
+				Scope:        cfg.YandexID.Scope,
+			}),
+		}, log),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		// WriteTimeout не ставим: создание снапшота крупного репозитория ограничено GIT_CLONE_TIMEOUT.
