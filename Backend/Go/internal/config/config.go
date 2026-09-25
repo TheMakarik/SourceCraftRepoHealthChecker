@@ -72,6 +72,9 @@ type Git struct {
 	MaxRepoBytes int64
 }
 
+// MemoryStorage — значение S3_ENDPOINT для хранения снапшотов в памяти процесса (локальный запуск).
+const MemoryStorage = "memory"
+
 func Load() (Config, error) {
 	var errs []error
 
@@ -116,7 +119,7 @@ func Load() (Config, error) {
 	if cfg.Storage.Endpoint == "" {
 		errs = append(errs, errors.New("S3_ENDPOINT is required"))
 	}
-	if cfg.Storage.Bucket == "" {
+	if cfg.Storage.Bucket == "" && cfg.Storage.Endpoint != MemoryStorage {
 		errs = append(errs, errors.New("S3_BUCKET is required"))
 	}
 

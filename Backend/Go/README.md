@@ -22,7 +22,13 @@ cp .env.example .env          # вписать SOURCECRAFT_TOKEN
 docker compose up --build     # сервис на :8080 + MinIO на :9000 (консоль :9001)
 ```
 
-Без Docker: поднять любое S3-хранилище, выставить переменные из `.env.example` и `go run ./cmd/server`.
+Без Docker и без S3 (снапшоты хранятся в памяти процесса и пропадают при перезапуске):
+
+```bash
+S3_ENDPOINT=memory SOURCECRAFT_TOKEN=<PAT> go run ./cmd/server
+```
+
+С настоящим хранилищем: выставить переменные из `.env.example` и `go run ./cmd/server`.
 
 Тесты: `go test -race ./...` (нужен установленный `git`).
 

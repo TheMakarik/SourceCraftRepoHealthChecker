@@ -38,24 +38,9 @@ func run(log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	objects, err := objectstore.NewS3(objectstore.S3Options{
-		Endpoint:  cfg.Storage.Endpoint,
-		Region:    cfg.Storage.Region,
-		Bucket:    cfg.Storage.Bucket,
-		AccessKey: cfg.Storage.AccessKey,
-		SecretKey: cfg.Storage.SecretKey,
-		UseSSL:    cfg.Storage.UseSSL,
-		Encrypt:   cfg.Storage.Encrypt,
-	})
+	objects, err := newObjectStore(ctx, cfg.Storage, log)
 	if err != nil {
 		return err
-	}
-	initCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	err = objects.EnsureBucket(initCtx, cfg.Storage.Region, cfg.Storage.Prefix, cfg.Storage.LifecycleDays)
-	cancel()
-	if err != nil {
-		// Хранилище может быть временно недоступно — сервис всё равно поднимается, лёгкие эндпоинты работают.
-		log.Warn("object storage init failed", "err", err)
 	}
 
 	git := gitrepo.Git{Binary: cfg.Git.Binary}
@@ -137,4 +122,32 @@ func reapLoop(ctx context.Context, svc *service.Service, every time.Duration, lo
 			}
 		}
 	}
+}
+
+// newObjectStore подключает S3-совместимое хранилище. S3_ENDPOINT=memory — снапшоты в памяти процесса
+// (локальный запуск без облака и без MinIO; данные пропадают при перезапуске).
+func newObjectStore(ctx context.Context, cfg config.Storage, log *slog.Logger) (objectstore.Store, error) {
+	if cfg.Endpoint == config.MemoryStorage {
+		log.Warn("object storage: in-memory mode, for local development only")
+		return objectstore.NewMemory(), nil
+	}
+	s3, err := objectstore.NewS3(objectstore.S3Options{
+		Endpoint:  cfg.Endpoint,
+		Region:    cfg.Region,
+		Bucket:    cfg.Bucket,
+		AccessKey: cfg.AccessKey,
+		SecretKey: cfg.SecretKey,
+		UseSSL:    cfg.UseSSL,
+		Encrypt:   cfg.Encrypt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	initCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	if err := s3.EnsureBucket(initCtx, cfg.Region, cfg.Prefix, cfg.LifecycleDays); err != nil {
+		// Хранилище может быть временно недоступно — сервис всё равно поднимается, лёгкие эндпоинты работают.
+		log.Warn("object storage init failed", "err", err)
+	}
+	return s3, nil
 }
