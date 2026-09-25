@@ -4,7 +4,7 @@ namespace SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 
 public interface ISourceCraftRepositoryCatalog
 {
-    public Task<IReadOnlyCollection<SourceCraftRepository>> GetOpenRepositoriesAsync(CancellationToken cancellationToken);
+    public Task<SourceCraftResult<IReadOnlyCollection<SourceCraftRepository>>> GetOpenRepositoriesAsync(CancellationToken cancellationToken);
 
-    public Task<SourceCraftRepository?> GetRepositoryAsync(string repositoryId, CancellationToken cancellationToken);
+    public Task<SourceCraftResult<SourceCraftRepository>> GetRepositoryAsync(string repositoryId, CancellationToken cancellationToken);
 }
