@@ -5,8 +5,11 @@ using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
 using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
+using SourceCraftRepoHealthChecker.infrastructure.Authentication;
 using SourceCraftRepoHealthChecker.infrastructure.Options;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
+using SourceCraftRepoHealthChecker.infrastructure.Scheduling;
 using SourceCraftRepoHealthChecker.infrastructure.Security;
 using SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
@@ -35,6 +38,8 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<IAiTokenProtector, AiTokenProtector>();
+        services.AddSingleton<ISourceCraftAccessTokenAccessor, SourceCraftAccessTokenAccessor>();
+        services.AddHostedService<ScheduledAnalysisBackgroundService>();
 
         services.Scan(scan => scan
             .FromAssemblyOf<SourceCraftHttpClient>()

@@ -3,12 +3,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
 public sealed class SourceCraftHttpClient(
     HttpClient httpClient,
+    ISourceCraftAccessTokenAccessor accessTokenAccessor,
     ILogger<SourceCraftHttpClient> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -22,8 +24,7 @@ public sealed class SourceCraftHttpClient(
     public Task<SourceCraftPage<T>> GetAsync<T>(string path, string? accessToken, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, path);
-        if (!string.IsNullOrEmpty(accessToken))
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        ApplyAuthorization(request, accessToken);
 
         return SendAsync<T>(request, cancellationToken);
     }
@@ -34,6 +35,7 @@ public sealed class SourceCraftHttpClient(
         {
             Content = JsonContent.Create(body, options: JsonOptions)
         };
+        ApplyAuthorization(request, null);
 
         return SendAsync<TResponse>(request, cancellationToken);
     }
@@ -47,6 +49,13 @@ public sealed class SourceCraftHttpClient(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         return SendAsync<TResponse>(request, cancellationToken);
+    }
+
+    private void ApplyAuthorization(HttpRequestMessage request, string? accessToken)
+    {
+        var token = accessToken ?? accessTokenAccessor.Token;
+        if (!string.IsNullOrEmpty(token))
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     private async Task<SourceCraftPage<T>> SendAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
