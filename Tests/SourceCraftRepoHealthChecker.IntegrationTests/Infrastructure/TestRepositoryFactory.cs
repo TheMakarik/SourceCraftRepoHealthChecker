@@ -4,7 +4,7 @@ namespace SourceCraftRepoHealthChecker.IntegrationTests.Infrastructure;
 
 public static class TestRepositoryFactory
 {
-    public static void Create(string repositoryPath, string scriptFileName)
+    public static void Create(string repositoryPath, string scriptFileName, params string[] scriptArguments)
     {
         var scriptPath = Path.Join(AppContext.BaseDirectory, "Scripts", scriptFileName);
 
@@ -20,6 +20,9 @@ public static class TestRepositoryFactory
         startInfo.ArgumentList.Add("-File");
         startInfo.ArgumentList.Add(scriptPath);
         startInfo.ArgumentList.Add(repositoryPath);
+
+        foreach (var scriptArgument in scriptArguments)
+            startInfo.ArgumentList.Add(scriptArgument);
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Не удалось запустить pwsh.");

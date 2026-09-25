@@ -18,6 +18,17 @@ public static class RepositoryFactsFactory
         var codeHealth = await reader.GetCodeHealthAsync(repositoryPath, cancellationToken);
         var documentation = await reader.GetDocumentationAsync(repositoryPath, cancellationToken);
 
+        return Compose(repositoryPath, activity, contributors, releases, codeHealth, documentation);
+    }
+
+    public static RepositoryFacts Compose(
+        string repositoryPath,
+        CommitActivity activity,
+        IReadOnlyCollection<Contributor> contributors,
+        IReadOnlyCollection<ReleaseInfo> releases,
+        CodeHealthReport codeHealth,
+        DocumentationReport documentation)
+    {
         var name = Path.GetFileName(repositoryPath);
         var repository = new SourceCraftRepository(
             "local",
