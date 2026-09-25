@@ -20,6 +20,8 @@ public static class DependencyInjection
         services.AddSingleton<IRecommendationGenerator, RecommendationGenerator>();
         services.AddSingleton<IHealthCheckEngine, HealthCheckEngine>();
         services.AddScoped<IAnalyzeRepositoryUseCase, AnalyzeRepositoryUseCase>();
+        services.AddScoped<IGetRepositoryAnalysisUseCase, GetRepositoryAnalysisUseCase>();
+        services.AddScoped<IExportRepositoryReportUseCase, ExportRepositoryReportUseCase>();
         services.AddScoped<IGetRepositoryLeaderboardUseCase, GetRepositoryLeaderboardUseCase>();
         services.AddScoped<IRefreshRepositoriesUseCase, RefreshRepositoriesUseCase>();
 

@@ -2,6 +2,7 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
 using SourceCraftRepoHealthChecker.Application;
+using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.infrastructure;
@@ -37,11 +38,29 @@ app.MapGet("/api/repositories", async (string? language, string? sort, int? page
     return Results.Ok(await useCase.GetAsync(query, cancellationToken));
 });
 
+app.MapGet("/api/repositories/{id}/analysis", async (string id, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
+{
+    var analysis = await useCase.GetAsync(id, cancellationToken);
+    return analysis is null ? Results.NotFound() : Results.Ok(analysis);
+});
+
+app.MapGet("/api/repositories/{id}/report.md", async (string id, IExportRepositoryReportUseCase useCase, CancellationToken cancellationToken) =>
+{
+    var markdown = await useCase.GetMarkdownAsync(id, cancellationToken);
+    return markdown is null ? Results.NotFound() : Results.Text(markdown, "text/markdown; charset=utf-8");
+});
+
 app.MapGet("/rating", async (string? language, string? sort, int? page, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
 {
     var query = new RepositoryLeaderboardQuery(language, ParseSort(sort), page ?? 1, 20);
     var result = await useCase.GetAsync(query, cancellationToken);
     return Results.Content(RatingPageRenderer.Render(result, language, SortKey(query.Sort)), "text/html; charset=utf-8");
+});
+
+app.MapGet("/repositories/{id}", async (string id, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
+{
+    var analysis = await useCase.GetAsync(id, cancellationToken);
+    return analysis is null ? Results.NotFound() : Results.Content(AnalysisPageRenderer.Render(analysis), "text/html; charset=utf-8");
 });
 
 app.Run();

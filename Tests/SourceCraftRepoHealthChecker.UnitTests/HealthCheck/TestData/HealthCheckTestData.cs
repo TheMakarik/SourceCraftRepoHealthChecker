@@ -91,6 +91,7 @@ public static class HealthCheckTestData
         Recommendations = recommendations ?? new RecommendationScoringOptions
         {
             MinimumAcceptableScore = 70,
+            StrengthScore = 85,
             HighPriorityScore = 50,
             CriticalPriorityScore = 30
         }
