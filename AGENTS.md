@@ -84,6 +84,20 @@
 - `infrastructure` реализует абстракции `Application`; зависимости `infrastructure → Application → Domain` допустимы, обратные — нет.
 - `Presenter` — composition root: единственный, кто ссылается и на `Application`, и на `infrastructure`, чтобы собрать DI-граф. Наружу от `Presenter` зависимостей нет.
 
+## Методика Repo Health Score (ядро)
+
+Расчёт живёт в `Application/HealthCheck` и настраивается через `IOptions<HealthCheckOptions>` (значения — в `Presenter/appsettings.json`), без хардкода чисел.
+
+- **Общий Score (0–100):** взвешенное среднее оценок категорий. Категории со статусом **«Нет данных»** исключаются, веса доступных нормируются (отсутствие данных не ухудшает Score).
+- **Оценка категории:** взвешенное среднее нормализованных метрик (`MetricScore.NormalizedScore`) — так объяснение воспроизводимо: метрики сходятся с баллом категории.
+- **Нормализация метрики:** линейная от «худшего» к «лучшему» значению в границах шкалы из `ScoreScaleOptions`.
+- **Веса категорий:** Security 20%, Code health 20%, Activity 15%, Documentation 15%, CI/CD 15%, Issues 15% (`CategoryWeightsOptions`).
+- **Security:** метрики по критичности (Critical/High/Medium/Low), вес метрики = соответствующий штраф; исправленные находки — информационная метрика с весом 0.
+- **Code health:** метрики TODO/FIXME/старые комментарии, вес метрики = штраф.
+- **Активность/Issues:** дата последней активности, коммиты в окне, contributors, релизы (MR — по `MergeRequestsForFullScore`); зависшие issue считаются по `UpdatedAt` (с откатом на `CreatedAt`).
+- **«Нет данных»** — отдельный статус, не плохой результат. Если Security недоступен (AppSec нет в публичном API), ядро добавляет явную пометку «Подключите AppSec SourceCraft» без штрафа.
+- **Рекомендации** строятся на фактах из `MetricScore.RawValue` (например, «TODO — 47, самый старый комментарий — 200 дн.»), с приоритетом и `SourceReference`.
+
 ## Код-стайл и скиллы
 
 - Весь C# пишется по скиллу `Skills/csharp-code-style`.

@@ -12,10 +12,10 @@ public enum MetricCode
     CiCdSuccessRatio,
     CiCdPipelineDuration,
     CiCdStability,
-    SecuritySast,
-    SecuritySca,
-    SecuritySecretScanning,
     SecurityCriticalFindings,
+    SecurityHighFindings,
+    SecurityMediumFindings,
+    SecurityLowFindings,
     SecurityFixedFindings,
     ActivityCommitFrequency,
     ActivityLastActivity,
@@ -29,6 +29,5 @@ public enum MetricCode
     IssuesCloseTime,
     CodeHealthTodo,
     CodeHealthFixme,
-    CodeHealthStaleComments,
-    CodeHealthTechDebt
+    CodeHealthStaleComments
 }

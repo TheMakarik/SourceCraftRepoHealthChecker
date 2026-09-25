@@ -7,4 +7,5 @@ public sealed record IssueInfo(
     string AuthorLogin,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ClosedAt,
-    DateTimeOffset? FirstResponseAt);
+    DateTimeOffset? FirstResponseAt,
+    DateTimeOffset? UpdatedAt = null);

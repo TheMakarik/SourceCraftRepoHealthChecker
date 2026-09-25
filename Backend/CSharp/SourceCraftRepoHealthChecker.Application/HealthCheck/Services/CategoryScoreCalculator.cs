@@ -64,23 +64,16 @@ public sealed class CategoryScoreCalculator(
         var low = CountOpen(findings, SecuritySeverity.Low);
         var fixedFindings = findings.Count(x => x.Status == SecurityFindingStatus.Fixed);
 
-        var penalty = critical * settings.CriticalPenalty
-            + high * settings.HighPenalty
-            + medium * settings.MediumPenalty
-            + low * settings.LowPenalty
-            - fixedFindings * settings.FixedFindingCredit;
-        var score = Math.Clamp(maximum - penalty, minimum, maximum);
-
         var metrics = new List<MetricScore>
         {
-            Metric(MetricCode.SecuritySast, CountKind(findings, SecurityFindingKind.Sast), Math.Clamp(maximum - CountKind(findings, SecurityFindingKind.Sast) * settings.LowPenalty, minimum, maximum), settings.LowPenalty, DataStatus.Available),
-            Metric(MetricCode.SecuritySca, CountKind(findings, SecurityFindingKind.Sca), Math.Clamp(maximum - CountKind(findings, SecurityFindingKind.Sca) * settings.LowPenalty, minimum, maximum), settings.LowPenalty, DataStatus.Available),
-            Metric(MetricCode.SecuritySecretScanning, CountKind(findings, SecurityFindingKind.SecretScanning), Math.Clamp(maximum - CountKind(findings, SecurityFindingKind.SecretScanning) * settings.LowPenalty, minimum, maximum), settings.LowPenalty, DataStatus.Available),
-            Metric(MetricCode.SecurityCriticalFindings, critical, Math.Clamp(maximum - critical * settings.CriticalPenalty, minimum, maximum), settings.CriticalPenalty, DataStatus.Available),
-            Metric(MetricCode.SecurityFixedFindings, fixedFindings, Math.Clamp(minimum + fixedFindings * settings.FixedFindingCredit, minimum, maximum), settings.FixedFindingCredit, DataStatus.Available)
+            PenaltyMetric(MetricCode.SecurityCriticalFindings, critical, settings.CriticalPenalty),
+            PenaltyMetric(MetricCode.SecurityHighFindings, high, settings.HighPenalty),
+            PenaltyMetric(MetricCode.SecurityMediumFindings, medium, settings.MediumPenalty),
+            PenaltyMetric(MetricCode.SecurityLowFindings, low, settings.LowPenalty),
+            Metric(MetricCode.SecurityFixedFindings, fixedFindings, Math.Clamp(minimum + fixedFindings * settings.FixedFindingCredit, minimum, maximum), 0, DataStatus.Available)
         };
 
-        return new CategoryScoreResult(ScoreCategory.Security, (int)Math.Round(score, MidpointRounding.AwayFromZero), WeightFor(ScoreCategory.Security), DataStatus.Available, metrics);
+        return FromMetrics(ScoreCategory.Security, metrics);
     }
 
     private CategoryScoreResult CalculateActivity(RepositoryFacts facts)
@@ -118,7 +111,7 @@ public sealed class CategoryScoreCalculator(
         if (facts.CollaborationAvailability == DataStatus.Available)
         {
             var mergeRequests = facts.MergeRequests.Count;
-            var mergeRequestScore = normalizer.Normalize(mergeRequests, 0, settings.ContributorsForFullScore);
+            var mergeRequestScore = normalizer.Normalize(mergeRequests, 0, settings.MergeRequestsForFullScore);
             metrics.Add(Metric(MetricCode.ActivityMergeRequests, mergeRequests, mergeRequestScore, 1, DataStatus.Available));
         }
 
@@ -184,7 +177,7 @@ public sealed class CategoryScoreCalculator(
 
         var open = issues.Where(x => x.State == IssueState.Open).ToArray();
         var closed = issues.Where(x => x.State == IssueState.Closed).ToArray();
-        var stale = open.Count(x => (now - x.CreatedAt).TotalDays > settings.StaleIssueAgeDays);
+        var stale = open.Count(x => (now - (x.UpdatedAt ?? x.CreatedAt)).TotalDays > settings.StaleIssueAgeDays);
 
         var openScore = normalizer.Normalize(open.Length, settings.MaxOpenIssues, 0);
         var total = issues.Count;
@@ -234,22 +227,22 @@ public sealed class CategoryScoreCalculator(
         var oldestCommentDays = report.OldestCommentAge?.TotalDays;
         var isStale = oldestCommentDays is not null && oldestCommentDays > settings.StaleCommentAgeDays;
 
-        var penalty = report.TodoCount * settings.TodoPenalty + report.FixmeCount * settings.FixmePenalty;
-        if (isStale)
-            penalty += settings.StaleCommentPenalty;
-        penalty = Math.Min(penalty, settings.MaxPenalty);
-
-        var score = Math.Clamp(maximum - penalty, minimum, maximum);
-
         var metrics = new List<MetricScore>
         {
-            Metric(MetricCode.CodeHealthTodo, report.TodoCount, Math.Clamp(maximum - report.TodoCount * settings.TodoPenalty, minimum, maximum), 1, DataStatus.Available),
-            Metric(MetricCode.CodeHealthFixme, report.FixmeCount, Math.Clamp(maximum - report.FixmeCount * settings.FixmePenalty, minimum, maximum), 1, DataStatus.Available),
-            Metric(MetricCode.CodeHealthStaleComments, oldestCommentDays ?? 0, isStale ? Math.Clamp(maximum - settings.StaleCommentPenalty, minimum, maximum) : maximum, 1, DataStatus.Available),
-            Metric(MetricCode.CodeHealthTechDebt, Math.Round(penalty, 2), score, 1, DataStatus.Available)
+            PenaltyMetric(MetricCode.CodeHealthTodo, report.TodoCount, settings.TodoPenalty),
+            PenaltyMetric(MetricCode.CodeHealthFixme, report.FixmeCount, settings.FixmePenalty),
+            Metric(MetricCode.CodeHealthStaleComments, oldestCommentDays ?? 0, isStale ? Math.Clamp(maximum - settings.StaleCommentPenalty, minimum, maximum) : maximum, settings.StaleCommentPenalty, DataStatus.Available)
         };
 
-        return new CategoryScoreResult(ScoreCategory.CodeHealth, (int)Math.Round(score, MidpointRounding.AwayFromZero), WeightFor(ScoreCategory.CodeHealth), DataStatus.Available, metrics);
+        return FromMetrics(ScoreCategory.CodeHealth, metrics);
+    }
+
+    private MetricScore PenaltyMetric(MetricCode code, double count, double penalty)
+    {
+        var maximum = _options.ScoreScale.MaximumScore;
+        var minimum = _options.ScoreScale.MinimumScore;
+
+        return new MetricScore(code, count, Math.Clamp(maximum - count * penalty, minimum, maximum), penalty, DataStatus.Available);
     }
 
     private MetricScore BinaryMetric(MetricCode code, bool isPresent, double weight)
@@ -293,7 +286,4 @@ public sealed class CategoryScoreCalculator(
 
     private static int CountOpen(IReadOnlyCollection<SecurityFinding> findings, SecuritySeverity severity) =>
         findings.Count(x => x.Status == SecurityFindingStatus.Open && x.Severity == severity);
-
-    private static int CountKind(IReadOnlyCollection<SecurityFinding> findings, SecurityFindingKind kind) =>
-        findings.Count(x => x.Kind == kind);
 }

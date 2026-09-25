@@ -18,9 +18,20 @@ type Config struct {
 	ReapInterval time.Duration
 
 	SourceCraft SourceCraft
+	Service     Service
 	YandexID    YandexID
 	Storage     Storage
 	Git         Git
+}
+
+// Service — границы сбора данных для service.Limits.
+type Service struct {
+	// MaxItems — сколько последних issues/MR/запусков CI забирать из API (SERVICECRAFT_MAX_ITEMS).
+	MaxItems int
+	// MaxResponseLookups — для скольких issues/MR запрашивать комментарии (SERVICECRAFT_MAX_RESPONSE_LOOKUPS).
+	MaxResponseLookups int
+	// Concurrency — сколько запросов комментариев выполнять параллельно (SERVICECRAFT_CONCURRENCY).
+	Concurrency int
 }
 
 // YandexID — OAuth-приложение для входа через Яндекс ID (регистрируется на https://oauth.yandex.ru).
@@ -86,6 +97,11 @@ func Load() (Config, error) {
 			Timeout:        duration("SOURCECRAFT_TIMEOUT", 15*time.Second, &errs),
 			MaxRetries:     integer("SOURCECRAFT_MAX_RETRIES", 3, &errs),
 			RequestsPerSec: float("SOURCECRAFT_RPS", 10, &errs),
+		},
+		Service: Service{
+			MaxItems:           integer("SERVICECRAFT_MAX_ITEMS", 500, &errs),
+			MaxResponseLookups: integer("SERVICECRAFT_MAX_RESPONSE_LOOKUPS", 100, &errs),
+			Concurrency:        integer("SERVICECRAFT_CONCURRENCY", 4, &errs),
 		},
 		YandexID: YandexID{
 			ClientID:     os.Getenv("YANDEX_CLIENT_ID"),

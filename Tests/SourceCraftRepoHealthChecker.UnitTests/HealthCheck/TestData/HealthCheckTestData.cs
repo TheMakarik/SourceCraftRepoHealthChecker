@@ -55,8 +55,7 @@ public static class HealthCheckTestData
             TodoPenalty = 1,
             FixmePenalty = 2,
             StaleCommentAgeDays = 60,
-            StaleCommentPenalty = 5,
-            MaxPenalty = 50
+            StaleCommentPenalty = 5
         },
         Activity = activity ?? new ActivityScoringOptions
         {
@@ -64,7 +63,8 @@ public static class HealthCheckTestData
             StaleAfterDays = 180,
             CommitFrequencyForFullScore = 20,
             ContributorsForFullScore = 5,
-            ReleasesForFullScore = 3
+            ReleasesForFullScore = 3,
+            MergeRequestsForFullScore = 4
         },
         Documentation = documentation ?? new DocumentationScoringOptions
         {

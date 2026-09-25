@@ -221,3 +221,178 @@ func (l *limitedWriter) Write(p []byte) (int, error) {
 	_, _ = l.w.Write(chunk)
 	return len(p), nil
 }
+
+// runExit выполняет git и возвращает stdout вместе с кодом выхода, не превращая
+// ненулевой код в ошибку (git grep возвращает 1, когда совпадений нет).
+func (g Git) runExit(ctx context.Context, dir string, creds *Credentials, args ...string) ([]byte, int, error) {
+	cmd := g.command(ctx, dir, creds, args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &limitedWriter{w: &stderr, n: 4 << 10}
+	err := cmd.Run()
+	if err == nil {
+		return stdout.Bytes(), 0, nil
+	}
+	if ctx.Err() != nil {
+		return nil, -1, ctx.Err()
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return stdout.Bytes(), exitErr.ExitCode(), nil
+	}
+	return nil, -1, fmt.Errorf("git %s: %w: %s", args[0], err, redact(strings.TrimSpace(stderr.String()), creds))
+}
+
+// ListFiles возвращает пути всех отслеживаемых файлов ветки (из деревьев, без содержимого).
+func (g Git) ListFiles(ctx context.Context, repoDir string) ([]string, error) {
+	out, code, err := g.runExit(ctx, repoDir, nil, "ls-tree", "-r", "--name-only", "-z", "HEAD")
+	if err != nil {
+		return nil, err
+	}
+	if code != 0 {
+		return nil, nil
+	}
+	raw := strings.Trim(string(out), "\x00")
+	if raw == "" {
+		return nil, nil
+	}
+	return strings.Split(raw, "\x00"), nil
+}
+
+// ShowFile возвращает содержимое файла из HEAD.
+func (g Git) ShowFile(ctx context.Context, repoDir, path string) ([]byte, error) {
+	out, code, err := g.runExit(ctx, repoDir, nil, "show", "HEAD:"+path)
+	if err != nil {
+		return nil, err
+	}
+	if code != 0 {
+		return nil, fmt.Errorf("git show %s: exit %d", path, code)
+	}
+	return out, nil
+}
+
+// MarkerStats — статистика маркеров TODO/FIXME и дата появления самого старого из них.
+type MarkerStats struct {
+	TodoCount  int
+	FixmeCount int
+	OldestAt   time.Time
+	HasOldest  bool
+}
+
+// MarkerStats считает TODO/FIXME в ветке и определяет, когда появился самый старый маркер.
+//
+// Подсчёт приблизителен: git grep --word-regexp считает строки с маркером как отдельным
+// словом на текущем HEAD. Давность — это минимальная author-дата коммитов, чей diff
+// добавил или удалил строку с таким маркером (git log -G), то есть момент первого
+// появления маркера в истории, а не обязательно текущей строки.
+func (g Git) MarkerStats(ctx context.Context, repoDir string) (MarkerStats, error) {
+	var stats MarkerStats
+
+	hasHead, err := g.hasHead(ctx, repoDir)
+	if err != nil {
+		return stats, err
+	}
+	if !hasHead {
+		return stats, nil
+	}
+
+	todo, err := g.markerCount(ctx, repoDir, "TODO")
+	if err != nil {
+		return stats, err
+	}
+	fixme, err := g.markerCount(ctx, repoDir, "FIXME")
+	if err != nil {
+		return stats, err
+	}
+	stats.TodoCount = todo
+	stats.FixmeCount = fixme
+
+	for _, word := range []string{"TODO", "FIXME"} {
+		at, ok, err := g.oldestMarkerCommit(ctx, repoDir, word)
+		if err != nil {
+			return stats, err
+		}
+		if ok && (!stats.HasOldest || at.Before(stats.OldestAt)) {
+			stats.OldestAt = at
+			stats.HasOldest = true
+		}
+	}
+	return stats, nil
+}
+
+func (g Git) hasHead(ctx context.Context, repoDir string) (bool, error) {
+	_, code, err := g.runExit(ctx, repoDir, nil, "rev-parse", "--verify", "--quiet", "HEAD")
+	if err != nil {
+		return false, err
+	}
+	return code == 0, nil
+}
+
+func (g Git) markerCount(ctx context.Context, repoDir, word string) (int, error) {
+	out, code, err := g.runExit(ctx, repoDir, nil, "grep", "-I", "-c", "--word-regexp", "-e", word, "HEAD")
+	if err != nil {
+		return 0, err
+	}
+	switch code {
+	case 0:
+	case 1:
+		return 0, nil
+	default:
+		return 0, fmt.Errorf("git grep %s: exit %d", word, code)
+	}
+
+	total := 0
+	sc := bufio.NewScanner(bytes.NewReader(out))
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		idx := strings.LastIndexByte(line, ':')
+		if idx < 0 {
+			return 0, fmt.Errorf("git grep: unexpected record %q", truncate(line, 80))
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(line[idx+1:]))
+		if err != nil {
+			return 0, fmt.Errorf("git grep: bad count %q: %w", line, err)
+		}
+		total += n
+	}
+	if err := sc.Err(); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
+func (g Git) oldestMarkerCommit(ctx context.Context, repoDir, word string) (time.Time, bool, error) {
+	out, code, err := g.runExit(ctx, repoDir, nil, "log", "--format=%aI", "-G", `\b`+word+`\b`)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if code != 0 {
+		return time.Time{}, false, nil
+	}
+
+	var (
+		oldest time.Time
+		found  bool
+	)
+	sc := bufio.NewScanner(bytes.NewReader(out))
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		at, err := time.Parse(time.RFC3339, line)
+		if err != nil {
+			return time.Time{}, false, fmt.Errorf("git log: bad date %q: %w", line, err)
+		}
+		if !found || at.Before(oldest) {
+			oldest, found = at, true
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return time.Time{}, false, err
+	}
+	return oldest, found, nil
+}

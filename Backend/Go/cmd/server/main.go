@@ -74,9 +74,9 @@ func run(log *slog.Logger) error {
 		RequestsPerSec: cfg.SourceCraft.RequestsPerSec,
 	})
 	svc := service.New(api, snapshots, git, cfg.SourceCraft.GitUsername, cfg.Git.WorkDir, service.Limits{
-		MaxItems:           500,
-		MaxResponseLookups: 100,
-		Concurrency:        4,
+		MaxItems:           cfg.Service.MaxItems,
+		MaxResponseLookups: cfg.Service.MaxResponseLookups,
+		Concurrency:        cfg.Service.Concurrency,
 	})
 
 	if cfg.ReapInterval > 0 {

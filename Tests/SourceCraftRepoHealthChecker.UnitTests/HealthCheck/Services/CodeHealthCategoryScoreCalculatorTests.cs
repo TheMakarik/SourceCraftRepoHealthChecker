@@ -74,7 +74,7 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         // Assert
         actual.Score.Should().Be(100);
         actual.DataStatus.Should().Be(DataStatus.Available);
-        actual.Metrics.Should().HaveCount(4);
+        actual.Metrics.Should().HaveCount(3);
     }
 
     [Fact]
@@ -88,7 +88,8 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(95);
+        actual.Score.Should().Be(99);
+        actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthTodo).NormalizedScore.Should().Be(95);
     }
 
     [Fact]
@@ -102,7 +103,8 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(94);
+        actual.Score.Should().Be(99);
+        actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthFixme).NormalizedScore.Should().Be(94);
     }
 
     [Fact]
@@ -133,23 +135,24 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(95);
+        actual.Score.Should().Be(97);
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthStaleComments).NormalizedScore.Should().Be(95);
     }
 
     [Fact]
-    public void Calculate_WhenPenaltyExceedsMaxPenalty_CapsPenalty()
+    public void Calculate_WhenPenaltyExceedsMaximum_ClampsBothMetricsToMinimum()
     {
         // Arrange
-        var report = new CodeHealthReport(40, 10, 0, null);
+        var report = new CodeHealthReport(100, 50, 0, null);
         var facts = RepositoryFactsBuilder.Build(codeHealth: report);
 
         // Act
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(50);
-        actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthTechDebt).RawValue.Should().Be(50);
+        actual.Score.Should().Be(63);
+        actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthTodo).NormalizedScore.Should().Be(0);
+        actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthFixme).NormalizedScore.Should().Be(0);
     }
 
     [Fact]
@@ -163,7 +166,7 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(91);
+        actual.Score.Should().Be(96);
     }
 
     [Fact]
@@ -178,5 +181,27 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
 
         // Assert
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthStaleComments).RawValue.Should().Be(0);
+    }
+
+    [Fact]
+    public void Calculate_WhenTodoFixmeAndStalePresent_ScoreEqualsWeightedAverageOfMetrics()
+    {
+        // Arrange
+        var report = new CodeHealthReport(4, 3, 0, TimeSpan.FromDays(61));
+        var facts = RepositoryFactsBuilder.Build(codeHealth: report);
+
+        // Act
+        var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
+
+        // Assert
+        var weighted = WeightedAverage(actual.Metrics);
+        actual.Score.Should().Be((int)Math.Round(weighted, MidpointRounding.AwayFromZero));
+    }
+
+    private static double WeightedAverage(IReadOnlyCollection<MetricScore> metrics)
+    {
+        var weighted = metrics.Where(x => x.Weight > 0).ToArray();
+
+        return weighted.Sum(x => x.NormalizedScore * x.Weight) / weighted.Sum(x => x.Weight);
     }
 }

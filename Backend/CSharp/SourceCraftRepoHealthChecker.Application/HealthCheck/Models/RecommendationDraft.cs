@@ -7,4 +7,4 @@ public sealed record RecommendationDraft(
     string Problem,
     string Action,
     string ExpectedImpact,
-    string? SourceReference);
+    string SourceReference);

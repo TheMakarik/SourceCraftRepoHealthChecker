@@ -7,7 +7,10 @@
 | Пакет | Что делает |
 |---|---|
 | `cmd/server` | точка входа, HTTP-сервер (локально и в Serverless Container) |
-| `internal/sourcecraft` | клиент API: ретраи с backoff, `Retry-After`, rate limit, пагинация `page_token` |
+| `cmd/function` | точка входа Cloud Functions: serverless-обработчик с триггерами |
+| `internal/serverless` | сборка serverless-обработчика: API + очередь + таймер |
+| `internal/queue` | потребитель триггера Message Queue (создание снапшотов) |
+| `internal/sourcecraft` | клиент API: ретраи с backoff, `Retry-After`, rate limit, пагинация `page_token`, circuit breaker |
 | `internal/gitrepo` | bare partial clone, потоковый `git log`; креды только через env процесса git |
 | `internal/objectstore` | интерфейс S3 + реализация на `minio-go` (Yandex Object Storage, MinIO, AWS) |
 | `internal/snapshot` | жизненный цикл снапшота репозитория в S3 |
@@ -43,6 +46,8 @@ docker compose up --build     # сервис на :8080 + MinIO на :9000 (ко
 | `GET /repositories/{id}/issues` | `ISourceCraftCollaborationSource` | API issues + comments |
 | `GET /repositories/{id}/merge-requests` | `ISourceCraftCollaborationSource` | API pulls + comments |
 | `GET /repositories/{id}/pipelines` | `ISourceCraftPipelineSource` | API `cicd/runs` |
+| `GET /repositories/{id}/code-health?runId` | `ISourceCraftCodeHealthSource` | git: TODO/FIXME и давность самого старого |
+| `GET /repositories/{id}/documentation?runId` | `ISourceCraftDocumentationSource` | git: README/LICENSE/CONTRIBUTING/CODEOWNERS/инструкции |
 | `GET /repositories/{id}/security/findings` | `ISourceCraftSecuritySource` | всегда `Unavailable` (см. ниже) |
 | `PUT /repositories/{id}/snapshots/{runId}` | — | клон → S3; тело `{"withBlobs":false,"depth":0}` необязательно |
 | `GET /repositories/{id}/snapshots/{runId}` | — | метаданные снапшота |
@@ -87,9 +92,50 @@ DELETE /repositories/r1/snapshots/run-42        # 204, идемпотентно
   3. reaper — `POST /internal/snapshots/reap` по таймер-триггеру или `SNAPSHOT_REAP_INTERVAL` локально;
   4. lifecycle-правило бакета (`S3_LIFECYCLE_DAYS`, по умолчанию 1 день) и очистка незавершённых multipart-загрузок.
 - **Доступ**: перед каждой операцией со снапшотом сервис проверяет через API, что токен запроса видит репозиторий. Чужой снапшот по известному `runId` не прочитать.
-- **Без `runId`**: activity-эндпоинты делают эфемерный клон только на время запроса и не трогают S3.
+- **Без `runId`**: activity-эндпоинты делают эфемерный клон только на время запроса и не трогают S3. `code-health` и `documentation` клонируют с блобами (нужно содержимое файлов); для `runId` создавайте снапшот с `{"withBlobs":true}`.
 - **Git-креды**: `http.extraHeader` через `GIT_CONFIG_*` env. Токена нет ни в remote URL, ни в argv, ни в логах.
 - **Лимиты**: `GIT_MAX_REPO_MB` (размер клона и распаковки) и `GIT_CLONE_TIMEOUT`. При превышении — `Unavailable`.
+
+## Serverless
+
+Раздел 4 ТЗ: часть Go-сервиса разворачивается как Cloud Functions, тяжёлый анализ — как Serverless Container (тот же код, `cmd/server`). Точка входа функции — `cmd/function`; она поднимает тот же набор маршрутов, что и обычный сервер, плюс триггеры, и подходит для локального запуска.
+
+```bash
+go run ./cmd/function            # :8080, HTTP_ADDR/PORT
+```
+
+`serverless.NewHandler` собирает полный граф (S3, git, снапшоты, сервис, Яндекс ID) и внешний `http.ServeMux`:
+
+| Метод и путь | Назначение | Защита |
+|---|---|---|
+| `POST /internal/queue/messages` | триггер Message Queue: `service.CreateSnapshot` по каждому сообщению | `X-Internal-Token` |
+| `POST /internal/snapshots/reap` | таймер-триггер: очистка просроченных снапшотов (`svc.ReapSnapshots`) | `X-Internal-Token` |
+| остальные маршруты | `internal/httpapi` (раздел 2 ТЗ) | по маршруту |
+
+**Триггер Message Queue.** Тело — конверт триггера Yandex Message Queue:
+
+```json
+{"messages":[{"details":{"message":{"message_id":"…","body":"{\"repositoryId\":\"r1\",\"runId\":\"run-42\",\"withBlobs\":false,\"depth\":0}"}}}]}
+```
+
+Обработка должна быть идемпотентной: `CreateSnapshot` по `(repositoryId, runId)` не клонирует повторно. Ответ — по каждому сообщению:
+
+```json
+{"results":[{"messageId":"…","repositoryId":"r1","runId":"run-42","status":"created","created":true}]}
+```
+
+`status`: `created` (снапшот создан), `exists` (уже был) или `failed`. Если хотя бы одно сообщение не обработано, ответ `502` — очередь повторит доставку (успешные сообщения переигрываются идемпотентно). Битая пачка — `400`, нет внутреннего токена — `403`.
+
+**Таймер-триггер.** Вызывает `POST /internal/snapshots/reap`; тот же путь есть в `internal/httpapi` для `cmd/server`, а `cmd/function` обслуживает его через `internal/serverless` (`timer.go`) — без изменения поведения.
+
+**Circuit breaker.** Клиент SourceCraft оборачивается в потокобезопасный `http.RoundTripper` (`internal/sourcecraft/breaker.go`): после `SOURCECRAFT_BREAKER_THRESHOLD` подряд идущих сбоев (ошибка транспорта, `5xx`, `429`) запросы отклоняются на `SOURCECRAFT_BREAKER_COOLDOWN`, затем пропускается одна пробная попытка. `4xx` сбоем не считается. В обычном сервере (`cmd/server`) breaker не включается.
+
+| Переменная | По умолчанию | Значение |
+|---|---|---|
+| `HTTP_ADDR` | `:8080` | адрес прослушивания; приоритетнее `PORT` |
+| `PORT` | — | порт Cloud Functions, если `HTTP_ADDR` не задан |
+| `SOURCECRAFT_BREAKER_THRESHOLD` | `5` | сбоев подряд до размыкания цепи |
+| `SOURCECRAFT_BREAKER_COOLDOWN` | `30s` | пауза, пока цепь разомкнута |
 
 ## Ограничения API SourceCraft (на 2026-09-25)
 

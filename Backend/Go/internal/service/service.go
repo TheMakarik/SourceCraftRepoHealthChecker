@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +140,7 @@ func (s *Service) Issues(ctx context.Context, token, repoID string) ([]contract.
 			State:       contract.IssueOpen,
 			AuthorLogin: is.Author.Slug,
 			CreatedAt:   is.CreatedAt,
+			UpdatedAt:   is.UpdatedAt,
 		}
 		if st := is.Status.StatusType; st == "completed" || st == "cancelled" {
 			out[i].State = contract.IssueClosed
@@ -305,8 +308,9 @@ func (s *Service) ReapSnapshots(ctx context.Context) (int, error) {
 var ErrEmptyRepository = errors.New("service: repository is empty")
 
 // withRepo даёт fn локальную bare-копию репозитория: из снапшота runID или, если runID пуст,
-// из эфемерного клона только для этого запроса. Копия удаляется сразу после fn.
-func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn func(repoDir string) error) error {
+// из эфемерного клона только для этого запроса. withBlobs=true — клон с содержимым файлов
+// (нужен code-health/documentation). Копия удаляется сразу после fn.
+func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, withBlobs bool, fn func(repoDir string) error) error {
 	repo, err := s.api.Repository(ctx, token, repoID)
 	if err != nil {
 		return err
@@ -334,7 +338,7 @@ func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn 
 	}
 	defer os.RemoveAll(tmp)
 	dir := tmp + "/repo.git"
-	if err := s.git.CloneBare(ctx, dir, gitrepo.CloneOptions{URL: repo.CloneURL.HTTPS, Branch: repo.DefaultBranch, Creds: creds}); err != nil {
+	if err := s.git.CloneBare(ctx, dir, gitrepo.CloneOptions{URL: repo.CloneURL.HTTPS, Branch: repo.DefaultBranch, WithBlobs: withBlobs, Creds: creds}); err != nil {
 		return err
 	}
 	return fn(dir)
@@ -342,7 +346,7 @@ func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn 
 
 func (s *Service) CommitActivity(ctx context.Context, token, repoID, runID string) (contract.CommitActivity, error) {
 	activity := contract.CommitActivity{CommitsByDay: map[string]int{}}
-	err := s.withRepo(ctx, token, repoID, runID, func(dir string) error {
+	err := s.withRepo(ctx, token, repoID, runID, false, func(dir string) error {
 		return s.git.WalkCommits(ctx, dir, func(c gitrepo.Commit) error {
 			at := c.AuthoredAt.UTC()
 			activity.TotalCount++
@@ -373,7 +377,7 @@ func (s *Service) Contributors(ctx context.Context, token, repoID, runID string)
 	byEmail := map[string]*agg{}
 	var order []string
 
-	err := s.withRepo(ctx, token, repoID, runID, func(dir string) error {
+	err := s.withRepo(ctx, token, repoID, runID, false, func(dir string) error {
 		return s.git.WalkCommits(ctx, dir, func(c gitrepo.Commit) error {
 			key := strings.ToLower(c.AuthorEmail)
 			if key == "" {
@@ -479,3 +483,81 @@ func mapSlice[T, U any](in []T, f func(T) U) []U {
 	}
 	return out
 }
+
+// CodeHealth считает TODO/FIXME и давность самого старого маркера по git-истории.
+func (s *Service) CodeHealth(ctx context.Context, token, repoID, runID string) (contract.CodeHealthReport, error) {
+	report := contract.CodeHealthReport{}
+	err := s.withRepo(ctx, token, repoID, runID, true, func(dir string) error {
+		stats, err := s.git.MarkerStats(ctx, dir)
+		if err != nil {
+			return err
+		}
+		report.TodoCount = stats.TodoCount
+		report.FixmeCount = stats.FixmeCount
+		report.TotalCommentCount = stats.TodoCount + stats.FixmeCount
+		if stats.HasOldest {
+			age := time.Since(stats.OldestAt)
+			if age < 0 {
+				age = 0
+			}
+			formatted := contract.FormatTimeSpan(age)
+			report.OldestCommentAge = &formatted
+		}
+		return nil
+	})
+	if errors.Is(err, ErrEmptyRepository) {
+		return report, nil
+	}
+	return report, err
+}
+
+// Documentation определяет наличие README, лицензии, CONTRIBUTING, CODEOWNERS и инструкций.
+//
+// Инструкции ищутся по слову целиком (regexp \b, без учёта регистра) в README и
+// CONTRIBUTING, чтобы «runtime», «latest» и «contest» не считались за run/test.
+func (s *Service) Documentation(ctx context.Context, token, repoID, runID string) (contract.DocumentationReport, error) {
+	report := contract.DocumentationReport{}
+	err := s.withRepo(ctx, token, repoID, runID, true, func(dir string) error {
+		files, err := s.git.ListFiles(ctx, dir)
+		if err != nil {
+			return err
+		}
+		var instructions strings.Builder
+		appendContent := func(file string) {
+			if content, err := s.git.ShowFile(ctx, dir, file); err == nil {
+				instructions.Write(content)
+				instructions.WriteByte('\n')
+			}
+		}
+		for _, file := range files {
+			name := strings.ToLower(filepath.Base(file))
+			switch {
+			case strings.HasPrefix(name, "readme"):
+				report.HasReadme = true
+				appendContent(file)
+			case strings.HasPrefix(name, "license"), strings.HasPrefix(name, "licence"), name == "copying":
+				report.HasLicense = true
+			case strings.HasPrefix(name, "contributing"):
+				report.HasContributing = true
+				appendContent(file)
+			case name == "codeowners":
+				report.HasCodeOwners = true
+			}
+		}
+		text := instructions.String()
+		report.HasLocalRunInstructions = runInstructionsPattern.MatchString(text)
+		report.HasBuildAndTestInstructions = buildAndTestPattern.MatchString(text)
+		return nil
+	})
+	if errors.Is(err, ErrEmptyRepository) {
+		return report, nil
+	}
+	return report, err
+}
+
+// runInstructionsPattern/buildAndTestPattern ищут маркеры инструкций по границам слов.
+// У кириллических слов \b в RE2 не работает (ASCII), поэтому они матчатся как подстроки.
+var (
+	runInstructionsPattern = regexp.MustCompile(`(?i)\b(run|getting started|quick start|usage)\b|запуск`)
+	buildAndTestPattern    = regexp.MustCompile(`(?i)\b(build|test|make)\b|сборка|тест`)
+)

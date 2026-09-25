@@ -5,7 +5,11 @@
 // (на стороне C# нужен JsonStringEnumConverter).
 package contract
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
 
 // DataStatus соответствует Domain.Enums.DataStatus.
 type DataStatus string
@@ -84,6 +88,7 @@ type IssueInfo struct {
 	State           IssueState `json:"state"`
 	AuthorLogin     string     `json:"authorLogin"`
 	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
 	ClosedAt        *time.Time `json:"closedAt"`
 	FirstResponseAt *time.Time `json:"firstResponseAt"`
 }
@@ -124,4 +129,54 @@ type PipelineRun struct {
 	Branch     string         `json:"branch"`
 	StartedAt  time.Time      `json:"startedAt"`
 	FinishedAt *time.Time     `json:"finishedAt"`
+}
+
+// CodeHealthReport соответствует Application.SourceCraft.Models.CodeHealthReport.
+// OldestCommentAge — TimeSpan в формате "c" (как сериализует System.Text.Json), например "12.03:04:05".
+type CodeHealthReport struct {
+	TodoCount         int     `json:"todoCount"`
+	FixmeCount        int     `json:"fixmeCount"`
+	TotalCommentCount int     `json:"totalCommentCount"`
+	OldestCommentAge  *string `json:"oldestCommentAge"`
+}
+
+// DocumentationReport соответствует Application.SourceCraft.Models.DocumentationReport.
+type DocumentationReport struct {
+	HasReadme                   bool `json:"hasReadme"`
+	HasLicense                  bool `json:"hasLicense"`
+	HasContributing             bool `json:"hasContributing"`
+	HasCodeOwners               bool `json:"hasCodeOwners"`
+	HasLocalRunInstructions     bool `json:"hasLocalRunInstructions"`
+	HasBuildAndTestInstructions bool `json:"hasBuildAndTestInstructions"`
+}
+
+// FormatTimeSpan приводит длительность к формату TimeSpan "c" ([d.]hh:mm:ss[.fffffff]),
+// который понимает System.Text.Json на стороне C#.
+func FormatTimeSpan(d time.Duration) string {
+	negative := d < 0
+	if negative {
+		d = -d
+	}
+	days := d / (24 * time.Hour)
+	d -= days * 24 * time.Hour
+	hours := d / time.Hour
+	d -= hours * time.Hour
+	minutes := d / time.Minute
+	d -= minutes * time.Minute
+	seconds := d / time.Second
+	ticks := int64(d-time.Second*seconds) / 100
+
+	var b strings.Builder
+	if negative {
+		b.WriteByte('-')
+	}
+	if days > 0 {
+		fmt.Fprintf(&b, "%d.%02d:%02d:%02d", days, hours, minutes, seconds)
+	} else {
+		fmt.Fprintf(&b, "%02d:%02d:%02d", hours, minutes, seconds)
+	}
+	if ticks > 0 {
+		fmt.Fprintf(&b, ".%07d", ticks)
+	}
+	return b.String()
 }

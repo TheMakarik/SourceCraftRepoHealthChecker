@@ -7,4 +7,5 @@ public sealed class ActivityScoringOptions
     public required int CommitFrequencyForFullScore { get; init; }
     public required int ContributorsForFullScore { get; init; }
     public required int ReleasesForFullScore { get; init; }
+    public required int MergeRequestsForFullScore { get; init; }
 }

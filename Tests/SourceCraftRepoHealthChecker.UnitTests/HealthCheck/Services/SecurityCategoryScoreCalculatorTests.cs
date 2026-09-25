@@ -82,11 +82,11 @@ public sealed class SecurityCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Security, facts);
 
         // Assert
-        actual.Score.Should().Be(63);
+        actual.Score.Should().Be(86);
     }
 
     [Fact]
-    public void Calculate_WhenFixedFindingsPresent_AddsCredit()
+    public void Calculate_WhenFixedFindingsPresent_ReportsFixedWithoutChangingScore()
     {
         // Arrange
         var findings = new SecurityFinding[]
@@ -101,11 +101,12 @@ public sealed class SecurityCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Security, facts);
 
         // Assert
-        actual.Score.Should().Be(86);
+        actual.Score.Should().Be(89);
+        actual.Metrics.Single(x => x.Code == MetricCode.SecurityFixedFindings).RawValue.Should().Be(2);
     }
 
     [Fact]
-    public void Calculate_WhenPenaltyExceedsMaximum_ClampsToMinimumScore()
+    public void Calculate_WhenManyCriticalFindings_ReducesScore()
     {
         // Arrange
         var findings = Enumerable.Range(0, 10)
@@ -117,7 +118,7 @@ public sealed class SecurityCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Security, facts);
 
         // Assert
-        actual.Score.Should().Be(0);
+        actual.Score.Should().Be(46);
     }
 
     [Fact]
@@ -138,7 +139,7 @@ public sealed class SecurityCategoryScoreCalculatorTests
     }
 
     [Fact]
-    public void Calculate_WhenOnlyFixedFindingsPresent_ClampsToMaximumScore()
+    public void Calculate_WhenOnlyFixedFindingsPresent_KeepsMaximumScore()
     {
         // Arrange
         var findings = new SecurityFinding[]
@@ -155,15 +156,16 @@ public sealed class SecurityCategoryScoreCalculatorTests
     }
 
     [Fact]
-    public void Calculate_WhenFindingsPresent_ReportsKindAndFixedCounts()
+    public void Calculate_WhenFindingsPresent_ReportsSeverityCounts()
     {
         // Arrange
         var findings = new SecurityFinding[]
         {
-            Finding(SecurityFindingKind.Sast, SecuritySeverity.Low, SecurityFindingStatus.Open),
-            Finding(SecurityFindingKind.Sca, SecuritySeverity.Low, SecurityFindingStatus.Open),
-            Finding(SecurityFindingKind.SecretScanning, SecuritySeverity.Low, SecurityFindingStatus.Open),
-            Finding(SecurityFindingKind.Sast, SecuritySeverity.Low, SecurityFindingStatus.Fixed)
+            Finding(SecurityFindingKind.Sast, SecuritySeverity.Critical, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.Sast, SecuritySeverity.Critical, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.Sca, SecuritySeverity.High, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.SecretScanning, SecuritySeverity.Medium, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.Sca, SecuritySeverity.Low, SecurityFindingStatus.Fixed)
         };
         var facts = RepositoryFactsBuilder.Build(findings: findings);
 
@@ -171,10 +173,38 @@ public sealed class SecurityCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Security, facts);
 
         // Assert
-        actual.Metrics.Single(x => x.Code == MetricCode.SecuritySast).RawValue.Should().Be(2);
-        actual.Metrics.Single(x => x.Code == MetricCode.SecuritySca).RawValue.Should().Be(1);
-        actual.Metrics.Single(x => x.Code == MetricCode.SecuritySecretScanning).RawValue.Should().Be(1);
+        actual.Metrics.Single(x => x.Code == MetricCode.SecurityCriticalFindings).RawValue.Should().Be(2);
+        actual.Metrics.Single(x => x.Code == MetricCode.SecurityHighFindings).RawValue.Should().Be(1);
+        actual.Metrics.Single(x => x.Code == MetricCode.SecurityMediumFindings).RawValue.Should().Be(1);
+        actual.Metrics.Single(x => x.Code == MetricCode.SecurityLowFindings).RawValue.Should().Be(0);
         actual.Metrics.Single(x => x.Code == MetricCode.SecurityFixedFindings).RawValue.Should().Be(1);
+    }
+
+    [Fact]
+    public void Calculate_WhenMixedFindings_ScoreEqualsWeightedAverageOfMetrics()
+    {
+        // Arrange
+        var findings = new SecurityFinding[]
+        {
+            Finding(SecurityFindingKind.Sast, SecuritySeverity.Critical, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.Sast, SecuritySeverity.High, SecurityFindingStatus.Open),
+            Finding(SecurityFindingKind.Sast, SecuritySeverity.Medium, SecurityFindingStatus.Open)
+        };
+        var facts = RepositoryFactsBuilder.Build(findings: findings);
+
+        // Act
+        var actual = systemUnderTests.Calculate(ScoreCategory.Security, facts);
+
+        // Assert
+        var weighted = WeightedAverage(actual.Metrics);
+        actual.Score.Should().Be((int)Math.Round(weighted, MidpointRounding.AwayFromZero));
+    }
+
+    private static double WeightedAverage(IReadOnlyCollection<MetricScore> metrics)
+    {
+        var weighted = metrics.Where(x => x.Weight > 0).ToArray();
+
+        return weighted.Sum(x => x.NormalizedScore * x.Weight) / weighted.Sum(x => x.Weight);
     }
 
     private SecurityFinding Finding(SecurityFindingKind kind, SecuritySeverity severity, SecurityFindingStatus status) =>

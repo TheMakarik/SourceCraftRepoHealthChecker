@@ -238,6 +238,7 @@ public sealed class ActivityCategoryScoreCalculatorTests
 
         // Assert
         actual.Metrics.Single(x => x.Code == MetricCode.ActivityMergeRequests).RawValue.Should().Be(2);
+        actual.Metrics.Single(x => x.Code == MetricCode.ActivityMergeRequests).NormalizedScore.Should().Be(50);
     }
 
     private MergeRequestInfo MergeRequest() => new(

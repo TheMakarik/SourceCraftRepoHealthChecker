@@ -268,3 +268,60 @@ func TestYandexIDLogin(t *testing.T) {
 		t.Fatalf("stale code: %d %v", code, body)
 	}
 }
+
+func TestCodeHealthAndDocumentation(t *testing.T) {
+	repo := testutil.NewRepo(t,
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-01T10:00:00Z", File: "README.md", Body: "# Demo\nRun: go run ./cmd/server\nBuild and test: go test ./...\n"},
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-02T10:00:00Z", File: "LICENSE", Body: "MIT"},
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-03T10:00:00Z", File: "CONTRIBUTING.md", Body: "Welcome"},
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-04T10:00:00Z", File: "CODEOWNERS", Body: "* @alice"},
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-05T10:00:00Z", File: "main.go", Body: "package main\n// TODO: a\n// TODO: b\n// FIXME: c\n"},
+	)
+	e := newEnv(t, repo, nil)
+
+	status, body := e.do(t, http.MethodGet, "/repositories/r1/code-health", "user-pat")
+	data, _ := body["data"].(map[string]any)
+	if status != http.StatusOK || body["status"] != "Available" {
+		t.Fatalf("code-health: %d %v", status, body)
+	}
+	if data["todoCount"] != float64(2) || data["fixmeCount"] != float64(1) || data["totalCommentCount"] != float64(3) {
+		t.Fatalf("code-health counts: %v", data)
+	}
+	if age, _ := data["oldestCommentAge"].(string); age == "" {
+		t.Fatalf("oldestCommentAge = %v", data["oldestCommentAge"])
+	}
+
+	status, body = e.do(t, http.MethodGet, "/repositories/r1/documentation", "user-pat")
+	data, _ = body["data"].(map[string]any)
+	if status != http.StatusOK || body["status"] != "Available" {
+		t.Fatalf("documentation: %d %v", status, body)
+	}
+	for _, key := range []string{"hasReadme", "hasLicense", "hasContributing", "hasCodeOwners", "hasLocalRunInstructions", "hasBuildAndTestInstructions"} {
+		if data[key] != true {
+			t.Errorf("documentation %s = %v", key, data[key])
+		}
+	}
+}
+
+func TestDocumentationWordBoundaries(t *testing.T) {
+	repo := testutil.NewRepo(t,
+		testutil.Commit{Author: "Alice", Email: "alice@example.com", Date: "2026-01-01T10:00:00Z", File: "README.md",
+			Body: "# Demo\nThe runtime uses the latest contest version.\n"},
+	)
+	e := newEnv(t, repo, nil)
+
+	status, body := e.do(t, http.MethodGet, "/repositories/r1/documentation", "user-pat")
+	data, _ := body["data"].(map[string]any)
+	if status != http.StatusOK || body["status"] != "Available" {
+		t.Fatalf("documentation: %d %v", status, body)
+	}
+	if data["hasReadme"] != true {
+		t.Errorf("hasReadme = %v", data["hasReadme"])
+	}
+	if data["hasLocalRunInstructions"] != false {
+		t.Errorf("runtime matched run: hasLocalRunInstructions = %v", data["hasLocalRunInstructions"])
+	}
+	if data["hasBuildAndTestInstructions"] != false {
+		t.Errorf("latest/contest matched test: hasBuildAndTestInstructions = %v", data["hasBuildAndTestInstructions"])
+	}
+}

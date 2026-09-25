@@ -27,6 +27,7 @@
 
   <ItemGroup>
     <None Include="Scripts\**\*.ps1" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Presenter\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
