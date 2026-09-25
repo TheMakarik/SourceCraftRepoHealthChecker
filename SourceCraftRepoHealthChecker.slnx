@@ -5,5 +5,7 @@
     <Project Path="Backend/CSharp/SourceCraftRepoHealthChecker.Presenter/SourceCraftRepoHealthChecker.Presenter.csproj" />
     <Project Path="Backend/CSharp/SourceCraftRepoHealthChecker.infrastructure/SourceCraftRepoHealthChecker.infrastructure.csproj" />
   </Folder>
-  <Folder Name="/Tests/" />
+  <Folder Name="/Tests/">
+    <Project Path="Tests/SourceCraftRepoHealthChecker.UnitTests/SourceCraftRepoHealthChecker.UnitTests.csproj" />
+  </Folder>
 </Solution>
