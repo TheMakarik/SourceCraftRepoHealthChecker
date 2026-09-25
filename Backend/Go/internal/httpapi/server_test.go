@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/appsec"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/gitrepo"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/objectstore"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/service"
@@ -26,6 +27,14 @@ type env struct {
 
 // newEnv поднимает фейковый SourceCraft (repoPath — clone_url репозитория r1) и наш API поверх него.
 func newEnv(t *testing.T, repoPath string, extra http.HandlerFunc) *env {
+	t.Helper()
+	return newEnvWithAppSec(t, repoPath, extra, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[],"totalSize":0}`))
+	})
+}
+
+// newEnvWithAppSec — как newEnv, но с управляемым фейком AppSec.
+func newEnvWithAppSec(t *testing.T, repoPath string, extra, appSec http.HandlerFunc) *env {
 	t.Helper()
 	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer user-pat" {
@@ -54,12 +63,16 @@ func newEnv(t *testing.T, repoPath string, extra http.HandlerFunc) *env {
 	}))
 	t.Cleanup(fake.Close)
 
+	appSecSrv := httptest.NewServer(appSec)
+	t.Cleanup(appSecSrv.Close)
+
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	objects := objectstore.NewMemory()
 	git := gitrepo.Git{}
 	store := snapshot.NewStore(objects, git, snapshot.Options{Prefix: "snapshots", TTL: time.Hour, WorkDir: t.TempDir()}, log)
 	client := sourcecraft.NewClient(sourcecraft.Options{BaseURL: fake.URL, Timeout: 5 * time.Second, MaxRetries: 1})
-	svc := service.New(client, store, git, "", t.TempDir(), service.Limits{MaxResponseLookups: 10})
+	appSecClient := appsec.NewClient(appsec.Options{BaseURL: appSecSrv.URL, Timeout: 5 * time.Second, MaxRetries: 1})
+	svc := service.New(client, appSecClient, store, git, "", t.TempDir(), service.Limits{MaxResponseLookups: 10})
 
 	api := httptest.NewServer(New(svc, Options{InternalToken: "internal-secret"}, log))
 	t.Cleanup(api.Close)
@@ -191,7 +204,7 @@ func TestErrorMapping(t *testing.T) {
 		{"yandex id not configured", http.MethodPost, "/auth/url", "", http.StatusNotImplemented, ""},
 		{"source down is Unavailable, not 5xx", http.MethodGet, "/repositories/r1/issues", "user-pat", http.StatusOK, "Unavailable"},
 		{"empty list is NoData", http.MethodGet, "/repositories/r1/activity/releases", "user-pat", http.StatusOK, "NoData"},
-		{"security is Unavailable", http.MethodGet, "/repositories/r1/security/findings", "user-pat", http.StatusOK, "Unavailable"},
+		{"security with no findings is NoData", http.MethodGet, "/repositories/r1/security/findings", "user-pat", http.StatusOK, "NoData"},
 		{"invalid run id", http.MethodPut, "/repositories/r1/snapshots/-bad", "user-pat", http.StatusBadRequest, ""},
 		{"reap requires internal token", http.MethodPost, "/internal/snapshots/reap", "", http.StatusForbidden, ""},
 	}
@@ -208,6 +221,56 @@ func TestErrorMapping(t *testing.T) {
 				t.Fatalf("missing requestId: %v", body)
 			}
 		})
+	}
+}
+
+func TestSecurityFindingsMapping(t *testing.T) {
+	e := newEnvWithAppSec(t, "unused", nil, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/defect-groups" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if got := r.URL.Query().Get("gitRepo"); got != "r1" {
+			t.Errorf("gitRepo = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"data":[
+			{"uuid":"f1","ruleName":"XSS","ruleId":"CWE-79","fileName":"a.go","engineType":2,"severity":3,"status":0},
+			{"uuid":"f2","ruleName":"","ruleId":"SECRET","engine":"SECRETS","engineType":0,"severity":0,"status":1}
+		],"totalSize":2}`))
+	})
+
+	status, body := e.do(t, http.MethodGet, "/repositories/r1/security/findings", "user-pat")
+	if status != http.StatusOK || body["status"] != "Available" {
+		t.Fatalf("security: %d %v", status, body)
+	}
+	findings, _ := body["data"].([]any)
+	if len(findings) != 2 {
+		t.Fatalf("findings = %v", findings)
+	}
+	first := findings[0].(map[string]any)
+	if first["kind"] != "Sast" || first["severity"] != "High" || first["status"] != "Open" || first["title"] != "XSS" || first["filePath"] != "a.go" {
+		t.Errorf("first = %v", first)
+	}
+	second := findings[1].(map[string]any)
+	if second["kind"] != "SecretScanning" || second["severity"] != "Low" || second["status"] != "Fixed" || second["title"] != "SECRET" {
+		t.Errorf("second = %v", second)
+	}
+	if second["filePath"] != nil {
+		t.Errorf("second filePath = %v, want nil", second["filePath"])
+	}
+}
+
+func TestSecurityFindingsUnavailableOnAppSecFailure(t *testing.T) {
+	e := newEnvWithAppSec(t, "unused", nil, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+
+	status, body := e.do(t, http.MethodGet, "/repositories/r1/security/findings", "user-pat")
+	if status != http.StatusOK || body["status"] != "Unavailable" {
+		t.Fatalf("security: %d %v", status, body)
+	}
+	if reason, _ := body["reason"].(string); reason == "" {
+		t.Fatalf("missing reason: %v", body)
 	}
 }
 

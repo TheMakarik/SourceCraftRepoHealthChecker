@@ -1,3 +1,4 @@
+using System.Text;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Options;
@@ -66,24 +67,69 @@ public sealed class RepositoryAnalysisTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMarkdownAsync_WhenRepositoryAnalyzed_ContainsScoreCategoriesAndRecommendations()
+    public async Task GetAsync_WhenMarkdownRequested_ReturnsReportWithScoreCategoriesAndRecommendations()
     {
         // Act
-        var actual = await exportReport.GetMarkdownAsync("sc-1", CancellationToken.None);
+        var actual = await exportReport.GetAsync("sc-1", ReportFormat.Markdown, CancellationToken.None);
 
         // Assert
         actual.Should().NotBeNull();
-        actual.Should().Contain("# Repo Health: owner/demo");
-        actual.Should().Contain("78/100");
-        actual.Should().Contain("CodeHealth");
-        actual.Should().Contain("Устраните уязвимости");
+        actual!.ContentType.Should().Be("text/markdown; charset=utf-8");
+        var content = Encoding.UTF8.GetString(actual.Content);
+        content.Should().Contain("# Repo Health: owner/demo");
+        content.Should().Contain("78/100");
+        content.Should().Contain("CodeHealth");
+        content.Should().Contain("Устраните уязвимости");
     }
 
     [Fact]
-    public async Task GetMarkdownAsync_WhenRepositoryUnknown_ReturnsNull()
+    public async Task GetAsync_WhenJsonRequested_ReturnsNonEmptyJsonReport()
     {
         // Act
-        var actual = await exportReport.GetMarkdownAsync("missing", CancellationToken.None);
+        var actual = await exportReport.GetAsync("sc-1", ReportFormat.Json, CancellationToken.None);
+
+        // Assert
+        actual.Should().NotBeNull();
+        actual!.ContentType.Should().Be("application/json");
+        actual.Content.Should().NotBeEmpty();
+        var content = Encoding.UTF8.GetString(actual.Content);
+        content.Should().Contain("\"score\":78");
+        content.Should().Contain("owner/demo");
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenHtmlRequested_ReturnsNonEmptySelfContainedHtmlReport()
+    {
+        // Act
+        var actual = await exportReport.GetAsync("sc-1", ReportFormat.Html, CancellationToken.None);
+
+        // Assert
+        actual.Should().NotBeNull();
+        actual!.ContentType.Should().Be("text/html; charset=utf-8");
+        var content = Encoding.UTF8.GetString(actual.Content);
+        content.Should().StartWith("<!DOCTYPE html>");
+        content.Should().Contain("<style>");
+        content.Should().Contain("78/100");
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenPdfRequested_ReturnsNonEmptyPdfReport()
+    {
+        // Act
+        var actual = await exportReport.GetAsync("sc-1", ReportFormat.Pdf, CancellationToken.None);
+
+        // Assert
+        actual.Should().NotBeNull();
+        actual!.ContentType.Should().Be("application/pdf");
+        actual.Content.Should().NotBeEmpty();
+        Encoding.ASCII.GetString(actual.Content, 0, 4).Should().Be("%PDF");
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenRepositoryUnknown_ExportReturnsNull()
+    {
+        // Act
+        var actual = await exportReport.GetAsync("missing", ReportFormat.Markdown, CancellationToken.None);
 
         // Assert
         actual.Should().BeNull();

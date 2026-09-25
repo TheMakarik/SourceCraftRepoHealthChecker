@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/appsec"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/config"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/gitrepo"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/httpapi"
@@ -67,7 +68,12 @@ func NewHandler(log *slog.Logger) (http.Handler, error) {
 				http.DefaultTransport, breakerThreshold(), breakerCooldown()),
 		},
 	})
-	svc := service.New(api, snapshots, git, cfg.SourceCraft.GitUsername, cfg.Git.WorkDir, service.Limits{
+	appSec := appsec.NewClient(appsec.Options{
+		BaseURL:    cfg.AppSec.BaseURL,
+		Timeout:    cfg.AppSec.Timeout,
+		MaxRetries: cfg.AppSec.MaxRetries,
+	})
+	svc := service.New(api, appSec, snapshots, git, cfg.SourceCraft.GitUsername, cfg.Git.WorkDir, service.Limits{
 		MaxItems:           500,
 		MaxResponseLookups: 100,
 		Concurrency:        4,

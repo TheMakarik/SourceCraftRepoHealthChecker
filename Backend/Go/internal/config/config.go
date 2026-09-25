@@ -18,10 +18,21 @@ type Config struct {
 	ReapInterval time.Duration
 
 	SourceCraft SourceCraft
+	AppSec      AppSec
 	Service     Service
 	YandexID    YandexID
 	Storage     Storage
 	Git         Git
+}
+
+// AppSec — подключение к AppSec API SourceCraft (SAST/SCA/secret scanning).
+type AppSec struct {
+	// BaseURL — корень AppSec API.
+	BaseURL string
+	// Timeout ограничивает один запрос к AppSec.
+	Timeout time.Duration
+	// MaxRetries — повторы транспорта, 5xx и 429.
+	MaxRetries int
 }
 
 // Service — границы сбора данных для service.Limits.
@@ -97,6 +108,11 @@ func Load() (Config, error) {
 			Timeout:        duration("SOURCECRAFT_TIMEOUT", 15*time.Second, &errs),
 			MaxRetries:     integer("SOURCECRAFT_MAX_RETRIES", 3, &errs),
 			RequestsPerSec: float("SOURCECRAFT_RPS", 10, &errs),
+		},
+		AppSec: AppSec{
+			BaseURL:    strings.TrimRight(env("APPSEC_API_URL", "https://appsec.sourcecraft.tech"), "/"),
+			Timeout:    duration("APPSEC_TIMEOUT", 15*time.Second, &errs),
+			MaxRetries: integer("APPSEC_MAX_RETRIES", 3, &errs),
 		},
 		Service: Service{
 			MaxItems:           integer("SERVICECRAFT_MAX_ITEMS", 500, &errs),

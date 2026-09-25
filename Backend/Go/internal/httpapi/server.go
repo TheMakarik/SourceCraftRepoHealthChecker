@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/appsec"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/contract"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/service"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/snapshot"
@@ -291,17 +292,22 @@ func (s *Server) documentation(w http.ResponseWriter, r *http.Request) {
 	s.respond(w, r, report, err)
 }
 
-// securityFindings: публичный REST API SourceCraft пока не отдаёт результаты AppSec (SAST/SCA/secrets),
-// а имитировать сканирование ТЗ запрещает — поэтому честный Unavailable.
+// securityFindings отдаёт находки AppSec SourceCraft. Данные реальные: собственное
+// сканирование не имитируется. Недоступность AppSec не роняет категорию, а даёт Unavailable.
 func (s *Server) securityFindings(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.svc.Repository(r.Context(), s.token(r), r.PathValue("id")); err != nil {
+	findings, err := s.svc.SecurityFindings(r.Context(), s.token(r), r.PathValue("id"))
+	switch {
+	case err == nil:
+		s.respond(w, r, findings, nil)
+	case sourcecraft.IsUnauthorized(err), sourcecraft.IsForbidden(err), sourcecraft.IsNotFound(err):
 		s.respond(w, r, nil, err)
-		return
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
+		s.respond(w, r, nil, err)
+	case appsec.IsNotFound(err):
+		s.unavailable(w, r, err, "AppSec has no data for this repository")
+	default:
+		s.unavailable(w, r, err, "AppSec findings are unavailable")
 	}
-	env := s.envelope(r, []any{})
-	env.Status = contract.Unavailable
-	env.Reason = "SourceCraft public API does not expose AppSec findings yet"
-	s.writeJSON(w, http.StatusOK, env)
 }
 
 type snapshotBody struct {

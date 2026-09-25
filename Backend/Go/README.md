@@ -11,6 +11,7 @@
 | `internal/serverless` | сборка serverless-обработчика: API + очередь + таймер |
 | `internal/queue` | потребитель триггера Message Queue (создание снапшотов) |
 | `internal/sourcecraft` | клиент API: ретраи с backoff, `Retry-After`, rate limit, пагинация `page_token`, circuit breaker |
+| `internal/appsec` | клиент AppSec API SourceCraft (`/v1/defect-groups`): те же ретраи и пагинация |
 | `internal/gitrepo` | bare partial clone, потоковый `git log`; креды только через env процесса git |
 | `internal/objectstore` | интерфейс S3 + реализация на `minio-go` (Yandex Object Storage, MinIO, AWS) |
 | `internal/snapshot` | жизненный цикл снапшота репозитория в S3 |
@@ -48,7 +49,7 @@ docker compose up --build     # сервис на :8080 + MinIO на :9000 (ко
 | `GET /repositories/{id}/pipelines` | `ISourceCraftPipelineSource` | API `cicd/runs` |
 | `GET /repositories/{id}/code-health?runId` | `ISourceCraftCodeHealthSource` | git: TODO/FIXME и давность самого старого |
 | `GET /repositories/{id}/documentation?runId` | `ISourceCraftDocumentationSource` | git: README/LICENSE/CONTRIBUTING/CODEOWNERS/инструкции |
-| `GET /repositories/{id}/security/findings` | `ISourceCraftSecuritySource` | всегда `Unavailable` (см. ниже) |
+| `GET /repositories/{id}/security/findings` | `ISourceCraftSecuritySource` | AppSec API `/v1/defect-groups` (см. ниже) |
 | `PUT /repositories/{id}/snapshots/{runId}` | — | клон → S3; тело `{"withBlobs":false,"depth":0}` необязательно |
 | `GET /repositories/{id}/snapshots/{runId}` | — | метаданные снапшота |
 | `DELETE /repositories/{id}/snapshots/{runId}` | — | удаление снапшота |
@@ -137,9 +138,31 @@ go run ./cmd/function            # :8080, HTTP_ADDR/PORT
 | `SOURCECRAFT_BREAKER_THRESHOLD` | `5` | сбоев подряд до размыкания цепи |
 | `SOURCECRAFT_BREAKER_COOLDOWN` | `30s` | пауза, пока цепь разомкнута |
 
+## AppSec (SAST/SCA/secret scanning)
+
+Security-оценка строится только на реальных находках [AppSec SourceCraft](https://appsec.sourcecraft.tech/openapi); собственное сканирование не имитируется. `GET /repositories/{id}/security/findings` сначала разрешает репозиторий через SourceCraft, затем запрашивает группы дефектов у AppSec API.
+
+- **Эндпоинт:** `GET {APPSEC_API_URL}/v1/defect-groups` с `gitRepo` = внутренний `id` репозитория из `GET /repos/id:{id}` (не slug). Токен запроса уходит в `Authorization: Bearer`.
+- **Пагинация:** `pageSize` до 250, обход `nextPageToken` до 100 страниц; повтор одного и того же токена обрывает обход.
+- **Ретраи:** транспорт, `5xx`, `429`; учитывается `Retry-After` (как у клиента SourceCraft). Токен не логируется.
+- **Маппинг в контракт C#:**
+  - `Kind`: `engineType`/`engine`: `SECRETS` → `SecretScanning`, `SCA` → `Sca`, `SAST`/`DAST`/`AI_AUDIT`/прочее → `Sast`.
+  - `Severity`: `0 NONE → Low`, `1 LOW → Low`, `2 MEDIUM → Medium`, `3 HIGH → High`, `4 CRITICAL → Critical` (в контракте нет `None`, поэтому `NONE` понижается до `Low`).
+  - `Status`: `0 OPEN → Open`, иначе → `Fixed`.
+  - `Title` = `ruleName` (при пустом — `ruleId`), `Package` = `ruleId`, `FilePath` = `fileName`, `Id` = `uuid` (при пустом — `publicId`).
+- **Нет данных:** репозиторий без находок — `NoData`; уже разрешённый репозиторий, которого AppSec не знает (`404`), или сбой AppSec — `Unavailable` с причиной, без подстановки фиктивных данных.
+
+| Переменная | По умолчанию | Значение |
+|---|---|---|
+| `APPSEC_API_URL` | `https://appsec.sourcecraft.tech` | корень AppSec API |
+| `APPSEC_TIMEOUT` | `15s` | таймаут одного запроса |
+| `APPSEC_MAX_RETRIES` | `3` | повторы транспорта, `5xx`, `429` |
+
+Порядок `engineType`, `severity` и `status` — предположение по OpenAPI; при изменении схемы правится в `service.toFindingKind`/`toFindingSeverity`/`toFindingStatus`.
+
 ## Ограничения API SourceCraft (на 2026-09-25)
 
-- **AppSec** (SAST, SCA, secret scanning) в публичном API отсутствует, поэтому `security/findings` честно отдаёт `Unavailable` вместо имитации сканирования.
+- **AppSec**: находки берутся из отдельного AppSec API (`/v1/defect-groups`), а не из публичного REST API SourceCraft (см. раздел «AppSec» выше). Имитация сканирования не используется.
 - **Коммитов** в API нет. `activity/commits` и `activity/contributors` считаются по git-истории. Поэтому `Contributor.Login` — имя автора из git; авторы объединяются по email.
 - **Merge request**: у PR нет `merged_at` и `closed_at`. Для завершённых PR берётся `updated_at`.
 - **CI**: у запусков нет ветки, `PipelineRun.Branch` пустой. У запусков нет публичного id, вместо него используется `slug`.

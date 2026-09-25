@@ -10,6 +10,7 @@ var allEnvKeys = []string{
 	"HTTP_ADDR", "INTERNAL_TOKEN", "SNAPSHOT_REAP_INTERVAL",
 	"SOURCECRAFT_API_URL", "SOURCECRAFT_TOKEN", "SOURCECRAFT_GIT_USERNAME",
 	"SOURCECRAFT_TIMEOUT", "SOURCECRAFT_MAX_RETRIES", "SOURCECRAFT_RPS",
+	"APPSEC_API_URL", "APPSEC_TIMEOUT", "APPSEC_MAX_RETRIES",
 	"SERVICECRAFT_MAX_ITEMS", "SERVICECRAFT_MAX_RESPONSE_LOOKUPS", "SERVICECRAFT_CONCURRENCY",
 	"YANDEX_CLIENT_ID", "YANDEX_CLIENT_SECRET", "YANDEX_REDIRECT_URI", "YANDEX_SCOPE",
 	"S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "S3_ACCESS_KEY", "S3_SECRET_KEY",
@@ -43,6 +44,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.SourceCraft.Timeout != 15*time.Second || cfg.SourceCraft.MaxRetries != 3 || cfg.SourceCraft.RequestsPerSec != 10 {
 		t.Errorf("SourceCraft defaults = %+v", cfg.SourceCraft)
 	}
+	if cfg.AppSec.BaseURL != "https://appsec.sourcecraft.tech" || cfg.AppSec.Timeout != 15*time.Second || cfg.AppSec.MaxRetries != 3 {
+		t.Errorf("AppSec defaults = %+v", cfg.AppSec)
+	}
 	if cfg.Service.MaxItems != 500 || cfg.Service.MaxResponseLookups != 100 || cfg.Service.Concurrency != 4 {
 		t.Errorf("Service defaults = %+v", cfg.Service)
 	}
@@ -66,6 +70,9 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("SOURCECRAFT_TIMEOUT", "5s")
 	t.Setenv("SOURCECRAFT_MAX_RETRIES", "7")
 	t.Setenv("SOURCECRAFT_RPS", "2.5")
+	t.Setenv("APPSEC_API_URL", "https://appsec.example/")
+	t.Setenv("APPSEC_TIMEOUT", "4s")
+	t.Setenv("APPSEC_MAX_RETRIES", "2")
 	t.Setenv("SERVICECRAFT_MAX_ITEMS", "10")
 	t.Setenv("SERVICECRAFT_MAX_RESPONSE_LOOKUPS", "11")
 	t.Setenv("SERVICECRAFT_CONCURRENCY", "12")
@@ -95,6 +102,9 @@ func TestLoadOverrides(t *testing.T) {
 	if cfg.SourceCraft.Timeout != 5*time.Second || cfg.SourceCraft.MaxRetries != 7 || cfg.SourceCraft.RequestsPerSec != 2.5 {
 		t.Errorf("SourceCraft = %+v", cfg.SourceCraft)
 	}
+	if cfg.AppSec.BaseURL != "https://appsec.example" || cfg.AppSec.Timeout != 4*time.Second || cfg.AppSec.MaxRetries != 2 {
+		t.Errorf("AppSec = %+v", cfg.AppSec)
+	}
 	if cfg.Service.MaxItems != 10 || cfg.Service.MaxResponseLookups != 11 || cfg.Service.Concurrency != 12 {
 		t.Errorf("Service = %+v", cfg.Service)
 	}
@@ -118,6 +128,8 @@ func TestLoadAggregatesErrors(t *testing.T) {
 		"SOURCECRAFT_TIMEOUT":      "later",
 		"SOURCECRAFT_MAX_RETRIES":  "many",
 		"SOURCECRAFT_RPS":          "fast",
+		"APPSEC_TIMEOUT":           "soon",
+		"APPSEC_MAX_RETRIES":       "many",
 		"SERVICECRAFT_MAX_ITEMS":   "all",
 		"SERVICECRAFT_CONCURRENCY": "lots",
 		"S3_USE_SSL":               "maybe",
@@ -142,6 +154,9 @@ func TestLoadAggregatesErrors(t *testing.T) {
 
 	if cfg.SourceCraft.Timeout != 15*time.Second || cfg.SourceCraft.MaxRetries != 3 || cfg.SourceCraft.RequestsPerSec != 10 {
 		t.Errorf("SourceCraft fallbacks = %+v", cfg.SourceCraft)
+	}
+	if cfg.AppSec.Timeout != 15*time.Second || cfg.AppSec.MaxRetries != 3 {
+		t.Errorf("AppSec fallbacks = %+v", cfg.AppSec)
 	}
 	if cfg.Service.MaxItems != 500 || cfg.Service.Concurrency != 4 {
 		t.Errorf("Service fallbacks = %+v", cfg.Service)

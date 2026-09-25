@@ -150,6 +150,44 @@ type DocumentationReport struct {
 	HasBuildAndTestInstructions bool `json:"hasBuildAndTestInstructions"`
 }
 
+// SecurityFindingKind соответствует Application.SourceCraft.Models.SecurityFindingKind.
+type SecurityFindingKind string
+
+const (
+	SecurityFindingSast           SecurityFindingKind = "Sast"
+	SecurityFindingSca            SecurityFindingKind = "Sca"
+	SecurityFindingSecretScanning SecurityFindingKind = "SecretScanning"
+)
+
+// SecuritySeverity соответствует Application.SourceCraft.Models.SecuritySeverity.
+type SecuritySeverity string
+
+const (
+	SecuritySeverityLow      SecuritySeverity = "Low"
+	SecuritySeverityMedium   SecuritySeverity = "Medium"
+	SecuritySeverityHigh     SecuritySeverity = "High"
+	SecuritySeverityCritical SecuritySeverity = "Critical"
+)
+
+// SecurityFindingStatus соответствует Application.SourceCraft.Models.SecurityFindingStatus.
+type SecurityFindingStatus string
+
+const (
+	SecurityFindingOpen  SecurityFindingStatus = "Open"
+	SecurityFindingFixed SecurityFindingStatus = "Fixed"
+)
+
+// SecurityFinding соответствует Application.SourceCraft.Models.SecurityFinding.
+type SecurityFinding struct {
+	ID       string                `json:"id"`
+	Kind     SecurityFindingKind   `json:"kind"`
+	Severity SecuritySeverity      `json:"severity"`
+	Status   SecurityFindingStatus `json:"status"`
+	Title    string                `json:"title"`
+	Package  *string               `json:"package"`
+	FilePath *string               `json:"filePath"`
+}
+
 // FormatTimeSpan приводит длительность к формату TimeSpan "c" ([d.]hh:mm:ss[.fffffff]),
 // который понимает System.Text.Json на стороне C#.
 func FormatTimeSpan(d time.Duration) string {

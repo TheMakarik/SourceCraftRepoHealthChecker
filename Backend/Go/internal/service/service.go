@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/appsec"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/contract"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/gitrepo"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/snapshot"
@@ -29,6 +30,7 @@ type Limits struct {
 
 type Service struct {
 	api         *sourcecraft.Client
+	appSec      *appsec.Client
 	snapshots   *snapshot.Store
 	git         gitrepo.Git
 	gitUsername string
@@ -36,7 +38,7 @@ type Service struct {
 	limits      Limits
 }
 
-func New(api *sourcecraft.Client, snapshots *snapshot.Store, git gitrepo.Git, gitUsername, workDir string, limits Limits) *Service {
+func New(api *sourcecraft.Client, appSec *appsec.Client, snapshots *snapshot.Store, git gitrepo.Git, gitUsername, workDir string, limits Limits) *Service {
 	if limits.MaxItems <= 0 {
 		limits.MaxItems = 500
 	}
@@ -46,7 +48,7 @@ func New(api *sourcecraft.Client, snapshots *snapshot.Store, git gitrepo.Git, gi
 	if limits.Concurrency <= 0 {
 		limits.Concurrency = 4
 	}
-	return &Service{api: api, snapshots: snapshots, git: git, gitUsername: gitUsername, workDir: workDir, limits: limits}
+	return &Service{api: api, appSec: appSec, snapshots: snapshots, git: git, gitUsername: gitUsername, workDir: workDir, limits: limits}
 }
 
 func (s *Service) CurrentUser(ctx context.Context, token string) (contract.SourceCraftUser, error) {
@@ -99,6 +101,99 @@ func (s *Service) Releases(ctx context.Context, token, repoID string) ([]contrac
 		out = append(out, contract.ReleaseInfo{Name: r.Title, Tag: r.Tag, PublishedAt: published})
 	}
 	return out, nil
+}
+
+// SecurityFindings забирает находки AppSec SourceCraft для репозитория.
+//
+// Сначала id репозитория разрешается через SourceCraft (gitRepo в AppSec — это repo.ID),
+// затем запрашиваются группы дефектов. Никакого собственного сканирования нет.
+//
+// AppSec отдаёт kind и severity целыми числами; порядок значений принят по OpenAPI
+// (https://appsec.sourcecraft.tech/openapi) и при изменении контракта правится здесь:
+//   - engineType: 0 SECRETS, 1 SCA, 2 SAST, 3 SBOM_SPDX, 4 SBOM_CYCLONEDX, 5 DAST, 6 AI_AUDIT;
+//   - severity: 0 NONE, 1 LOW, 2 MEDIUM, 3 HIGH, 4 CRITICAL;
+//   - status: 0 OPEN, дальше RESOLVED_*.
+//
+// Строковый engine имеет приоритет: SECRETS/SCA распознаются точнее, чем int.
+// NONE маппится в Low: в контракте C# нет Severity.None. Статус, отличный от OPEN, — Fixed.
+func (s *Service) SecurityFindings(ctx context.Context, token, repoID string) ([]contract.SecurityFinding, error) {
+	repo, err := s.api.Repository(ctx, token, repoID)
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.appSec.DefectGroups(ctx, token, repo.ID, 0, "")
+	if err != nil {
+		return nil, fmt.Errorf("appsec findings: %w", err)
+	}
+	out := make([]contract.SecurityFinding, 0, len(page.Items))
+	for _, finding := range page.Items {
+		out = append(out, toSecurityFinding(finding))
+	}
+	return out, nil
+}
+
+func toSecurityFinding(f appsec.DefectGroupDto) contract.SecurityFinding {
+	id := f.UUID
+	if id == "" {
+		id = f.PublicID
+	}
+	title := f.RuleName
+	if title == "" {
+		title = f.RuleID
+	}
+	return contract.SecurityFinding{
+		ID:       id,
+		Kind:     toFindingKind(f.EngineType, f.Engine),
+		Severity: toFindingSeverity(f.Severity),
+		Status:   toFindingStatus(f.Status),
+		Title:    title,
+		Package:  optionalString(f.RuleID),
+		FilePath: optionalString(f.FileName),
+	}
+}
+
+func toFindingKind(engineType int32, engine string) contract.SecurityFindingKind {
+	switch strings.ToUpper(engine) {
+	case "SECRETS", "SECRET", "SECRET_SCANNING":
+		return contract.SecurityFindingSecretScanning
+	case "SCA":
+		return contract.SecurityFindingSca
+	}
+	switch engineType {
+	case 0:
+		return contract.SecurityFindingSecretScanning
+	case 1:
+		return contract.SecurityFindingSca
+	default:
+		return contract.SecurityFindingSast
+	}
+}
+
+func toFindingSeverity(severity int32) contract.SecuritySeverity {
+	switch severity {
+	case 2:
+		return contract.SecuritySeverityMedium
+	case 3:
+		return contract.SecuritySeverityHigh
+	case 4:
+		return contract.SecuritySeverityCritical
+	default:
+		return contract.SecuritySeverityLow
+	}
+}
+
+func toFindingStatus(status int32) contract.SecurityFindingStatus {
+	if status == 0 {
+		return contract.SecurityFindingOpen
+	}
+	return contract.SecurityFindingFixed
+}
+
+func optionalString(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 func (s *Service) Pipelines(ctx context.Context, token, repoID string) ([]contract.PipelineRun, error) {
