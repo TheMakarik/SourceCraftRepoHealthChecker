@@ -337,3 +337,19 @@ func TestDocumentationAndCodeHealth(t *testing.T) {
 		}
 	}
 }
+
+func TestTestUIIsServed(t *testing.T) {
+	e := newEnv(t, "unused", nil)
+	resp, err := http.Get(e.api.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") || !strings.Contains(string(body), "/auth/url") {
+		t.Fatalf("%d %s", resp.StatusCode, resp.Header.Get("Content-Type"))
+	}
+	if resp, _ := http.Get(e.api.URL + "/nope"); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unknown path: %d", resp.StatusCode)
+	}
+}

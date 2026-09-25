@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SourceCraft Go API — тестовая страница</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; max-width: 1100px; }
+  fieldset { margin: 0 0 12px; border: 1px solid #ccc; }
+  input[type=text], input[type=password] { width: 22em; }
+  button { margin: 2px 4px 2px 0; }
+  table { border-collapse: collapse; margin-top: 6px; }
+  td, th { border: 1px solid #ccc; padding: 2px 6px; text-align: left; }
+  tr.pick { cursor: pointer; }
+  tr.pick:hover { background: #eef; }
+  pre { background: #f6f6f6; padding: 8px; overflow: auto; max-height: 420px; white-space: pre-wrap; word-break: break-all; }
+  .Available { color: #070; } .NoData { color: #888; } .Unavailable, .err { color: #b00; }
+</style>
+</head>
+<body>
+<h1>SourceCraft Go API — тестовая страница</h1>
+
+<fieldset>
+  <legend>Доступ</legend>
+  <label>PAT SourceCraft: <input id="pat" type="password" autocomplete="off" placeholder="пусто — сервисный токен"></label>
+  <button onclick="call('GET', '/auth/me')">/auth/me</button>
+  <button onclick="myRepos()">/auth/repositories</button>
+  <br>
+  <button onclick="yandexLogin()">Войти через Яндекс ID</button>
+  <small>callback (YANDEX_REDIRECT_URI) должен указывать на эту страницу</small>
+</fieldset>
+
+<fieldset>
+  <legend>Каталог открытых репозиториев</legend>
+  <button onclick="catalog(false)">Загрузить</button>
+  <button id="more" onclick="catalog(true)" disabled>Ещё</button>
+  <div id="repos"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Репозиторий</legend>
+  <label>ID: <input id="repo" type="text"></label>
+  <label>runId: <input id="run" type="text" style="width:14em"></label>
+  <label><input id="blobs" type="checkbox" checked> withBlobs</label>
+  <br>
+  <button onclick="call('GET', '/repositories/' + repo())">Карточка</button>
+  <button onclick="call('PUT', snap(), {withBlobs: el('blobs').checked})">Создать снапшот</button>
+  <button onclick="call('GET', snap())">Инфо снапшота</button>
+  <button onclick="call('DELETE', snap())">Удалить снапшот</button>
+  <br>
+  <span id="cats"></span>
+  <button onclick="runAll()"><b>Все категории</b></button>
+  <div id="summary"></div>
+</fieldset>
+
+<div id="status"></div>
+<pre id="out"></pre>
+
+<script>
+const categories = {
+  commits: 'activity/commits', contributors: 'activity/contributors', releases: 'activity/releases',
+  issues: 'issues', mergeRequests: 'merge-requests', pipelines: 'pipelines',
+  security: 'security/findings', codeHealth: 'code-health', documentation: 'documentation',
+};
+const withRun = new Set(['activity/commits', 'activity/contributors', 'code-health', 'documentation']);
+let nextPage = '';
+
+const el = id => document.getElementById(id);
+const repo = () => encodeURIComponent(el('repo').value.trim());
+const snap = () => `/repositories/${repo()}/snapshots/${encodeURIComponent(el('run').value.trim())}`;
+el('run').value = 'test-' + Date.now().toString(36);
+
+function catPath(p) {
+  const run = el('run').value.trim();
+  return `/repositories/${repo()}/${p}` + (withRun.has(p) && run ? `?runId=${encodeURIComponent(run)}` : '');
+}
+
+for (const [name, p] of Object.entries(categories)) {
+  const b = document.createElement('button');
+  b.textContent = name;
+  b.onclick = () => call('GET', catPath(p));
+  el('cats').append(b);
+}
+
+async function request(method, path, body) {
+  const headers = {};
+  const pat = el('pat').value.trim();
+  if (pat) headers.Authorization = 'Bearer ' + pat;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const started = performance.now();
+  const resp = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const text = await resp.text();
+  let json = null;
+  try { json = text ? JSON.parse(text) : null; } catch { /* не JSON */ }
+  return { resp, text, json, ms: Math.round(performance.now() - started) };
+}
+
+async function call(method, path, body) {
+  el('status').textContent = `${method} ${path} …`;
+  try {
+    const r = await request(method, path, body);
+    const st = r.json && r.json.status ? ` · <span class="${r.json.status}">${r.json.status}</span>` : '';
+    const reason = r.json && r.json.reason ? ` (${esc(r.json.reason)})` : '';
+    el('status').innerHTML = `${method} ${esc(path)} → <b class="${r.resp.ok ? '' : 'err'}">${r.resp.status}</b>${st}${reason} · ${r.ms} мс`;
+    el('out').textContent = r.json ? JSON.stringify(r.json, null, 2) : r.text;
+    return r;
+  } catch (e) {
+    el('status').innerHTML = `<span class="err">${esc(String(e))}</span>`;
+  }
+}
+
+async function runAll() {
+  const rows = await Promise.all(Object.entries(categories).map(async ([name, p]) => {
+    try {
+      const r = await request('GET', catPath(p));
+      return [name, r.resp.status, (r.json && (r.json.status || r.json.code)) || '', (r.json && (r.json.reason || r.json.message)) || '', r.ms];
+    } catch (e) {
+      return [name, 'сеть', '', String(e), 0];
+    }
+  }));
+  el('summary').innerHTML = '<table><tr><th>категория</th><th>HTTP</th><th>статус</th><th>причина</th><th>мс</th></tr>' +
+    rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td class="${esc(r[2])}">${esc(r[2])}</td><td>${esc(r[3])}</td><td>${r[4]}</td></tr>`).join('') +
+    '</table>';
+}
+
+async function catalog(more) {
+  const q = new URLSearchParams({ pageSize: '20' });
+  if (more && nextPage) q.set('pageToken', nextPage);
+  const r = await call('GET', '/repositories?' + q);
+  if (!r || !r.json || !Array.isArray(r.json.data)) return;
+  nextPage = r.json.nextPageToken || '';
+  el('more').disabled = !nextPage;
+  renderRepos(r.json.data, more);
+}
+
+async function myRepos() {
+  const r = await call('GET', '/auth/repositories');
+  if (r && r.json && Array.isArray(r.json.data)) renderRepos(r.json.data, false);
+}
+
+function renderRepos(list, append) {
+  let table = el('repos').querySelector('table');
+  if (!append || !table) {
+    el('repos').innerHTML = '<table><tr><th>проект</th><th>язык</th><th>лайки</th><th>активность</th><th>приватный</th></tr></table>';
+    table = el('repos').querySelector('table');
+  }
+  for (const x of list) {
+    const tr = table.insertRow();
+    tr.className = 'pick';
+    tr.title = 'выбрать ' + x.id;
+    tr.onclick = () => { el('repo').value = x.id; el('summary').innerHTML = ''; };
+    tr.innerHTML = `<td><a href="${esc(x.url)}" target="_blank" onclick="event.stopPropagation()">${esc(x.fullName)}</a></td>` +
+      `<td>${esc(x.language)}</td><td>${x.likesCount}</td><td>${esc((x.lastActivityAt || '').slice(0, 10))}</td><td>${x.isPrivate ? 'да' : ''}</td>`;
+  }
+}
+
+// Вход через Яндекс ID: страница играет роль C#-бэкенда — сама хранит и сверяет state.
+async function yandexLogin() {
+  const state = crypto.randomUUID();
+  sessionStorage.setItem('yid-state', state);
+  const r = await call('POST', '/auth/url', { state });
+  if (r && r.resp.ok) location.href = r.json.data.url;
+}
+
+(async function completeYandexLogin() {
+  const q = new URLSearchParams(location.search);
+  const code = q.get('code'), state = q.get('state');
+  if (!code && !q.get('error')) return;
+  history.replaceState(null, '', location.pathname);
+  if (q.get('error')) {
+    el('status').innerHTML = `<span class="err">Яндекс ID: ${esc(q.get('error'))}</span>`;
+    return;
+  }
+  const expected = sessionStorage.getItem('yid-state');
+  sessionStorage.removeItem('yid-state');
+  if (!expected || expected !== state) {
+    el('status').innerHTML = '<span class="err">state не совпал — вход отклонён (возможна CSRF-атака)</span>';
+    return;
+  }
+  await call('POST', '/auth/token', { code, state });
+})();
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+</script>
+</body>
+</html>

@@ -43,6 +43,7 @@ func New(svc *service.Service, opts Options, log *slog.Logger) http.Handler {
 	s := &Server{svc: svc, yandexID: opts.YandexID, serviceToken: opts.ServiceToken, internalToken: opts.InternalToken, log: log}
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("GET /{$}", serveTestUI)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 
 	mux.HandleFunc("POST /auth/url", s.yandexIDOnly(s.authURL))
