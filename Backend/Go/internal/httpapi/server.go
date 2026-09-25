@@ -59,6 +59,8 @@ func New(svc *service.Service, opts Options, log *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /repositories/{id}/merge-requests", s.mergeRequests)
 	mux.HandleFunc("GET /repositories/{id}/pipelines", s.pipelines)
 	mux.HandleFunc("GET /repositories/{id}/security/findings", s.securityFindings)
+	mux.HandleFunc("GET /repositories/{id}/code-health", s.codeHealth)
+	mux.HandleFunc("GET /repositories/{id}/documentation", s.documentation)
 
 	mux.HandleFunc("PUT /repositories/{id}/snapshots/{runId}", s.createSnapshot)
 	mux.HandleFunc("GET /repositories/{id}/snapshots/{runId}", s.getSnapshot)
@@ -292,6 +294,16 @@ func (s *Server) securityFindings(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, env)
 }
 
+func (s *Server) codeHealth(w http.ResponseWriter, r *http.Request) {
+	report, err := s.svc.CodeHealth(r.Context(), s.token(r), r.PathValue("id"), r.URL.Query().Get("runId"))
+	s.respond(w, r, report, err)
+}
+
+func (s *Server) documentation(w http.ResponseWriter, r *http.Request) {
+	report, err := s.svc.Documentation(r.Context(), s.token(r), r.PathValue("id"), r.URL.Query().Get("runId"))
+	s.respond(w, r, report, err)
+}
+
 type snapshotBody struct {
 	WithBlobs bool `json:"withBlobs"`
 	Depth     int  `json:"depth"`
@@ -387,6 +399,8 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, data any, err e
 		s.writeError(w, r, http.StatusNotFound, "snapshot_not_found", "snapshot not found or expired")
 	case errors.Is(err, snapshot.ErrInvalidID):
 		s.writeError(w, r, http.StatusBadRequest, "bad_request", err.Error())
+	case errors.Is(err, service.ErrSnapshotWithoutBlobs):
+		s.writeError(w, r, http.StatusConflict, "snapshot_without_blobs", err.Error())
 	case errors.Is(err, service.ErrEmptyRepository):
 		s.writeJSON(w, http.StatusOK, s.noData(r, data, "repository is empty"))
 	case errors.Is(err, context.DeadlineExceeded):

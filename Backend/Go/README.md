@@ -44,6 +44,8 @@ docker compose up --build     # сервис на :8080 + MinIO на :9000 (ко
 | `GET /repositories/{id}/merge-requests` | `ISourceCraftCollaborationSource` | API pulls + comments |
 | `GET /repositories/{id}/pipelines` | `ISourceCraftPipelineSource` | API `cicd/runs` |
 | `GET /repositories/{id}/security/findings` | `ISourceCraftSecuritySource` | всегда `Unavailable` (см. ниже) |
+| `GET /repositories/{id}/code-health?runId` | `ISourceCraftCodeHealthSource` | git grep + git blame; нужен снапшот `withBlobs: true` |
+| `GET /repositories/{id}/documentation?runId` | `ISourceCraftDocumentationSource` | файлы ветки + разбор README/CONTRIBUTING; нужен снапшот `withBlobs: true` |
 | `PUT /repositories/{id}/snapshots/{runId}` | — | клон → S3; тело `{"withBlobs":false,"depth":0}` необязательно |
 | `GET /repositories/{id}/snapshots/{runId}` | — | метаданные снапшота |
 | `DELETE /repositories/{id}/snapshots/{runId}` | — | удаление снапшота |
@@ -90,6 +92,24 @@ DELETE /repositories/r1/snapshots/run-42        # 204, идемпотентно
 - **Без `runId`**: activity-эндпоинты делают эфемерный клон только на время запроса и не трогают S3.
 - **Git-креды**: `http.extraHeader` через `GIT_CONFIG_*` env. Токена нет ни в remote URL, ни в argv, ни в логах.
 - **Лимиты**: `GIT_MAX_REPO_MB` (размер клона и распаковки) и `GIT_CLONE_TIMEOUT`. При превышении — `Unavailable`.
+
+## Code health и документация
+
+Оба эндпоинта читают содержимое файлов, поэтому снапшот нужно создать с `{"withBlobs": true}` (без `depth`, иначе возраст TODO обрежется границей истории). На снапшоте без блобов ответ — `409 snapshot_without_blobs`, а не тихий ноль. Без `runId` сервис делает эфемерный клон: полный для code-health, `--depth 1` для документации.
+
+**Code health** (`CodeHealthReport`) — по ветке по умолчанию:
+- маркеры `TODO`, `FIXME`, `HACK`, `XXX` — отдельным словом в верхнем регистре (`TODOS`, `todo_list` не считаются), только текстовые файлы;
+- `todoCount`, `fixmeCount` — по типам; `totalCommentCount` — все четыре маркера;
+- исключены `vendor/`, `node_modules/`, `third_party/`, минифицированные файлы, lock-файлы, `go.sum`, `*.svg`, `*.map` — это не долг проекта;
+- `oldestCommentAge` — возраст самой старой строки с маркером по `git blame` (TimeSpan `d.hh:mm:ss`), `null` если маркеров нет. Если файлов с маркерами больше 500, blame идёт по равномерной выборке из 500 файлов и возраст — оценка.
+
+**Документация** (`DocumentationReport`):
+- `hasReadme` — `README*` в корне или `docs/`, `.sourcecraft/`, `.github/`;
+- `hasLicense` — `LICENSE*`, `LICENCE*`, `COPYING*` в корне;
+- `hasContributing`, `hasCodeOwners` — `CONTRIBUTING*`, `CODEOWNERS` в корне, `docs/`, `.sourcecraft/`, `.github/`, `.gitlab/`;
+- `hasLocalRunInstructions`, `hasBuildAndTestInstructions` — по README и CONTRIBUTING: команда в блоке кода (`docker compose up`, `go run`, `npm start`, `go test`, `pytest`…) или заголовок раздела («Quick start», «Запуск», «Сборка», «Тесты»…) при наличии блока кода. Слова в обычном тексте не засчитываются — так один абзац «run, build, test» не накручивает оценку. Для `buildAndTest` нужны и сборка, и тесты.
+
+Замер: на синтетическом репозитории из 10 000 файлов grep занимает ~0,6 с, blame — ~8 мс на файл без глубокой истории.
 
 ## Ограничения API SourceCraft (на 2026-09-25)
 

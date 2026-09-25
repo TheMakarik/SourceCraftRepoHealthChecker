@@ -5,7 +5,10 @@
 // (на стороне C# нужен JsonStringEnumConverter).
 package contract
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // DataStatus соответствует Domain.Enums.DataStatus.
 type DataStatus string
@@ -124,4 +127,40 @@ type PipelineRun struct {
 	Branch     string         `json:"branch"`
 	StartedAt  time.Time      `json:"startedAt"`
 	FinishedAt *time.Time     `json:"finishedAt"`
+}
+
+type DocumentationReport struct {
+	HasReadme                   bool `json:"hasReadme"`
+	HasLicense                  bool `json:"hasLicense"`
+	HasContributing             bool `json:"hasContributing"`
+	HasCodeOwners               bool `json:"hasCodeOwners"`
+	HasLocalRunInstructions     bool `json:"hasLocalRunInstructions"`
+	HasBuildAndTestInstructions bool `json:"hasBuildAndTestInstructions"`
+}
+
+type CodeHealthReport struct {
+	TodoCount  int `json:"todoCount"`
+	FixmeCount int `json:"fixmeCount"`
+	// TotalCommentCount — все маркеры долга: TODO, FIXME, HACK, XXX.
+	TotalCommentCount int       `json:"totalCommentCount"`
+	OldestCommentAge  *Duration `json:"oldestCommentAge"`
+}
+
+// Duration сериализуется в формат System.Text.Json для TimeSpan: "d.hh:mm:ss".
+type Duration time.Duration
+
+func (d Duration) MarshalJSON() ([]byte, error) {
+	v := time.Duration(d)
+	sign := ""
+	if v < 0 {
+		sign, v = "-", -v
+	}
+	v = v.Truncate(time.Second)
+	days := v / (24 * time.Hour)
+	v -= days * 24 * time.Hour
+	h, m, s := v/time.Hour, (v%time.Hour)/time.Minute, (v%time.Minute)/time.Second
+	if days > 0 {
+		return fmt.Appendf(nil, `"%s%d.%02d:%02d:%02d"`, sign, days, h, m, s), nil
+	}
+	return fmt.Appendf(nil, `"%s%02d:%02d:%02d"`, sign, h, m, s), nil
 }

@@ -32,6 +32,7 @@ type Service struct {
 	gitUsername string
 	workDir     string
 	limits      Limits
+	now         func() time.Time
 }
 
 func New(api *sourcecraft.Client, snapshots *snapshot.Store, git gitrepo.Git, gitUsername, workDir string, limits Limits) *Service {
@@ -44,7 +45,7 @@ func New(api *sourcecraft.Client, snapshots *snapshot.Store, git gitrepo.Git, gi
 	if limits.Concurrency <= 0 {
 		limits.Concurrency = 4
 	}
-	return &Service{api: api, snapshots: snapshots, git: git, gitUsername: gitUsername, workDir: workDir, limits: limits}
+	return &Service{api: api, snapshots: snapshots, git: git, gitUsername: gitUsername, workDir: workDir, limits: limits, now: time.Now}
 }
 
 func (s *Service) CurrentUser(ctx context.Context, token string) (contract.SourceCraftUser, error) {
@@ -304,9 +305,20 @@ func (s *Service) ReapSnapshots(ctx context.Context) (int, error) {
 // ErrEmptyRepository — в репозитории нет коммитов, клонировать нечего.
 var ErrEmptyRepository = errors.New("service: repository is empty")
 
+// repoNeeds — что анализу нужно от локальной копии.
+type repoNeeds struct {
+	// Blobs — содержимое файлов (иначе только история и деревья).
+	Blobs bool
+	// Depth > 0 — достаточно последних Depth коммитов (для эфемерного клона).
+	Depth int
+}
+
+// ErrSnapshotWithoutBlobs — снапшот создан без содержимого файлов, а анализу оно нужно.
+var ErrSnapshotWithoutBlobs = errors.New("service: snapshot has no file contents; create it with withBlobs=true")
+
 // withRepo даёт fn локальную bare-копию репозитория: из снапшота runID или, если runID пуст,
 // из эфемерного клона только для этого запроса. Копия удаляется сразу после fn.
-func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn func(repoDir string) error) error {
+func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, needs repoNeeds, fn func(repoDir string) error) error {
 	repo, err := s.api.Repository(ctx, token, repoID)
 	if err != nil {
 		return err
@@ -316,12 +328,21 @@ func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn 
 	}
 
 	if runID != "" {
+		if needs.Blobs {
+			info, err := s.snapshots.Stat(ctx, repo.ID, runID)
+			if err != nil {
+				return err
+			}
+			if !info.WithBlobs {
+				return ErrSnapshotWithoutBlobs
+			}
+		}
 		ws, err := s.snapshots.Open(ctx, repo.ID, runID)
 		if err != nil {
 			return err
 		}
 		defer ws.Close()
-		return fn(ws.RepoDir)
+		return mapGitErr(fn(ws.RepoDir))
 	}
 
 	creds, err := s.gitCredentials(ctx, token)
@@ -334,15 +355,33 @@ func (s *Service) withRepo(ctx context.Context, token, repoID, runID string, fn 
 	}
 	defer os.RemoveAll(tmp)
 	dir := tmp + "/repo.git"
-	if err := s.git.CloneBare(ctx, dir, gitrepo.CloneOptions{URL: repo.CloneURL.HTTPS, Branch: repo.DefaultBranch, Creds: creds}); err != nil {
+	err = s.git.CloneBare(ctx, dir, gitrepo.CloneOptions{
+		URL:       repo.CloneURL.HTTPS,
+		Branch:    repo.DefaultBranch,
+		WithBlobs: needs.Blobs,
+		Depth:     needs.Depth,
+		Creds:     creds,
+	})
+	if err != nil {
 		return err
 	}
-	return fn(dir)
+	return mapGitErr(fn(dir))
+}
+
+func mapGitErr(err error) error {
+	switch {
+	case errors.Is(err, gitrepo.ErrNoRevision):
+		return ErrEmptyRepository
+	case errors.Is(err, gitrepo.ErrMissingObjects):
+		return ErrSnapshotWithoutBlobs
+	default:
+		return err
+	}
 }
 
 func (s *Service) CommitActivity(ctx context.Context, token, repoID, runID string) (contract.CommitActivity, error) {
 	activity := contract.CommitActivity{CommitsByDay: map[string]int{}}
-	err := s.withRepo(ctx, token, repoID, runID, func(dir string) error {
+	err := s.withRepo(ctx, token, repoID, runID, repoNeeds{}, func(dir string) error {
 		return s.git.WalkCommits(ctx, dir, func(c gitrepo.Commit) error {
 			at := c.AuthoredAt.UTC()
 			activity.TotalCount++
@@ -373,7 +412,7 @@ func (s *Service) Contributors(ctx context.Context, token, repoID, runID string)
 	byEmail := map[string]*agg{}
 	var order []string
 
-	err := s.withRepo(ctx, token, repoID, runID, func(dir string) error {
+	err := s.withRepo(ctx, token, repoID, runID, repoNeeds{}, func(dir string) error {
 		return s.git.WalkCommits(ctx, dir, func(c gitrepo.Commit) error {
 			key := strings.ToLower(c.AuthorEmail)
 			if key == "" {

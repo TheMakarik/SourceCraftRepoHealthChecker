@@ -268,3 +268,72 @@ func TestYandexIDLogin(t *testing.T) {
 		t.Fatalf("stale code: %d %v", code, body)
 	}
 }
+
+func (e *env) doJSON(t *testing.T, method, path, token, body string) (int, map[string]any) {
+	t.Helper()
+	req, _ := http.NewRequest(method, e.api.URL+path, strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return resp.StatusCode, out
+}
+
+func TestDocumentationAndCodeHealth(t *testing.T) {
+	readme := "# Demo\n\n## Quick start\n```bash\ndocker compose up\n```\n\n## Build and test\n```bash\ngo build ./...\ngo test ./...\n```\n"
+	repo := testutil.NewRepo(t,
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2023-01-01T00:00:00Z", File: "main.go", Body: "package main\n// TODO: old debt\n"},
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2026-01-01T00:00:00Z", File: "main.go", Body: "package main\n// TODO: old debt\n// FIXME: new XXX\nvar TODOS = 1\n"},
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2026-01-02T00:00:00Z", File: "vendor/dep.go", Body: "// TODO: not ours\n"},
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2026-01-03T00:00:00Z", File: "README.md", Body: readme},
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2026-01-03T00:00:00Z", File: "LICENSE", Body: "MIT"},
+		testutil.Commit{Author: "A", Email: "a@x", Date: "2026-01-03T00:00:00Z", File: ".sourcecraft/CODEOWNERS", Body: "* @a"},
+	)
+	e := newEnv(t, repo, nil)
+
+	// Снапшот без блобов не годится для анализа содержимого — явный 409, а не тихий ноль.
+	if code, body := e.doJSON(t, http.MethodPut, "/repositories/r1/snapshots/meta-only", "user-pat", ""); code != http.StatusCreated {
+		t.Fatalf("create meta-only: %d %v", code, body)
+	}
+	if code, body := e.do(t, http.MethodGet, "/repositories/r1/code-health?runId=meta-only", "user-pat"); code != http.StatusConflict || body["code"] != "snapshot_without_blobs" {
+		t.Fatalf("code-health on meta-only snapshot: %d %v", code, body)
+	}
+
+	if code, body := e.doJSON(t, http.MethodPut, "/repositories/r1/snapshots/full", "user-pat", `{"withBlobs":true}`); code != http.StatusCreated {
+		t.Fatalf("create full: %d %v", code, body)
+	}
+
+	code, body := e.do(t, http.MethodGet, "/repositories/r1/code-health?runId=full", "user-pat")
+	data, _ := body["data"].(map[string]any)
+	if code != http.StatusOK || body["status"] != "Available" ||
+		data["todoCount"] != float64(1) || data["fixmeCount"] != float64(1) || data["totalCommentCount"] != float64(3) {
+		t.Fatalf("code-health: %d %v", code, body)
+	}
+	// Самый старый TODO — 2023-01-01, т.е. больше тысячи дней: формат TimeSpan "d.hh:mm:ss".
+	age, _ := data["oldestCommentAge"].(string)
+	if days, _, ok := strings.Cut(age, "."); !ok || len(days) < 4 {
+		t.Fatalf("oldestCommentAge = %q", age)
+	}
+
+	want := map[string]any{
+		"hasReadme": true, "hasLicense": true, "hasContributing": false, "hasCodeOwners": true,
+		"hasLocalRunInstructions": true, "hasBuildAndTestInstructions": true,
+	}
+	for _, path := range []string{"/repositories/r1/documentation?runId=full", "/repositories/r1/documentation"} {
+		code, body := e.do(t, http.MethodGet, path, "user-pat")
+		data, _ := body["data"].(map[string]any)
+		if code != http.StatusOK {
+			t.Fatalf("%s: %d %v", path, code, body)
+		}
+		for k, v := range want {
+			if data[k] != v {
+				t.Errorf("%s: %s = %v, want %v", path, k, data[k], v)
+			}
+		}
+	}
+}

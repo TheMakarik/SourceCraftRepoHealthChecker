@@ -179,6 +179,10 @@ func (g Git) command(ctx context.Context, dir string, creds *Credentials, args .
 		"GIT_CONFIG_NOSYSTEM=1",
 		"LC_ALL=C",
 	)
+	if len(args) > 0 && args[0] != "clone" {
+		// Анализ идёт только по локальной копии: недостающие объекты partial clone не докачиваются.
+		cmd.Env = append(cmd.Env, "GIT_NO_LAZY_FETCH=1")
+	}
 	if creds != nil && creds.Token != "" {
 		basic := base64.StdEncoding.EncodeToString([]byte(creds.Username + ":" + creds.Token))
 		cmd.Env = append(cmd.Env,
