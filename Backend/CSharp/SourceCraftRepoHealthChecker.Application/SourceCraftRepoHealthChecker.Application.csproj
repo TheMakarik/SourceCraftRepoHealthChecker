@@ -7,6 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Folder Include="HealthCheck\Abstractions\" />
+      <Folder Include="HealthCheck\Models\" />
+      <Folder Include="HealthCheck\Options\" />
+      <Folder Include="HealthCheck\Services\" />
       <Folder Include="Options\" />
       <Folder Include="Security\Interfaces\" />
       <Folder Include="SourceCraft\Interfaces\" />
