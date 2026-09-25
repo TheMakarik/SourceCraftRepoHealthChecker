@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
@@ -30,6 +31,11 @@ public sealed class RepoHealthCheckerDbContext(
     public DbSet<CategoryScore> CategoryScores => Set<CategoryScore>();
 
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<DateTimeOffsetToBinaryConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
