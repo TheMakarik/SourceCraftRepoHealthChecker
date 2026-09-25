@@ -1,0 +1,8 @@
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
+
+namespace SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
+
+public interface ISourceCraftCodeHealthSource
+{
+    public Task<CodeHealthReport> GetCodeHealthAsync(string repositoryId, CancellationToken cancellationToken);
+}

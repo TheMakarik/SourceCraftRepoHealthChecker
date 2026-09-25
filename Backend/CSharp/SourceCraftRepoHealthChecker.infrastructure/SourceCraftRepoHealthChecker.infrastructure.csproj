@@ -1,5 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+    <ItemGroup>
+      <ProjectReference Include="..\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
+      <ProjectReference Include="..\SourceCraftRepoHealthChecker.Domain\SourceCraftRepoHealthChecker.Domain.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    </ItemGroup>
+
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
