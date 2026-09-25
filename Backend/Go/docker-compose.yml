@@ -1,0 +1,35 @@
+# Локальный запуск без облака: сервис + MinIO как S3-совместимое хранилище.
+#   cp .env.example .env   # вписать SOURCECRAFT_TOKEN
+#   docker compose up --build
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      # Ключ для SSE-S3 (S3_SSE=true); только для локальной разработки.
+      MINIO_KMS_SECRET_KEY: local-key:MzJieXRlc2xvbmdzZWNyZXRrZXltdXN0YmVnaXZlbjE=
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 10
+
+  sourcecraft-service:
+    build: .
+    env_file: .env
+    environment:
+      S3_ENDPOINT: minio:9000
+      S3_USE_SSL: "false"
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: repo-snapshots
+      SNAPSHOT_REAP_INTERVAL: 10m
+    ports:
+      - "8080:8080"
+    depends_on:
+      minio:
+        condition: service_healthy
