@@ -12,10 +12,17 @@ public sealed class AiTokenProtector(IOptions<AiTokenEncryptionOptions> options)
     private const int TagSize = 16;
     private readonly byte[] _key = ResolveKey(options.Value.Key);
 
-    private static byte[] ResolveKey(string configuredKey) =>
-        string.IsNullOrWhiteSpace(configuredKey)
-            ? RandomNumberGenerator.GetBytes(32)
-            : Convert.FromBase64String(configuredKey);
+    private static byte[] ResolveKey(string configuredKey)
+    {
+        if (string.IsNullOrWhiteSpace(configuredKey))
+            throw new InvalidOperationException("AiTokenEncryptionOptions.Key is not configured. Set a base64-encoded 32-byte key via configuration or secrets.");
+
+        var key = Convert.FromBase64String(configuredKey);
+        if (key.Length is not (16 or 24 or 32))
+            throw new InvalidOperationException("AiTokenEncryptionOptions.Key must be a base64 key of 16, 24 or 32 bytes.");
+
+        return key;
+    }
 
     public string Protect(string token)
     {

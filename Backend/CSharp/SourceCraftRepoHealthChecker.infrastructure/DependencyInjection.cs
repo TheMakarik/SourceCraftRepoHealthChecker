@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Minio;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
@@ -9,6 +11,7 @@ using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure.Authentication;
+using SourceCraftRepoHealthChecker.infrastructure.DataProtection;
 using SourceCraftRepoHealthChecker.infrastructure.Options;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
 using SourceCraftRepoHealthChecker.infrastructure.Reports;
@@ -28,9 +31,13 @@ public static class DependencyInjection
         services.AddOptions<RepositoryOptions>().Bind(configuration.GetSection(nameof(RepositoryOptions)));
         services.AddOptions<RecommendationOptions>().Bind(configuration.GetSection(nameof(RecommendationOptions)));
         services.AddOptions<AiTokenEncryptionOptions>().Bind(configuration.GetSection(nameof(AiTokenEncryptionOptions)));
+        services.AddOptions<DataProtectionStorageOptions>().Bind(configuration.GetSection(nameof(DataProtectionStorageOptions)));
+        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(nameof(DatabaseOptions)));
 
         services.AddDbContext<RepoHealthCheckerDbContext>(options =>
-            options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection"),
+                npgsql => npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null)));
         services.AddScoped<IRepoHealthCheckerDbContext>(provider => provider.GetRequiredService<RepoHealthCheckerDbContext>());
 
         services.AddHttpClient<SourceCraftHttpClient>((provider, client) =>
@@ -51,6 +58,17 @@ public static class DependencyInjection
 
         services.AddSingleton<AiTokenProtector>();
         services.AddSingleton<IAiTokenProtector>(provider => provider.GetRequiredService<AiTokenProtector>());
+        services.AddSingleton<IMinioClient>(provider =>
+        {
+            var storage = provider.GetRequiredService<IOptions<DataProtectionStorageOptions>>().Value;
+            return new MinioClient()
+                .WithEndpoint(storage.Endpoint)
+                .WithCredentials(storage.AccessKey, storage.SecretKey)
+                .WithSSL(storage.UseSsl)
+                .Build();
+        });
+        services.AddSingleton<IXmlRepository, S3XmlRepository>();
+        services.AddHostedService<DatabaseMigrationHostedService>();
         services.AddSingleton<ISecretProtector>(provider => provider.GetRequiredService<AiTokenProtector>());
         services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
         services.AddSingleton<ISourceCraftAccessTokenAccessor, SourceCraftAccessTokenAccessor>();
