@@ -61,6 +61,7 @@ func New(svc *service.Service, opts Options, log *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /repositories/{id}/pipelines", s.pipelines)
 	mux.HandleFunc("GET /repositories/{id}/code-health", s.codeHealth)
 	mux.HandleFunc("GET /repositories/{id}/documentation", s.documentation)
+	mux.HandleFunc("GET /repositories/{id}/structure", s.structure)
 	mux.HandleFunc("GET /repositories/{id}/security/findings", s.securityFindings)
 
 	mux.HandleFunc("PUT /repositories/{id}/snapshots/{runId}", s.createSnapshot)
@@ -290,6 +291,11 @@ func (s *Server) codeHealth(w http.ResponseWriter, r *http.Request) {
 func (s *Server) documentation(w http.ResponseWriter, r *http.Request) {
 	report, err := s.svc.Documentation(r.Context(), s.token(r), r.PathValue("id"), r.URL.Query().Get("runId"))
 	s.respond(w, r, report, err)
+}
+
+func (s *Server) structure(w http.ResponseWriter, r *http.Request) {
+	structure, err := s.svc.Structure(r.Context(), s.token(r), r.PathValue("id"), r.URL.Query().Get("runId"))
+	s.respond(w, r, structure, err)
 }
 
 // securityFindings отдаёт находки AppSec SourceCraft. Данные реальные: собственное

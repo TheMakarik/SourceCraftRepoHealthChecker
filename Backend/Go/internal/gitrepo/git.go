@@ -291,6 +291,50 @@ func (g Git) ListFiles(ctx context.Context, repoDir string) ([]string, error) {
 	return strings.Split(raw, "\x00"), nil
 }
 
+// StructureStats — агрегированные показатели структуры каталогов.
+type StructureStats struct {
+	TotalFiles            int
+	TotalDirectories      int
+	MaxDepth              int
+	RootFiles             int
+	LargestDirectory      string
+	LargestDirectoryFiles int
+}
+
+// Structure считает структуру папок по дереву файлов (без содержимого).
+func (g Git) Structure(ctx context.Context, repoDir string) (StructureStats, error) {
+	files, err := g.ListFiles(ctx, repoDir)
+	if err != nil {
+		return StructureStats{}, err
+	}
+
+	stats := StructureStats{TotalFiles: len(files)}
+	directories := map[string]int{}
+
+	for _, file := range files {
+		idx := strings.LastIndexByte(file, '/')
+		if idx < 0 {
+			stats.RootFiles++
+			continue
+		}
+
+		directories[file[:idx]]++
+		if depth := strings.Count(file, "/"); depth > stats.MaxDepth {
+			stats.MaxDepth = depth
+		}
+	}
+
+	stats.TotalDirectories = len(directories)
+	for directory, count := range directories {
+		if count > stats.LargestDirectoryFiles {
+			stats.LargestDirectoryFiles = count
+			stats.LargestDirectory = directory
+		}
+	}
+
+	return stats, nil
+}
+
 // ShowFile возвращает содержимое файла из HEAD.
 func (g Git) ShowFile(ctx context.Context, repoDir, path string) ([]byte, error) {
 	out, code, err := g.runExit(ctx, repoDir, nil, "show", "HEAD:"+path)

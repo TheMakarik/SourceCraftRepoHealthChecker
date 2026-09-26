@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddOptions<SchedulingOptions>().Bind(configuration.GetSection(nameof(SchedulingOptions)));
         services.AddOptions<ScalingOptions>().Bind(configuration.GetSection(nameof(ScalingOptions)));
         services.AddOptions<AiOptions>().Bind(configuration.GetSection(nameof(AiOptions)));
+        services.AddOptions<AnomalyDetectionOptions>().Bind(configuration.GetSection(nameof(AnomalyDetectionOptions)));
         services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IHealthScoreCalculator, HealthScoreCalculator>();
         services.AddSingleton<IRecommendationGenerator, RecommendationGenerator>();
         services.AddSingleton<IHealthCheckEngine, HealthCheckEngine>();
+        services.AddSingleton<IAnomalyDetector, AnomalyDetector>();
         services.AddScoped<IAnalyzeRepositoryUseCase, AnalyzeRepositoryUseCase>();
         services.AddScoped<IGetRepositoryAnalysisUseCase, GetRepositoryAnalysisUseCase>();
         services.AddScoped<IExportRepositoryReportUseCase, ExportRepositoryReportUseCase>();

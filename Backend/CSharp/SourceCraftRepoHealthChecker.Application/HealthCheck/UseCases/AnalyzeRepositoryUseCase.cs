@@ -24,6 +24,7 @@ public sealed class AnalyzeRepositoryUseCase(
     ISourceCraftCodeHealthSource codeHealthSource,
     ISourceCraftDocumentationSource documentationSource,
     IHealthCheckEngine healthCheckEngine,
+    IAnomalyDetector anomalyDetector,
     IOptions<RepositoryOptions> repositoryOptions,
     IOptions<RecommendationOptions> recommendationOptions,
     TimeProvider timeProvider,
@@ -66,10 +67,11 @@ public sealed class AnalyzeRepositoryUseCase(
             documentation.Data);
 
         var healthCheck = await healthCheckEngine.CheckAsync(facts, cancellationToken);
+        var anomalies = anomalyDetector.Detect(facts);
 
         var now = timeProvider.GetUtcNow();
         var repository = await UpsertRepositoryAsync(repositoryResult.Data, request.UserId, now, cancellationToken);
-        var analysisRun = CreateAnalysisRun(request, repository.Id, healthCheck, now);
+        var analysisRun = CreateAnalysisRun(request, repository.Id, healthCheck, anomalies, now);
 
         dbContext.AnalysisRuns.Add(analysisRun);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -79,7 +81,7 @@ public sealed class AnalyzeRepositoryUseCase(
         return new AnalyzeRepositoryResult(healthCheck, analysisRun.Id);
     }
 
-    private AnalysisRun CreateAnalysisRun(AnalyzeRepositoryRequest request, Guid repositoryId, HealthCheckResult healthCheck, DateTimeOffset now)
+    private AnalysisRun CreateAnalysisRun(AnalyzeRepositoryRequest request, Guid repositoryId, HealthCheckResult healthCheck, IReadOnlyCollection<ActivityAnomaly> anomalies, DateTimeOffset now)
     {
         var options = recommendationOptions.Value;
         var analysisRun = new AnalysisRun
@@ -134,6 +136,23 @@ public sealed class AnalyzeRepositoryUseCase(
                 Action = Truncate(recommendation.Action, options.MaxActionLength),
                 ExpectedImpact = Truncate(recommendation.ExpectedImpact, options.MaxExpectedImpactLength),
                 SourceReference = Truncate(recommendation.SourceReference, options.MaxSourceReferenceLength)
+            });
+        }
+
+        foreach (var anomaly in anomalies)
+        {
+            analysisRun.Recommendations.Add(new Recommendation
+            {
+                Id = Guid.NewGuid(),
+                AnalysisRunId = analysisRun.Id,
+                Priority = RecommendationPriority.High,
+                Title = Truncate($"Аномалия активности: {anomaly.AuthorLogin}", options.MaxTitleLength),
+                Problem = Truncate(anomaly.Description, options.MaxProblemLength),
+                WhyImportant = Truncate("Возможная накрутка активности или подозрительная активность.", options.MaxWhyImportantLength),
+                Evidence = Truncate(anomaly.Description, options.MaxEvidenceLength),
+                Action = Truncate($"Проверьте активность автора {anomaly.AuthorLogin}.", options.MaxActionLength),
+                ExpectedImpact = Truncate("Снижает риск искусственного завышения активности.", options.MaxExpectedImpactLength),
+                SourceReference = Truncate("Activity:anomaly", options.MaxSourceReferenceLength)
             });
         }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Presenter.Authentication;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
@@ -31,6 +32,9 @@ public static class RepositoryEndpoints
 
             return Results.Ok(analysis);
         });
+
+        endpoints.MapGet("/api/repositories/{id}/structure", async (string id, ISourceCraftStructureSource source, CancellationToken cancellationToken) =>
+            Results.Ok(await source.GetStructureAsync(id, cancellationToken)));
 
         return endpoints;
     }

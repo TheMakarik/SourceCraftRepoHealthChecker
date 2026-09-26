@@ -64,9 +64,21 @@ type CommitActivity struct {
 }
 
 type Contributor struct {
-	Login        string `json:"login"`
-	CommitsCount int    `json:"commitsCount"`
-	IsBot        bool   `json:"isBot"`
+	Login         string     `json:"login"`
+	CommitsCount  int        `json:"commitsCount"`
+	IsBot         bool       `json:"isBot"`
+	FirstCommitAt *time.Time `json:"firstCommitAt"`
+	LastCommitAt  *time.Time `json:"lastCommitAt"`
+}
+
+// RepositoryStructure описывает структуру папок репозитория (без корневых файлов README/LICENSE).
+type RepositoryStructure struct {
+	TotalFiles            int    `json:"totalFiles"`
+	TotalDirectories      int    `json:"totalDirectories"`
+	MaxDepth              int    `json:"maxDepth"`
+	RootFiles             int    `json:"rootFiles"`
+	LargestDirectory      string `json:"largestDirectory"`
+	LargestDirectoryFiles int    `json:"largestDirectoryFiles"`
 }
 
 type ReleaseInfo struct {

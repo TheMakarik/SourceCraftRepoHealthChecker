@@ -489,6 +489,8 @@ func (s *Service) Contributors(ctx context.Context, token, repoID, runID string)
 		name  string
 		count int
 		bot   bool
+		first time.Time
+		last  time.Time
 	}
 	byEmail := map[string]*agg{}
 	var order []string
@@ -506,6 +508,13 @@ func (s *Service) Contributors(ctx context.Context, token, repoID, runID string)
 				order = append(order, key)
 			}
 			a.count++
+			at := c.AuthoredAt.UTC()
+			if a.first.IsZero() || at.Before(a.first) {
+				a.first = at
+			}
+			if at.After(a.last) {
+				a.last = at
+			}
 			return nil
 		})
 	})
@@ -519,7 +528,7 @@ func (s *Service) Contributors(ctx context.Context, token, repoID, runID string)
 	out := make([]contract.Contributor, 0, len(order))
 	for _, k := range order {
 		a := byEmail[k]
-		out = append(out, contract.Contributor{Login: a.name, CommitsCount: a.count, IsBot: a.bot})
+		out = append(out, contract.Contributor{Login: a.name, CommitsCount: a.count, IsBot: a.bot, FirstCommitAt: &a.first, LastCommitAt: &a.last})
 	}
 	return out, nil
 }
@@ -677,3 +686,27 @@ var (
 	runInstructionsPattern = regexp.MustCompile(`(?i)\b(run|getting started|quick start|usage)\b|запуск`)
 	buildAndTestPattern    = regexp.MustCompile(`(?i)\b(build|test|make)\b|сборка|тест`)
 )
+
+// Structure возвращает структуру папок репозитория.
+func (s *Service) Structure(ctx context.Context, token, repoID, runID string) (contract.RepositoryStructure, error) {
+	result := contract.RepositoryStructure{}
+	err := s.withRepo(ctx, token, repoID, runID, false, func(dir string) error {
+		stats, err := s.git.Structure(ctx, dir)
+		if err != nil {
+			return err
+		}
+		result = contract.RepositoryStructure{
+			TotalFiles:            stats.TotalFiles,
+			TotalDirectories:      stats.TotalDirectories,
+			MaxDepth:              stats.MaxDepth,
+			RootFiles:             stats.RootFiles,
+			LargestDirectory:      stats.LargestDirectory,
+			LargestDirectoryFiles: stats.LargestDirectoryFiles,
+		}
+		return nil
+	})
+	if errors.Is(err, ErrEmptyRepository) {
+		return result, nil
+	}
+	return result, err
+}
