@@ -18,6 +18,7 @@ public static class DependencyInjection
     {
         services.AddOptions<HealthCheckOptions>().Bind(configuration.GetSection(nameof(HealthCheckOptions)));
         services.AddOptions<SchedulingOptions>().Bind(configuration.GetSection(nameof(SchedulingOptions)));
+        services.AddOptions<ScalingOptions>().Bind(configuration.GetSection(nameof(ScalingOptions)));
         services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
@@ -36,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IResolveSourceCraftTokenUseCase, ResolveSourceCraftTokenUseCase>();
         services.AddScoped<IGetUserRepositoriesUseCase, GetUserRepositoriesUseCase>();
         services.AddScoped<IScheduledAnalysisRunner, ScheduledAnalysisRunner>();
+        services.AddSingleton<IAnalysisQueue, ChannelAnalysisQueue>();
 
         return services;
     }

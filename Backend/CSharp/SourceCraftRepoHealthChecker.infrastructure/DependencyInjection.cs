@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
+using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure.Authentication;
@@ -54,6 +55,9 @@ public static class DependencyInjection
         services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
         services.AddSingleton<ISourceCraftAccessTokenAccessor, SourceCraftAccessTokenAccessor>();
         services.AddHostedService<ScheduledAnalysisBackgroundService>();
+        services.AddSingleton<ISchedulerLease, PostgresSchedulerLease>();
+        services.AddScoped<AnalysisWorker>();
+        services.AddHostedService<AnalysisWorkerBackgroundService>();
 
         services.AddSingleton<IGitRepositoryReader, LocalGitRepositoryReader>();
 

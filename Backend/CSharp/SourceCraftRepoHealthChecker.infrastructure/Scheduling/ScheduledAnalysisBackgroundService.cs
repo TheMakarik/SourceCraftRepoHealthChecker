@@ -31,7 +31,7 @@ public sealed class ScheduledAnalysisBackgroundService(
                 using var scope = scopeFactory.CreateScope();
                 var runner = scope.ServiceProvider.GetRequiredService<IScheduledAnalysisRunner>();
                 var summary = await runner.RunOnceAsync(stoppingToken);
-                logger.LogInformation("Scheduled analysis completed: refreshed {Refreshed}, analyzed {Analyzed}, failed {Failed}", summary.Refreshed, summary.Analyzed, summary.Failed);
+                logger.LogInformation("Scheduled analysis completed: refreshed {Refreshed}, enqueued {Enqueued}", summary.Refreshed, summary.Enqueued);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
