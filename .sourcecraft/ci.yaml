@@ -1,0 +1,33 @@
+on:
+  push:
+    - workflows: [ci]
+      filter:
+        branches:
+          - master
+          - main
+  pull_request:
+    - workflows: [ci]
+      filter:
+        target_branches:
+          - master
+          - main
+
+workflows:
+  ci:
+    tasks:
+      - name: dotnet
+        cubes:
+          - name: dotnet-build
+            script:
+              - pwsh -NoProfile -File ./Scripts/build.ps1
+          - name: dotnet-test
+            script:
+              - pwsh -NoProfile -File ./Scripts/test.ps1
+      - name: go
+        cubes:
+          - name: go-build
+            script:
+              - pwsh -NoProfile -File ./Scripts/go-build.ps1
+          - name: go-test
+            script:
+              - pwsh -NoProfile -File ./Scripts/go-test.ps1

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   pull_request:
 
 jobs:
@@ -13,20 +13,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - run: dotnet build SourceCraftRepoHealthChecker.slnx -c Release
-      - run: dotnet test SourceCraftRepoHealthChecker.slnx -c Release --no-build
+      - run: pwsh -NoProfile -File ./Scripts/build.ps1
+      - run: pwsh -NoProfile -File ./Scripts/test.ps1
 
   go:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: Backend/Go
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26.x"
-      - run: gofmt -l .
-      - run: go build ./...
-      - run: go vet ./...
-      - run: go test ./...
+      - run: pwsh -NoProfile -File ./Scripts/go-build.ps1
+      - run: pwsh -NoProfile -File ./Scripts/go-test.ps1
