@@ -3,6 +3,7 @@ package appsec
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -125,6 +126,51 @@ func TestDefectGroupsStopsOnRepeatedPageToken(t *testing.T) {
 	}
 	if len(page.Items) != 1 || page.NextPageToken != "same" || calls.Load() != 2 {
 		t.Fatalf("page = %+v calls = %d", page, calls.Load())
+	}
+}
+
+func TestDefectGroupsStopsOnPageTokenCycle(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		next := "p2"
+		switch r.URL.Query().Get("pageToken") {
+		case "p2":
+			next = "p3"
+		case "p3":
+			next = "p2"
+		}
+		_, _ = w.Write([]byte(`{"data":[{"uuid":"a"}],"nextPageToken":"` + next + `","totalSize":1}`))
+	})
+
+	page, err := c.DefectGroups(context.Background(), "pat", "r1", 10, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("calls = %d, want 3 (p2 -> p3 -> p2 must stop)", calls.Load())
+	}
+	if len(page.Items) != 2 {
+		t.Fatalf("items = %d, want 2: repeated page must not be appended", len(page.Items))
+	}
+}
+
+func TestDefectGroupsCapsPages(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"data":[{"uuid":"a"}],"nextPageToken":"p%d","totalSize":1}`, n+1)))
+	})
+
+	page, err := c.DefectGroups(context.Background(), "pat", "r1", 10, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != maxPages {
+		t.Fatalf("calls = %d, want %d", calls.Load(), maxPages)
+	}
+	if len(page.Items) != maxPages {
+		t.Fatalf("items = %d, want %d", len(page.Items), maxPages)
 	}
 }
 

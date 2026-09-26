@@ -10,6 +10,7 @@ public interface IRepoHealthCheckerDbContext
     public DbSet<Repository> Repositories { get; }
     public DbSet<AnalysisRun> AnalysisRuns { get; }
     public DbSet<CategoryScore> CategoryScores { get; }
+    public DbSet<MetricScore> MetricScores { get; }
     public DbSet<Recommendation> Recommendations { get; }
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken);

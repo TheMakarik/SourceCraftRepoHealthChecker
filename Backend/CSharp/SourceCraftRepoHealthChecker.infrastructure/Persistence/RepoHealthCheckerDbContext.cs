@@ -30,6 +30,8 @@ public sealed class RepoHealthCheckerDbContext(
 
     public DbSet<CategoryScore> CategoryScores => Set<CategoryScore>();
 
+    public DbSet<MetricScore> MetricScores => Set<MetricScore>();
+
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
@@ -48,6 +50,7 @@ public sealed class RepoHealthCheckerDbContext(
             entity.Property(x => x.Login).HasMaxLength(_userOptions.MaxLoginLength);
             entity.Property(x => x.DisplayName).HasMaxLength(_userOptions.MaxDisplayNameLength);
             entity.Property(x => x.Email).HasMaxLength(_userOptions.MaxEmailLength);
+            entity.Property(x => x.SourceCraftToken).HasMaxLength(_userOptions.MaxSourceCraftTokenLength);
             entity.HasIndex(x => x.YaId).IsUnique();
         });
         #endregion
@@ -86,11 +89,17 @@ public sealed class RepoHealthCheckerDbContext(
         modelBuilder.Entity<CategoryScore>();
         #endregion
 
+        #region MetricScore
+        modelBuilder.Entity<MetricScore>();
+        #endregion
+
         #region Recommendation
         modelBuilder.Entity<Recommendation>(entity =>
         {
             entity.Property(x => x.Title).HasMaxLength(_recommendationOptions.MaxTitleLength);
             entity.Property(x => x.Problem).HasMaxLength(_recommendationOptions.MaxProblemLength);
+            entity.Property(x => x.WhyImportant).HasMaxLength(_recommendationOptions.MaxWhyImportantLength);
+            entity.Property(x => x.Evidence).HasMaxLength(_recommendationOptions.MaxEvidenceLength);
             entity.Property(x => x.Action).HasMaxLength(_recommendationOptions.MaxActionLength);
             entity.Property(x => x.ExpectedImpact).HasMaxLength(_recommendationOptions.MaxExpectedImpactLength);
             entity.Property(x => x.SourceReference).HasMaxLength(_recommendationOptions.MaxSourceReferenceLength);

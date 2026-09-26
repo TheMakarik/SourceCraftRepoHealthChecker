@@ -28,6 +28,19 @@ public static class RepositoryReportHtmlRenderer
             builder.Append($"<tr><td>{category.Category}</td><td>{category.Score}</td><td>{StatusText(category.DataStatus)}</td></tr>");
         builder.Append("</tbody></table>");
 
+        builder.Append("<h2>Метрики</h2>");
+        if (analysis.Metrics.Count == 0)
+        {
+            builder.Append("<p>Нет данных.</p>");
+        }
+        else
+        {
+            builder.Append("<table><thead><tr><th>Метрика</th><th>Значение</th><th>Балл</th><th>Вес</th><th>Статус</th></tr></thead><tbody>");
+            foreach (var metric in analysis.Metrics)
+                builder.Append($"<tr><td>{metric.Code}</td><td>{metric.RawValue:0.##}</td><td>{metric.NormalizedScore:0.##}</td><td>{metric.Weight:0.##}</td><td>{StatusText(metric.DataStatus)}</td></tr>");
+            builder.Append("</tbody></table>");
+        }
+
         AppendList(builder, "Сильные стороны", analysis.Strengths);
         AppendList(builder, "Слабые стороны", analysis.Weaknesses);
 
@@ -43,6 +56,8 @@ public static class RepositoryReportHtmlRenderer
             {
                 builder.Append($"<li><b>[{recommendation.Priority}] {WebUtility.HtmlEncode(recommendation.Title)}</b>");
                 builder.Append($"<br>Проблема: {WebUtility.HtmlEncode(recommendation.Problem)}");
+                builder.Append($"<br>Почему важно: {WebUtility.HtmlEncode(recommendation.WhyImportant)}");
+                builder.Append($"<br>Подтверждающие факты: {WebUtility.HtmlEncode(recommendation.Evidence)}");
                 builder.Append($"<br>Действие: {WebUtility.HtmlEncode(recommendation.Action)}");
                 builder.Append($"<br>Ожидаемый эффект: {WebUtility.HtmlEncode(recommendation.ExpectedImpact)}");
                 builder.Append($"<br>Источник: {WebUtility.HtmlEncode(recommendation.SourceReference)}</li>");

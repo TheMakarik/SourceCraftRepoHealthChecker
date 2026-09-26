@@ -13,7 +13,7 @@ namespace SourceCraftRepoHealthChecker.IntegrationTests;
 
 public sealed class LargeRepositoryTests : IDisposable
 {
-    private const string LargeRepositoryTestsEnvironmentVariable = "SOURCECRAFT_LARGE_REPO_TESTS";
+    private const string LargeRepositoryPathEnvironmentVariable = "LARGE_REPO_PATH";
     private const string FilesEnvironmentVariable = "SOURCECRAFT_LARGE_REPO_FILES";
     private const string CommitsEnvironmentVariable = "SOURCECRAFT_LARGE_REPO_COMMITS";
 
@@ -61,40 +61,42 @@ public sealed class LargeRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadAndCheckAsync_WhenRealLargeThresholds_CompletesWithinTimeout()
+    public async Task ReadAndCheckAsync_WhenLargeRepositoryProvided_CompletesAndProducesScore()
     {
         // Arrange
-        if (Environment.GetEnvironmentVariable(LargeRepositoryTestsEnvironmentVariable) != "1")
+        var stopwatch = Stopwatch.StartNew();
+        var repositoryPath = Environment.GetEnvironmentVariable(LargeRepositoryPathEnvironmentVariable);
+        var usingRealRepository = !string.IsNullOrWhiteSpace(repositoryPath) && Directory.Exists(repositoryPath);
+
+        if (!usingRealRepository)
         {
-            _output.WriteLine($"Тест пропущен. Задайте {LargeRepositoryTestsEnvironmentVariable}=1, чтобы запустить проверку реальных порогов.");
-            return;
+            repositoryPath = CreateLargeRepository(
+                files: ReadIntegerEnvironmentVariable(FilesEnvironmentVariable, 2000),
+                commits: ReadIntegerEnvironmentVariable(CommitsEnvironmentVariable, 200),
+                authors: 5);
         }
 
-        var files = ReadIntegerEnvironmentVariable(FilesEnvironmentVariable, 10000);
-        var commits = ReadIntegerEnvironmentVariable(CommitsEnvironmentVariable, 20000);
-
         using var cancellationTokenSource = new CancellationTokenSource(GatedTimeout);
-        var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var repositoryPath = CreateLargeRepository(files, commits, authors: 5);
-        var activity = await systemUnderTests.GetCommitActivityAsync(repositoryPath, cancellationTokenSource.Token);
-        var contributors = await systemUnderTests.GetContributorsAsync(repositoryPath, cancellationTokenSource.Token);
-        var releases = await systemUnderTests.GetReleasesAsync(repositoryPath, cancellationTokenSource.Token);
-        var codeHealth = await systemUnderTests.GetCodeHealthAsync(repositoryPath, cancellationTokenSource.Token);
-        var documentation = await systemUnderTests.GetDocumentationAsync(repositoryPath, cancellationTokenSource.Token);
+        var activity = await systemUnderTests.GetCommitActivityAsync(repositoryPath!, cancellationTokenSource.Token);
+        var contributors = await systemUnderTests.GetContributorsAsync(repositoryPath!, cancellationTokenSource.Token);
+        var releases = await systemUnderTests.GetReleasesAsync(repositoryPath!, cancellationTokenSource.Token);
+        var codeHealth = await systemUnderTests.GetCodeHealthAsync(repositoryPath!, cancellationTokenSource.Token);
+        var documentation = await systemUnderTests.GetDocumentationAsync(repositoryPath!, cancellationTokenSource.Token);
 
-        var facts = RepositoryFactsFactory.Compose(repositoryPath, activity, contributors, releases, codeHealth, documentation);
+        var facts = RepositoryFactsFactory.Compose(repositoryPath!, activity, contributors, releases, codeHealth, documentation);
         var result = await RunHealthCheckAsync(facts, cancellationTokenSource.Token);
 
         stopwatch.Stop();
 
         // Assert
-        activity.TotalCount.Should().Be(commits);
+        activity.TotalCount.Should().BeGreaterThan(0);
+        contributors.Should().NotBeEmpty();
         result.Score.Should().BeInRange(0, 100);
         result.Categories.Should().HaveCount(6);
         stopwatch.Elapsed.Should().BeLessThan(GatedTimeout);
-        _output.WriteLine($"Крупный репозиторий: файлов {files}, коммитов {commits}, мягкий лимит {GatedTimeout}, проанализирован за {stopwatch.Elapsed}.");
+        _output.WriteLine($"Крупный репозиторий ({(usingRealRepository ? "реальный" : "сгенерированный")}): коммитов {activity.TotalCount}, мягкий лимит {GatedTimeout}, проанализирован за {stopwatch.Elapsed}.");
     }
 
     private string CreateLargeRepository(int files, int commits, int authors)

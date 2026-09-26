@@ -18,7 +18,12 @@ import (
 	"time"
 )
 
-const maxPageSize = 100
+const (
+	maxPageSize = 100
+	// maxPages ограничивает пагинацию, чтобы зацикленный или бесконечно растущий
+	// next_page_token не крутил обход списка вечно.
+	maxPages = 100
+)
 
 type Options struct {
 	BaseURL        string
@@ -193,26 +198,35 @@ type Page[T any] struct {
 	NextPageToken string
 }
 
-// listAll проходит все страницы, пока fetch не вернёт пустой токен или не наберётся limit элементов (limit <= 0 — без ограничения).
+// listAll проходит все страницы, пока fetch не вернёт пустой токен, повторный токен
+// (self-loop/цикл) или не наберётся limit элементов (limit <= 0 — без ограничения).
+// Обход также жёстко ограничен maxPages.
 func listAll[T any](ctx context.Context, limit int, fetch func(ctx context.Context, pageToken string) (Page[T], error)) ([]T, error) {
 	var (
 		all   []T
 		token string
+		seen  = map[string]struct{}{}
 	)
-	for {
-		page, err := fetch(ctx, token)
+	for page := 0; page < maxPages; page++ {
+		current, err := fetch(ctx, token)
 		if err != nil {
 			return nil, err
 		}
-		all = append(all, page.Items...)
+		all = append(all, current.Items...)
 		if limit > 0 && len(all) >= limit {
 			return all[:limit], nil
 		}
-		if page.NextPageToken == "" || page.NextPageToken == token {
+		next := current.NextPageToken
+		if next == "" || next == token {
 			return all, nil
 		}
-		token = page.NextPageToken
+		if _, ok := seen[next]; ok {
+			return all, nil
+		}
+		seen[next] = struct{}{}
+		token = next
 	}
+	return all, nil
 }
 
 func pageQuery(pageToken string, extra url.Values) url.Values {

@@ -3,6 +3,7 @@ package sourcecraft
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -58,6 +59,70 @@ func TestListAllRespectsLimit(t *testing.T) {
 	}
 	if len(got) != 3 || calls.Load() != 2 {
 		t.Fatalf("got %d items in %d calls", len(got), calls.Load())
+	}
+}
+
+func TestListAllStopsOnRepeatedPageToken(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		_, _ = w.Write([]byte(`{"releases":[{"id":"1"}],"next_page_token":"same"}`))
+	})
+
+	got, err := c.Releases(context.Background(), "", "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("calls = %d, want 2", calls.Load())
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2", len(got))
+	}
+}
+
+func TestListAllStopsOnPageTokenCycle(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		next := "p2"
+		switch r.URL.Query().Get("page_token") {
+		case "p2":
+			next = "p3"
+		case "p3":
+			next = "p2"
+		}
+		_, _ = w.Write([]byte(`{"releases":[{"id":"1"}],"next_page_token":"` + next + `"}`))
+	})
+
+	got, err := c.Releases(context.Background(), "", "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("calls = %d, want 3 (p2 -> p3 -> p2 must stop)", calls.Load())
+	}
+	if len(got) != 3 {
+		t.Fatalf("len(got) = %d, want 3", len(got))
+	}
+}
+
+func TestListAllCapsPages(t *testing.T) {
+	var calls atomic.Int32
+	c := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"releases":[{"id":"%d"}],"next_page_token":"p%d"}`, n, n+1)))
+	})
+
+	got, err := c.Releases(context.Background(), "", "r1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if calls.Load() != maxPages {
+		t.Fatalf("calls = %d, want %d", calls.Load(), maxPages)
+	}
+	if len(got) != maxPages {
+		t.Fatalf("len(got) = %d, want %d", len(got), maxPages)
 	}
 }
 

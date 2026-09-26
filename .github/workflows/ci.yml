@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  dotnet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet build SourceCraftRepoHealthChecker.slnx -c Release
+      - run: dotnet test SourceCraftRepoHealthChecker.slnx -c Release --no-build
+
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend/Go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+      - run: gofmt -l .
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...

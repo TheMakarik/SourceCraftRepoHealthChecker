@@ -7,6 +7,7 @@ using SourceCraftRepoHealthChecker.Domain.Entities;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 using SourceCraftRepoHealthChecker.IntegrationTests.Infrastructure;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
+using SourceCraftRepoHealthChecker.infrastructure.Reports;
 
 namespace SourceCraftRepoHealthChecker.IntegrationTests.HealthCheck;
 
@@ -30,7 +31,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
 
         var options = Options.Create(TestHealthCheckOptionsFactory.Create());
         getAnalysis = new GetRepositoryAnalysisUseCase(_context, options);
-        exportReport = new ExportRepositoryReportUseCase(getAnalysis);
+        exportReport = new ExportRepositoryReportUseCase(getAnalysis, new QuestPdfReportRenderer());
     }
 
     public void Dispose()
@@ -50,6 +51,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
         actual!.Score.Should().Be(78);
         actual.AnalyzedAt.Should().Be(CompletedAt);
         actual.Categories.Should().HaveCount(6);
+        actual.Metrics.Should().ContainSingle(metric => metric.Code == MetricCode.CodeHealthTodo);
         actual.Strengths.Select(item => item.Category).Should().Contain(ScoreCategory.Security).And.Contain(ScoreCategory.Documentation);
         actual.Weaknesses.Select(item => item.Category).Should().Contain(ScoreCategory.CodeHealth);
         actual.Recommendations.Should().HaveCount(2);
@@ -79,6 +81,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
         content.Should().Contain("# Repo Health: owner/demo");
         content.Should().Contain("78/100");
         content.Should().Contain("CodeHealth");
+        content.Should().Contain("Почему важно");
         content.Should().Contain("Устраните уязвимости");
     }
 
@@ -167,14 +170,26 @@ public sealed class RepositoryAnalysisTests : IDisposable
         AddCategory(run, ScoreCategory.CiCd, 72);
         AddCategory(run, ScoreCategory.Issues, 80);
 
+        run.Metrics.Add(new MetricScore
+        {
+            Id = Guid.NewGuid(),
+            Code = MetricCode.CodeHealthTodo,
+            RawValue = 4,
+            NormalizedScore = 96,
+            Weight = 1,
+            DataStatus = DataStatus.Available
+        });
+
         run.Recommendations.Add(new Recommendation
         {
             Id = Guid.NewGuid(),
             Priority = RecommendationPriority.Medium,
             Title = "Документация",
             Problem = "Документация: 40/100",
+            WhyImportant = "Документация упрощает сопровождение.",
+            Evidence = "Отсутствует: лицензия.",
             Action = "Улучшите документацию",
-            ExpectedImpact = "+10",
+            ExpectedImpact = "+10 баллов",
             SourceReference = "Documentation"
         });
         run.Recommendations.Add(new Recommendation
@@ -183,8 +198,10 @@ public sealed class RepositoryAnalysisTests : IDisposable
             Priority = RecommendationPriority.Critical,
             Title = "Уязвимости",
             Problem = "Обнаружены критические уязвимости",
+            WhyImportant = "Уязвимости влияют на безопасность.",
+            Evidence = "Открытые уязвимости AppSec: критических 1.",
             Action = "Устраните уязвимости",
-            ExpectedImpact = "+20",
+            ExpectedImpact = "+20 баллов",
             SourceReference = "Security"
         });
 

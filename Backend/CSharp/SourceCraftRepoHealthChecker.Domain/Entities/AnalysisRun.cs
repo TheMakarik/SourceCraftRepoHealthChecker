@@ -15,5 +15,6 @@ public sealed class AnalysisRun
     public string? ErrorMessage { get; set; }
 
     public ICollection<CategoryScore> CategoryScores { get; set; } = [];
+    public ICollection<MetricScore> Metrics { get; set; } = [];
     public ICollection<Recommendation> Recommendations { get; set; } = [];
 }

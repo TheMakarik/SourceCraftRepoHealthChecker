@@ -21,8 +21,14 @@ import (
 	"time"
 )
 
+// defaultCommandTimeout ограничивает одну git-команду, если Git.Timeout не задан.
+// Так один огромный репозиторий (git log -G, git grep) не может подвесить анализ навсегда.
+const defaultCommandTimeout = 5 * time.Minute
+
 type Git struct {
 	Binary string
+	// Timeout ограничивает выполнение одной git-команды. 0 — defaultCommandTimeout.
+	Timeout time.Duration
 }
 
 // Credentials — basic-auth для git по HTTPS (логин SourceCraft + PAT).
@@ -97,6 +103,9 @@ const (
 
 // WalkCommits потоково читает `git log` и вызывает fn для каждого коммита — без загрузки истории в память.
 func (g Git) WalkCommits(ctx context.Context, repoDir string, fn func(Commit) error) error {
+	ctx, cancel := g.commandContext(ctx)
+	defer cancel()
+
 	cmd := g.command(ctx, repoDir, nil, "log", "--no-color", "--format="+recordSep+"%H"+fieldSep+"%aN"+fieldSep+"%aE"+fieldSep+"%aI")
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -118,6 +127,10 @@ func (g Git) WalkCommits(ctx context.Context, repoDir string, fn func(Commit) er
 	case parseErr != nil:
 		return parseErr
 	case waitErr != nil:
+		// Команда убита по таймауту/отмене — возвращаем причину контекста.
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		// Пустой репозиторий (нет коммитов) — не ошибка.
 		if strings.Contains(stderr.String(), "does not have any commits") {
 			return nil
@@ -150,7 +163,23 @@ func parseLog(r io.Reader, fn func(Commit) error) error {
 	return sc.Err()
 }
 
+// commandContext ограничивает одну git-команду: если у родительского ctx дедлайн раньше,
+// используется он, иначе добавляется Git.Timeout (или defaultCommandTimeout).
+func (g Git) commandContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	timeout := g.Timeout
+	if timeout <= 0 {
+		timeout = defaultCommandTimeout
+	}
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) <= timeout {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, timeout)
+}
+
 func (g Git) run(ctx context.Context, dir string, creds *Credentials, args ...string) ([]byte, error) {
+	ctx, cancel := g.commandContext(ctx)
+	defer cancel()
+
 	cmd := g.command(ctx, dir, creds, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -225,6 +254,9 @@ func (l *limitedWriter) Write(p []byte) (int, error) {
 // runExit выполняет git и возвращает stdout вместе с кодом выхода, не превращая
 // ненулевой код в ошибку (git grep возвращает 1, когда совпадений нет).
 func (g Git) runExit(ctx context.Context, dir string, creds *Credentials, args ...string) ([]byte, int, error) {
+	ctx, cancel := g.commandContext(ctx)
+	defer cancel()
+
 	cmd := g.command(ctx, dir, creds, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

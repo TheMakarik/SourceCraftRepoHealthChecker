@@ -90,6 +90,8 @@ type Git struct {
 	WorkDir string
 	// CloneTimeout ограничивает клонирование и упаковку одного репозитория.
 	CloneTimeout time.Duration
+	// CommandTimeout ограничивает одну читающую git-команду (log/grep) на большом репозитории.
+	CommandTimeout time.Duration
 	// MaxRepoBytes — верхняя граница размера клона; при превышении прогон прерывается.
 	MaxRepoBytes int64
 }
@@ -138,10 +140,11 @@ func Load() (Config, error) {
 			LifecycleDays: integer("S3_LIFECYCLE_DAYS", 1, &errs),
 		},
 		Git: Git{
-			Binary:       env("GIT_BINARY", "git"),
-			WorkDir:      os.Getenv("GIT_WORKDIR"),
-			CloneTimeout: duration("GIT_CLONE_TIMEOUT", 15*time.Minute, &errs),
-			MaxRepoBytes: int64(integer("GIT_MAX_REPO_MB", 2048, &errs)) << 20,
+			Binary:         env("GIT_BINARY", "git"),
+			WorkDir:        os.Getenv("GIT_WORKDIR"),
+			CloneTimeout:   duration("GIT_CLONE_TIMEOUT", 15*time.Minute, &errs),
+			CommandTimeout: duration("GIT_COMMAND_TIMEOUT", 5*time.Minute, &errs),
+			MaxRepoBytes:   int64(integer("GIT_MAX_REPO_MB", 2048, &errs)) << 20,
 		},
 	}
 

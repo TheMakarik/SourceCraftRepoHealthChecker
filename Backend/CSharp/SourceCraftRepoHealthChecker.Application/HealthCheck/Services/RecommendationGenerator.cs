@@ -12,6 +12,9 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
     {
         var settings = options.Value.Recommendations;
         var recommendations = new List<RecommendationDraft>();
+        var availableWeight = categories
+            .Where(category => category.DataStatus == DataStatus.Available)
+            .Sum(category => category.Weight);
 
         foreach (var category in categories)
         {
@@ -27,8 +30,10 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
             recommendations.Add(new RecommendationDraft(
                 PriorityFor(category.Score, settings),
                 ProblemFor(category),
+                WhyImportantFor(category.Category),
+                EvidenceFor(category),
                 ActionFor(category.Category),
-                $"Доведение категории до {settings.MinimumAcceptableScore} повысит итоговый Repo Health Score.",
+                ExpectedImpactFor(category, settings.MinimumAcceptableScore, availableWeight),
                 SourceReferenceFor(category)));
         }
 
@@ -38,9 +43,11 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
     private static RecommendationDraft SecurityDataNotice() => new(
         RecommendationPriority.Low,
         "Оценка безопасности недоступна. Подключите AppSec SourceCraft.",
+        "Без результата AppSec SourceCraft категория Security остаётся со статусом «Нет данных» и не участвует в итоговом Score.",
+        "Источник AppSec SourceCraft не подключён: нет данных SAST, SCA и secret scanning.",
         "Подключите AppSec SourceCraft.",
         "Появится оценка security-категории; статус «Нет данных» не штрафует итоговый Score.",
-        "Security:DataStatus");
+        "AppSec SourceCraft; метрика Security:DataStatus");
 
     private static RecommendationPriority PriorityFor(int score, RecommendationScoringOptions settings) =>
         score < settings.CriticalPriorityScore ? RecommendationPriority.Critical
@@ -49,16 +56,38 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
 
     private static string ProblemFor(CategoryScoreResult category) => category.Category switch
     {
-        ScoreCategory.Security => SecurityProblem(category),
-        ScoreCategory.CodeHealth => CodeHealthProblem(category),
-        ScoreCategory.Activity => ActivityProblem(category),
-        ScoreCategory.Documentation => DocumentationProblem(category),
-        ScoreCategory.CiCd => CiCdProblem(category),
-        ScoreCategory.Issues => IssuesProblem(category),
+        ScoreCategory.Security => "Открытые уязвимости снижают категорию Security.",
+        ScoreCategory.CodeHealth => "Технический долг в коде снижает категорию Code health.",
+        ScoreCategory.Activity => "Активность проекта ниже приемлемого уровня.",
+        ScoreCategory.Documentation => "Документация проекта неполная.",
+        ScoreCategory.CiCd => "CI/CD настроен недостаточно надёжно.",
+        ScoreCategory.Issues => "Работа с issue требует улучшения.",
         _ => $"Категория «{category.Category}» имеет низкий балл: {category.Score}."
     };
 
-    private static string SecurityProblem(CategoryScoreResult category)
+    private static string WhyImportantFor(ScoreCategory category) => category switch
+    {
+        ScoreCategory.Security => "Уязвимости влияют на безопасность пользователей и напрямую снижают итоговый Repo Health Score.",
+        ScoreCategory.CodeHealth => "Накопленный технический долг замедляет развитие и повышает риск регрессий.",
+        ScoreCategory.Activity => "Регулярная активность показывает, что проект поддерживается и развивается.",
+        ScoreCategory.Documentation => "Документация снижает порог входа и упрощает сопровождение проекта.",
+        ScoreCategory.CiCd => "Стабильный CI/CD ловит дефекты до релиза и ускоряет поставку.",
+        ScoreCategory.Issues => "Быстрая обработка issue поддерживает доверие сообщества.",
+        _ => "Показатель влияет на итоговую оценку здоровья репозитория."
+    };
+
+    private static string EvidenceFor(CategoryScoreResult category) => category.Category switch
+    {
+        ScoreCategory.Security => SecurityEvidence(category),
+        ScoreCategory.CodeHealth => CodeHealthEvidence(category),
+        ScoreCategory.Activity => ActivityEvidence(category),
+        ScoreCategory.Documentation => DocumentationEvidence(category),
+        ScoreCategory.CiCd => CiCdEvidence(category),
+        ScoreCategory.Issues => IssuesEvidence(category),
+        _ => $"Балл категории — {category.Score} из 100."
+    };
+
+    private static string SecurityEvidence(CategoryScoreResult category)
     {
         var critical = RawValue(category, MetricCode.SecurityCriticalFindings);
         var high = RawValue(category, MetricCode.SecurityHighFindings);
@@ -80,7 +109,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
             : $"Открытые уязвимости AppSec: {string.Join(", ", parts)}.";
     }
 
-    private static string CodeHealthProblem(CategoryScoreResult category)
+    private static string CodeHealthEvidence(CategoryScoreResult category)
     {
         var todo = RawValue(category, MetricCode.CodeHealthTodo);
         var fixme = RawValue(category, MetricCode.CodeHealthFixme);
@@ -89,7 +118,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         return $"Технический долг: TODO — {todo:0}, FIXME — {fixme:0}, самый старый комментарий — {oldestCommentDays:0} дн.";
     }
 
-    private static string ActivityProblem(CategoryScoreResult category)
+    private static string ActivityEvidence(CategoryScoreResult category)
     {
         var parts = new List<string>
         {
@@ -106,7 +135,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         return $"Активность снижена: {string.Join(", ", parts)}.";
     }
 
-    private static string DocumentationProblem(CategoryScoreResult category)
+    private static string DocumentationEvidence(CategoryScoreResult category)
     {
         var missing = new List<string>();
         if (RawValue(category, MetricCode.DocumentationReadme) < 1)
@@ -127,7 +156,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
             : $"Отсутствует: {string.Join(", ", missing)}.";
     }
 
-    private static string CiCdProblem(CategoryScoreResult category)
+    private static string CiCdEvidence(CategoryScoreResult category)
     {
         var runs = RawValue(category, MetricCode.CiCdPresence);
         var successRatio = RawValue(category, MetricCode.CiCdSuccessRatio);
@@ -136,7 +165,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         return $"CI/CD: запусков — {runs:0}, успешность — {successRatio:P0}, средняя длительность — {durationMinutes:0.#} мин.";
     }
 
-    private static string IssuesProblem(CategoryScoreResult category)
+    private static string IssuesEvidence(CategoryScoreResult category)
     {
         var parts = new List<string>
         {
@@ -156,10 +185,32 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         return $"Issues требуют внимания: {string.Join(", ", parts)}.";
     }
 
-    private static string SourceReferenceFor(CategoryScoreResult category) =>
-        category.Metrics.Count == 0
-            ? category.Category.ToString()
-            : string.Join(", ", category.Metrics.Select(metric => metric.Code.ToString()));
+    private static string ExpectedImpactFor(CategoryScoreResult category, int minimumAcceptableScore, double availableWeight)
+    {
+        var gain = availableWeight <= 0
+            ? 0
+            : (int)Math.Round((minimumAcceptableScore - category.Score) * (category.Weight / availableWeight), MidpointRounding.AwayFromZero);
+
+        return $"+{gain} балл(ов) к итоговому Repo Health Score при доведении категории до {minimumAcceptableScore}/100.";
+    }
+
+    private static string SourceReferenceFor(CategoryScoreResult category)
+    {
+        var source = category.Category switch
+        {
+            ScoreCategory.Security => "AppSec SourceCraft",
+            ScoreCategory.CiCd => "SourceCraft CI/CD (pipeline runs)",
+            ScoreCategory.Issues => "SourceCraft Issues",
+            ScoreCategory.Activity => "SourceCraft Activity (commits, contributors, releases, merge requests)",
+            ScoreCategory.Documentation => "Repository files (README, LICENSE, CONTRIBUTING, CODEOWNERS)",
+            ScoreCategory.CodeHealth => "Source code comments (TODO/FIXME)",
+            _ => category.Category.ToString()
+        };
+
+        return category.Metrics.Count == 0
+            ? source
+            : $"{source}; метрики: {string.Join(", ", category.Metrics.Select(metric => metric.Code))}";
+    }
 
     private static double RawValue(CategoryScoreResult category, MetricCode code) =>
         MetricValue(category, code)?.RawValue ?? 0;

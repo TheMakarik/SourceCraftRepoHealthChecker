@@ -116,8 +116,9 @@ public sealed class HealthCheckStatisticsTests : IDisposable
             .Which.Problem.Should().Contain("AppSec SourceCraft");
         actual.Recommendations.Count(recommendation => recommendation.Priority == RecommendationPriority.Critical).Should().Be(2);
         actual.Recommendations.Select(recommendation => recommendation.Problem)
-            .Should().Contain(problem => problem.Contains("Активность"))
-            .And.Contain(problem => problem.Contains("Отсутствует"));
+            .Should().Contain(problem => problem.Contains("Активность"));
+        actual.Recommendations.Select(recommendation => recommendation.Evidence)
+            .Should().Contain(evidence => evidence.Contains("Отсутствует"));
     }
 
     [Fact]

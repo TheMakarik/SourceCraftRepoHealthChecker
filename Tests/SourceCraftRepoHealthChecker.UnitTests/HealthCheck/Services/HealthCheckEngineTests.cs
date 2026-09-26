@@ -93,7 +93,7 @@ public sealed class HealthCheckEngineTests
     public async Task CheckAsync_ReturnsRecommendationsFromGenerator()
     {
         // Arrange
-        var expected = new RecommendationDraft(RecommendationPriority.Critical, "problem", "action", "impact", "source");
+        var expected = new RecommendationDraft(RecommendationPriority.Critical, "problem", "why", "evidence", "action", "impact", "source");
         A.CallTo(() => _recommendationGenerator.Generate(A<IReadOnlyCollection<CategoryScoreResult>>._))
             .Returns(new[] { expected });
         var facts = RepositoryFactsBuilder.Build();

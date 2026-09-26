@@ -312,10 +312,21 @@ func (s *Service) MergeRequests(ctx context.Context, token, repoID string) ([]co
 }
 
 // forEachLimited выполняет fn(i) для i в [0, n) не более чем в limits.Concurrency горутинах.
+//
+// Токен семафора захватывается до запуска горутины и освобождается ровно один раз:
+// либо самой горутиной, либо (если ctx отменился сразу после захвата) этим циклом.
+// Поэтому отмена ctx не теряет токены и не запускает задачи в мёртвый контекст.
+// Первая ошибка отменяет остальные вызовы и возвращается вызывающему, а wg.Wait
+// гарантирует, что после возврата не осталось работающих горутин.
 func (s *Service) forEachLimited(ctx context.Context, n int, fn func(ctx context.Context, i int) error) error {
 	if n <= 0 {
 		return nil
 	}
+	concurrency := s.limits.Concurrency
+	if concurrency <= 0 {
+		concurrency = 1
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -323,20 +334,30 @@ func (s *Service) forEachLimited(ctx context.Context, n int, fn func(ctx context
 		wg       sync.WaitGroup
 		once     sync.Once
 		firstErr error
-		sem      = make(chan struct{}, s.limits.Concurrency)
+		sem      = make(chan struct{}, concurrency)
 	)
+loop:
 	for i := range n {
 		select {
-		case sem <- struct{}{}:
 		case <-ctx.Done():
+			break loop
+		case sem <- struct{}{}:
 		}
+
+		// Токен захвачен. Если контекст отменился между select и запуском, освобождаем
+		// токен сами: горутина не стартует, поэтому освобождать его будет некому.
 		if ctx.Err() != nil {
-			break
+			<-sem
+			break loop
 		}
+
 		wg.Go(func() {
 			defer func() { <-sem }()
 			if err := fn(ctx, i); err != nil {
-				once.Do(func() { firstErr = err; cancel() })
+				once.Do(func() {
+					firstErr = err
+					cancel()
+				})
 			}
 		})
 	}

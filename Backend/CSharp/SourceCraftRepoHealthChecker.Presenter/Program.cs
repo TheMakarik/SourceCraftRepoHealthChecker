@@ -4,6 +4,7 @@ using Serilog.Sinks.SystemConsole.Themes;
 using SourceCraftRepoHealthChecker.Application;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure;
+using SourceCraftRepoHealthChecker.Presenter.Authentication;
 using SourceCraftRepoHealthChecker.Presenter.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,10 +21,15 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<UserTicketProtector>();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+app.UseExceptionHandler();
 
 app.Use(async (context, next) =>
 {

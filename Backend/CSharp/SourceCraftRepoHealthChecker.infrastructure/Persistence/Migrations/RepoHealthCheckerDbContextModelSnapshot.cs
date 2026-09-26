@@ -86,6 +86,37 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                     b.ToTable("CategoryScores");
                 });
 
+            modelBuilder.Entity("SourceCraftRepoHealthChecker.Domain.Entities.MetricScore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AnalysisRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Code")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DataStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("NormalizedScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("RawValue")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Weight")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AnalysisRunId");
+
+                    b.ToTable("MetricScores");
+                });
+
             modelBuilder.Entity("SourceCraftRepoHealthChecker.Domain.Entities.Recommendation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -99,6 +130,11 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("AnalysisRunId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
 
                     b.Property<string>("ExpectedImpact")
                         .IsRequired()
@@ -121,6 +157,11 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("WhyImportant")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
 
                     b.HasKey("Id");
 
@@ -165,6 +206,9 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SourceCraftId")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -208,6 +252,10 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceCraftToken")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
 
                     b.Property<string>("YaId")
                         .IsRequired()
@@ -284,6 +332,15 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SourceCraftRepoHealthChecker.Domain.Entities.MetricScore", b =>
+                {
+                    b.HasOne("SourceCraftRepoHealthChecker.Domain.Entities.AnalysisRun", null)
+                        .WithMany("Metrics")
+                        .HasForeignKey("AnalysisRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SourceCraftRepoHealthChecker.Domain.Entities.Recommendation", b =>
                 {
                     b.HasOne("SourceCraftRepoHealthChecker.Domain.Entities.AnalysisRun", null)
@@ -305,6 +362,8 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
             modelBuilder.Entity("SourceCraftRepoHealthChecker.Domain.Entities.AnalysisRun", b =>
                 {
                     b.Navigation("CategoryScores");
+
+                    b.Navigation("Metrics");
 
                     b.Navigation("Recommendations");
                 });

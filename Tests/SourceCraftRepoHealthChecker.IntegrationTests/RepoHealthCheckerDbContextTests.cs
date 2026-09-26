@@ -144,7 +144,8 @@ public sealed class RepoHealthCheckerDbContextTests : IDisposable
                 MaxYaIdLength = 64,
                 MaxLoginLength = 64,
                 MaxDisplayNameLength = 128,
-                MaxEmailLength = 256
+                MaxEmailLength = 256,
+                MaxSourceCraftTokenLength = 4096
             }),
             Options.Create(new UserAiOptions
             {
@@ -164,6 +165,8 @@ public sealed class RepoHealthCheckerDbContextTests : IDisposable
             {
                 MaxTitleLength = 256,
                 MaxProblemLength = 2048,
+                MaxWhyImportantLength = 2048,
+                MaxEvidenceLength = 2048,
                 MaxActionLength = 2048,
                 MaxExpectedImpactLength = 1024,
                 MaxSourceReferenceLength = 512

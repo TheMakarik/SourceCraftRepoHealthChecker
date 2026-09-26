@@ -3,10 +3,14 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +22,136 @@ import (
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/sourcecraft"
 	"github.com/TheMakarik/SourceCraftRepoHealthChecker/Backend/Go/internal/testutil"
 )
+
+func TestForEachLimitedRunsAllWithinConcurrency(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 3}}
+	const total = 200
+
+	var (
+		mutex      sync.Mutex
+		running    int
+		maxRunning int
+		completed  int
+	)
+	err := service.forEachLimited(context.Background(), total, func(context.Context, int) error {
+		mutex.Lock()
+		running++
+		if running > maxRunning {
+			maxRunning = running
+		}
+		mutex.Unlock()
+
+		time.Sleep(time.Millisecond)
+
+		mutex.Lock()
+		running--
+		completed++
+		mutex.Unlock()
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("forEachLimited: %v", err)
+	}
+	if completed != total {
+		t.Fatalf("completed = %d, want %d", completed, total)
+	}
+	if maxRunning > 3 {
+		t.Fatalf("maxRunning = %d, want <= 3", maxRunning)
+	}
+}
+
+func TestForEachLimitedPropagatesFirstError(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 4}}
+	want := errors.New("boom")
+
+	err := service.forEachLimited(context.Background(), 100, func(_ context.Context, i int) error {
+		if i == 7 {
+			return want
+		}
+		return nil
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("err = %v, want %v", err, want)
+	}
+}
+
+func TestForEachLimitedReturnsContextErrorOnCancellation(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 2}}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var started atomic.Int32
+	err := service.forEachLimited(ctx, 1_000_000, func(ctx context.Context, _ int) error {
+		if started.Add(1) == 1 {
+			cancel()
+		}
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if started.Load() >= 1000 {
+		t.Fatalf("started = %d, cancellation was not respected", started.Load())
+	}
+}
+
+func TestForEachLimitedReturnsContextErrorOnDeadline(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 2}}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	err := service.forEachLimited(ctx, 1_000_000, func(ctx context.Context, _ int) error {
+		<-ctx.Done()
+		return ctx.Err()
+	})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want context.DeadlineExceeded", err)
+	}
+}
+
+func TestForEachLimitedDoesNotStartAfterCancel(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 4}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	var calls atomic.Int32
+	started := time.Now()
+	err := service.forEachLimited(ctx, 1_000_000, func(context.Context, int) error {
+		calls.Add(1)
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("fn calls = %d, want 0 for an already cancelled context", calls.Load())
+	}
+	if elapsed := time.Since(started); elapsed > time.Second {
+		t.Fatalf("elapsed = %v, want prompt return", elapsed)
+	}
+}
+
+func TestForEachLimitedDoesNotLeakGoroutines(t *testing.T) {
+	service := &Service{limits: Limits{Concurrency: 4}}
+	_ = service.forEachLimited(context.Background(), 8, func(context.Context, int) error { return nil })
+	baseline := runtime.NumGoroutine()
+
+	for range 50 {
+		if err := service.forEachLimited(context.Background(), 200, func(context.Context, int) error { return nil }); err != nil {
+			t.Fatalf("forEachLimited: %v", err)
+		}
+	}
+
+	const slack = 5
+	deadline := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() > baseline+slack && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if n := runtime.NumGoroutine(); n > baseline+slack {
+		t.Fatalf("goroutines = %d, baseline = %d: goroutine leak", n, baseline)
+	}
+}
 
 func newDocumentationService(t *testing.T, repoPath string) *Service {
 	t.Helper()

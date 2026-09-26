@@ -6,11 +6,16 @@ using SourceCraftRepoHealthChecker.infrastructure.Options;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.Security;
 
-public sealed class AiTokenProtector(IOptions<AiTokenEncryptionOptions> options) : IAiTokenProtector
+public sealed class AiTokenProtector(IOptions<AiTokenEncryptionOptions> options) : IAiTokenProtector, ISecretProtector
 {
     private const int NonceSize = 12;
     private const int TagSize = 16;
-    private readonly byte[] _key = Convert.FromBase64String(options.Value.Key);
+    private readonly byte[] _key = ResolveKey(options.Value.Key);
+
+    private static byte[] ResolveKey(string configuredKey) =>
+        string.IsNullOrWhiteSpace(configuredKey)
+            ? RandomNumberGenerator.GetBytes(32)
+            : Convert.FromBase64String(configuredKey);
 
     public string Protect(string token)
     {

@@ -6,10 +6,13 @@ public sealed record RepositoryAnalysis(
     string FullName,
     string Url,
     string Language,
+    bool IsPrivate,
+    Guid? OwnerUserId,
     int LikesCount,
     int Score,
     DateTimeOffset? AnalyzedAt,
     IReadOnlyCollection<RepositoryAnalysisCategory> Categories,
+    IReadOnlyCollection<RepositoryAnalysisMetric> Metrics,
     IReadOnlyCollection<RepositoryAnalysisCategory> Strengths,
     IReadOnlyCollection<RepositoryAnalysisCategory> Weaknesses,
     IReadOnlyCollection<RepositoryAnalysisRecommendation> Recommendations);

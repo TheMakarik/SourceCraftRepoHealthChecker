@@ -2,18 +2,20 @@ using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
+using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 
-namespace SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
+namespace SourceCraftRepoHealthChecker.infrastructure.Reports;
 
-public static class RepositoryReportPdfRenderer
+public sealed class QuestPdfReportRenderer : IReportPdfRenderer
 {
-    static RepositoryReportPdfRenderer()
+    static QuestPdfReportRenderer()
     {
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public static byte[] Render(RepositoryAnalysis analysis)
+    public byte[] Render(RepositoryAnalysis analysis)
     {
         var document = Document.Create(container =>
         {
@@ -58,6 +60,37 @@ public static class RepositoryReportPdfRenderer
                         }
                     });
 
+                    if (analysis.Metrics.Count > 0)
+                    {
+                        column.Item().Text("Метрики").SemiBold().FontSize(14);
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(3);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(2);
+                            });
+
+                            table.Cell().Text("Метрика").SemiBold();
+                            table.Cell().Text("Значение").SemiBold();
+                            table.Cell().Text("Балл").SemiBold();
+                            table.Cell().Text("Вес").SemiBold();
+                            table.Cell().Text("Статус").SemiBold();
+
+                            foreach (var metric in analysis.Metrics)
+                            {
+                                table.Cell().Text(metric.Code.ToString());
+                                table.Cell().Text(metric.RawValue.ToString("0.##", CultureInfo.InvariantCulture));
+                                table.Cell().Text(metric.NormalizedScore.ToString("0.##", CultureInfo.InvariantCulture));
+                                table.Cell().Text(metric.Weight.ToString("0.##", CultureInfo.InvariantCulture));
+                                table.Cell().Text(StatusText(metric.DataStatus));
+                            }
+                        });
+                    }
+
                     foreach (var highlight in new (string Title, IReadOnlyCollection<RepositoryAnalysisCategory> Categories)[]
                     {
                         ("Сильные стороны", analysis.Strengths),
@@ -87,6 +120,8 @@ public static class RepositoryReportPdfRenderer
                         {
                             column.Item().Text($"[{recommendation.Priority}] {recommendation.Title}").SemiBold();
                             column.Item().Text($"Проблема: {recommendation.Problem}");
+                            column.Item().Text($"Почему важно: {recommendation.WhyImportant}");
+                            column.Item().Text($"Подтверждающие факты: {recommendation.Evidence}");
                             column.Item().Text($"Действие: {recommendation.Action}");
                             column.Item().Text($"Ожидаемый эффект: {recommendation.ExpectedImpact}");
                             column.Item().Text($"Источник: {recommendation.SourceReference}");

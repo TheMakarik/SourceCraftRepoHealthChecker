@@ -77,7 +77,8 @@ public sealed class AuthenticateUserUseCaseTests : IDisposable
             MaxYaIdLength = 64,
             MaxLoginLength = 64,
             MaxDisplayNameLength = 128,
-            MaxEmailLength = 256
+            MaxEmailLength = 256,
+            MaxSourceCraftTokenLength = 4096
         }),
         new FixedTimeProvider(DateTimeOffset.UtcNow));
 }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
 using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
@@ -9,6 +10,7 @@ using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure.Authentication;
 using SourceCraftRepoHealthChecker.infrastructure.Options;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
+using SourceCraftRepoHealthChecker.infrastructure.Reports;
 using SourceCraftRepoHealthChecker.infrastructure.Scheduling;
 using SourceCraftRepoHealthChecker.infrastructure.Security;
 using SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
@@ -35,11 +37,25 @@ public static class DependencyInjection
             var sourceCraftOptions = provider.GetRequiredService<IOptions<SourceCraftServiceOptions>>().Value;
             client.BaseAddress = new Uri(sourceCraftOptions.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(sourceCraftOptions.TimeoutSeconds);
+        })
+        .AddStandardResilienceHandler(options =>
+        {
+            options.Retry.MaxRetryAttempts = 3;
+            options.Retry.Delay = TimeSpan.FromSeconds(1);
+            options.Retry.UseJitter = true;
+            options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+            options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+            options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(150);
         });
 
-        services.AddSingleton<IAiTokenProtector, AiTokenProtector>();
+        services.AddSingleton<AiTokenProtector>();
+        services.AddSingleton<IAiTokenProtector>(provider => provider.GetRequiredService<AiTokenProtector>());
+        services.AddSingleton<ISecretProtector>(provider => provider.GetRequiredService<AiTokenProtector>());
+        services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
         services.AddSingleton<ISourceCraftAccessTokenAccessor, SourceCraftAccessTokenAccessor>();
         services.AddHostedService<ScheduledAnalysisBackgroundService>();
+
+        services.AddSingleton<IGitRepositoryReader, LocalGitRepositoryReader>();
 
         services.Scan(scan => scan
             .FromAssemblyOf<SourceCraftHttpClient>()

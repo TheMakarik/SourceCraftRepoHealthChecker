@@ -193,7 +193,7 @@ public sealed class RecommendationGeneratorTests
     }
 
     [Fact]
-    public void Generate_WhenSecurityCategoryLow_BuildsProblemFromMetricFacts()
+    public void Generate_WhenSecurityCategoryLow_BuildsEvidenceFromMetricFacts()
     {
         // Arrange
         var metrics = new MetricScore[]
@@ -208,12 +208,13 @@ public sealed class RecommendationGeneratorTests
 
         // Assert
         var recommendation = actual.Single();
-        recommendation.Problem.Should().Contain("критических 2").And.Contain("высоких 3");
+        recommendation.Evidence.Should().Contain("критических 2").And.Contain("высоких 3");
+        recommendation.WhyImportant.Should().NotBeNullOrWhiteSpace();
         recommendation.SourceReference.Should().Contain(nameof(MetricCode.SecurityCriticalFindings));
     }
 
     [Fact]
-    public void Generate_WhenCodeHealthCategoryLow_BuildsProblemFromMetricFacts()
+    public void Generate_WhenCodeHealthCategoryLow_BuildsEvidenceFromMetricFacts()
     {
         // Arrange
         var metrics = new MetricScore[]
@@ -229,12 +230,12 @@ public sealed class RecommendationGeneratorTests
 
         // Assert
         var recommendation = actual.Single();
-        recommendation.Problem.Should().Contain("47").And.Contain("12").And.Contain("200");
+        recommendation.Evidence.Should().Contain("47").And.Contain("12").And.Contain("200");
         recommendation.SourceReference.Should().Contain(nameof(MetricCode.CodeHealthTodo));
     }
 
     [Fact]
-    public void Generate_WhenDocumentationCategoryLow_ListsMissingDocuments()
+    public void Generate_WhenDocumentationCategoryLow_ListsMissingDocumentsInEvidence()
     {
         // Arrange
         var metrics = new MetricScore[]
@@ -249,7 +250,7 @@ public sealed class RecommendationGeneratorTests
 
         // Assert
         var recommendation = actual.Single();
-        recommendation.Problem.Should().Contain("лицензия");
+        recommendation.Evidence.Should().Contain("лицензия");
         recommendation.SourceReference.Should().Contain(nameof(MetricCode.DocumentationLicense));
     }
 

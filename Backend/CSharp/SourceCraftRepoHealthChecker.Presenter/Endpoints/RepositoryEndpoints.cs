@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
+using SourceCraftRepoHealthChecker.Presenter.Authentication;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
 
@@ -20,10 +21,15 @@ public static class RepositoryEndpoints
             return Results.Ok(await useCase.GetAsync(query, cancellationToken));
         });
 
-        endpoints.MapGet("/api/repositories/{id}/analysis", async (string id, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/analysis", async (string id, HttpContext context, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
         {
             var analysis = await useCase.GetAsync(id, cancellationToken);
-            return analysis is null ? Results.NotFound() : Results.Ok(analysis);
+            if (analysis is null)
+                return Results.NotFound();
+            if (analysis.IsPrivate && analysis.OwnerUserId != context.GetCurrentUserId())
+                return Results.NotFound();
+
+            return Results.Ok(analysis);
         });
 
         return endpoints;

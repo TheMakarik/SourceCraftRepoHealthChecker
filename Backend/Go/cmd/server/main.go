@@ -59,7 +59,7 @@ func run(log *slog.Logger) error {
 		log.Warn("object storage init failed", "err", err)
 	}
 
-	git := gitrepo.Git{Binary: cfg.Git.Binary}
+	git := gitrepo.Git{Binary: cfg.Git.Binary, Timeout: cfg.Git.CommandTimeout}
 	snapshots := snapshot.NewStore(objects, git, snapshot.Options{
 		Prefix:       cfg.Storage.Prefix,
 		TTL:          cfg.Storage.SnapshotTTL,

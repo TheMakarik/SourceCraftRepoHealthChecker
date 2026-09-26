@@ -50,6 +50,28 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAsync_WhenRepositoryIsPrivate_ExcludesItFromLeaderboard()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().NotContain("private");
+        actual.TotalCount.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenLanguageFilterDiffersInCase_ReturnsMatchingRepositories()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery("c#", RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("a", "c");
+        actual.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
     public async Task GetAsync_WhenLanguageFilter_ReturnsOnlyMatchingRepositories()
     {
         // Act
@@ -104,7 +126,11 @@ public sealed class RepositoryLeaderboardTests : IDisposable
 
         var repositoryC = CreateRepository("c", "C#", likes: 50, activity: ActivityC);
 
-        context.Repositories.AddRange(repositoryA, repositoryB, repositoryC);
+        var privateRepository = CreateRepository("private", "C#", likes: 100, activity: ActivityB);
+        privateRepository.IsPrivate = true;
+        privateRepository.AnalysisRuns.Add(CreateRun(99, ActivityB.AddDays(1)));
+
+        context.Repositories.AddRange(repositoryA, repositoryB, repositoryC, privateRepository);
     }
 
     private static Repository CreateRepository(string sourceCraftId, string language, int likes, DateTimeOffset activity) => new()

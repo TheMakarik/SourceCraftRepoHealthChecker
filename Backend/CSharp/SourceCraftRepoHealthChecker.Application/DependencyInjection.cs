@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SourceCraftRepoHealthChecker.Application.Authentication.UseCases;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
+using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Services;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
@@ -17,6 +18,7 @@ public static class DependencyInjection
     {
         services.AddOptions<HealthCheckOptions>().Bind(configuration.GetSection(nameof(HealthCheckOptions)));
         services.AddOptions<SchedulingOptions>().Bind(configuration.GetSection(nameof(SchedulingOptions)));
+        services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
         services.AddSingleton<ICategoryScoreCalculator, CategoryScoreCalculator>();
@@ -29,6 +31,9 @@ public static class DependencyInjection
         services.AddScoped<IGetRepositoryLeaderboardUseCase, GetRepositoryLeaderboardUseCase>();
         services.AddScoped<IRefreshRepositoriesUseCase, RefreshRepositoriesUseCase>();
         services.AddScoped<IAuthenticateUserUseCase, AuthenticateUserUseCase>();
+        services.AddScoped<IGetCurrentUserUseCase, GetCurrentUserUseCase>();
+        services.AddScoped<IStoreSourceCraftTokenUseCase, StoreSourceCraftTokenUseCase>();
+        services.AddScoped<IResolveSourceCraftTokenUseCase, ResolveSourceCraftTokenUseCase>();
         services.AddScoped<IGetUserRepositoriesUseCase, GetUserRepositoriesUseCase>();
         services.AddScoped<IScheduledAnalysisRunner, ScheduledAnalysisRunner>();
 

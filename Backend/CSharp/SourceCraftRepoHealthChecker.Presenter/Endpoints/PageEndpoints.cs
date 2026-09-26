@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
+using SourceCraftRepoHealthChecker.Presenter.Authentication;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
 
@@ -18,10 +19,15 @@ public static class PageEndpoints
             return Results.Content(RatingPageRenderer.Render(result, language, RepositoryEndpoints.SortKey(query.Sort)), "text/html; charset=utf-8");
         });
 
-        endpoints.MapGet("/repositories/{id}", async (string id, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/repositories/{id}", async (string id, HttpContext context, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
         {
             var analysis = await useCase.GetAsync(id, cancellationToken);
-            return analysis is null ? Results.NotFound() : Results.Content(AnalysisPageRenderer.Render(analysis), "text/html; charset=utf-8");
+            if (analysis is null)
+                return Results.NotFound();
+            if (analysis.IsPrivate && analysis.OwnerUserId != context.GetCurrentUserId())
+                return Results.NotFound();
+
+            return Results.Content(AnalysisPageRenderer.Render(analysis), "text/html; charset=utf-8");
         });
 
         return endpoints;

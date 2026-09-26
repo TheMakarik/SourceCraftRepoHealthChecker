@@ -1,4 +1,4 @@
-namespace SourceCraftRepoHealthChecker.Application.HealthCheck.Models;
+namespace SourceCraftRepoHealthChecker.Domain.Enums;
 
 public enum MetricCode
 {

@@ -14,9 +14,12 @@ public sealed class GetRepositoryLeaderboardUseCase(IRepoHealthCheckerDbContext 
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = Math.Clamp(query.PageSize < 1 ? 20 : query.PageSize, 1, MaximumPageSize);
 
-        var repositories = dbContext.Repositories.AsQueryable();
+        var repositories = dbContext.Repositories.Where(x => !x.IsPrivate);
         if (!string.IsNullOrWhiteSpace(query.Language))
-            repositories = repositories.Where(x => x.Language == query.Language);
+        {
+            var language = query.Language.ToLower();
+            repositories = repositories.Where(x => x.Language.ToLower() == language);
+        }
 
         var projected = repositories.Select(x => new
         {

@@ -28,6 +28,21 @@ public static class RepositoryReportMarkdownRenderer
             builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {category.Category} | {category.Score} | {StatusText(category.DataStatus)} |"));
         builder.AppendLine();
 
+        builder.AppendLine("## Метрики");
+        builder.AppendLine();
+        if (analysis.Metrics.Count == 0)
+        {
+            builder.AppendLine("Нет данных.");
+        }
+        else
+        {
+            builder.AppendLine("| Метрика | Значение | Балл | Вес | Статус |");
+            builder.AppendLine("|---|---|---|---|---|");
+            foreach (var metric in analysis.Metrics)
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {metric.Code} | {metric.RawValue:0.##} | {metric.NormalizedScore:0.##} | {metric.Weight:0.##} | {StatusText(metric.DataStatus)} |"));
+        }
+        builder.AppendLine();
+
         AppendHighlights(builder, "Сильные стороны", analysis.Strengths);
         AppendHighlights(builder, "Слабые стороны", analysis.Weaknesses);
 
@@ -44,6 +59,8 @@ public static class RepositoryReportMarkdownRenderer
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"### [{recommendation.Priority}] {recommendation.Title}"));
                 builder.AppendLine();
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Проблема: {recommendation.Problem}"));
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Почему важно: {recommendation.WhyImportant}"));
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Подтверждающие факты: {recommendation.Evidence}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Действие: {recommendation.Action}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Ожидаемый эффект: {recommendation.ExpectedImpact}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Источник: {recommendation.SourceReference}"));

@@ -10,6 +10,7 @@ using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 using SourceCraftRepoHealthChecker.Domain.Entities;
 using SourceCraftRepoHealthChecker.Domain.Enums;
+using DomainMetricScore = SourceCraftRepoHealthChecker.Domain.Entities.MetricScore;
 
 namespace SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 
@@ -32,7 +33,7 @@ public sealed class AnalyzeRepositoryUseCase(
     {
         var repositoryResult = await catalog.GetRepositoryAsync(request.RepositoryId, cancellationToken);
         if (repositoryResult.Status != DataStatus.Available || repositoryResult.Data is null)
-            throw new SourceCraftOperationException($"Repository '{request.RepositoryId}' is not available: {repositoryResult.Status}");
+            throw new RepositoryNotFoundException($"Repository '{request.RepositoryId}' is not available: {repositoryResult.Status}");
 
         logger.LogInformation("Analyzing repository {RepositoryId}", request.RepositoryId);
 
@@ -67,7 +68,7 @@ public sealed class AnalyzeRepositoryUseCase(
         var healthCheck = await healthCheckEngine.CheckAsync(facts, cancellationToken);
 
         var now = timeProvider.GetUtcNow();
-        var repository = await UpsertRepositoryAsync(repositoryResult.Data, now, cancellationToken);
+        var repository = await UpsertRepositoryAsync(repositoryResult.Data, request.UserId, now, cancellationToken);
         var analysisRun = CreateAnalysisRun(request, repository.Id, healthCheck, now);
 
         dbContext.AnalysisRuns.Add(analysisRun);
@@ -103,6 +104,20 @@ public sealed class AnalyzeRepositoryUseCase(
                 Score = category.Score,
                 DataStatus = category.DataStatus
             });
+
+            foreach (var metric in category.Metrics)
+            {
+                analysisRun.Metrics.Add(new DomainMetricScore
+                {
+                    Id = Guid.NewGuid(),
+                    AnalysisRunId = analysisRun.Id,
+                    Code = metric.Code,
+                    RawValue = metric.RawValue,
+                    NormalizedScore = metric.NormalizedScore,
+                    Weight = metric.Weight,
+                    DataStatus = metric.DataStatus
+                });
+            }
         }
 
         foreach (var recommendation in healthCheck.Recommendations)
@@ -114,6 +129,8 @@ public sealed class AnalyzeRepositoryUseCase(
                 Priority = recommendation.Priority,
                 Title = Truncate(recommendation.Problem, options.MaxTitleLength),
                 Problem = Truncate(recommendation.Problem, options.MaxProblemLength),
+                WhyImportant = Truncate(recommendation.WhyImportant, options.MaxWhyImportantLength),
+                Evidence = Truncate(recommendation.Evidence, options.MaxEvidenceLength),
                 Action = Truncate(recommendation.Action, options.MaxActionLength),
                 ExpectedImpact = Truncate(recommendation.ExpectedImpact, options.MaxExpectedImpactLength),
                 SourceReference = Truncate(recommendation.SourceReference, options.MaxSourceReferenceLength)
@@ -123,7 +140,7 @@ public sealed class AnalyzeRepositoryUseCase(
         return analysisRun;
     }
 
-    private async Task<Repository> UpsertRepositoryAsync(SourceCraftRepository source, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<Repository> UpsertRepositoryAsync(SourceCraftRepository source, Guid? ownerId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var options = repositoryOptions.Value;
         var repository = await dbContext.Repositories.FirstOrDefaultAsync(x => x.SourceCraftId == source.Id, cancellationToken);
@@ -138,6 +155,8 @@ public sealed class AnalyzeRepositoryUseCase(
         repository.Url = Truncate(source.Url, options.MaxUrlLength);
         repository.Language = Truncate(source.Language, options.MaxLanguageLength);
         repository.IsPrivate = source.IsPrivate;
+        if (ownerId is not null)
+            repository.OwnerId = ownerId;
         repository.LikesCount = source.LikesCount;
         repository.LastActivityAt = source.LastActivityAt;
         repository.AnalyzedAt = now;

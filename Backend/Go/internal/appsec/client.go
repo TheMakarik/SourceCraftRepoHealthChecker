@@ -98,6 +98,7 @@ func (c *Client) DefectGroups(ctx context.Context, token, gitRepo string, pageSi
 		all   []DefectGroupDto
 		next  = pageToken
 		total int
+		seen  = map[string]struct{}{}
 	)
 	for page := 0; page < maxPages; page++ {
 		q := url.Values{}
@@ -111,16 +112,28 @@ func (c *Client) DefectGroups(ctx context.Context, token, gitRepo string, pageSi
 		if err := c.get(ctx, token, "/v1/defect-groups", q, &resp); err != nil {
 			return Page{}, err
 		}
-		if resp.NextPageToken == "" {
+		nextPageToken := resp.NextPageToken
+		// Пустой токен — конец списка: страницу добавляем.
+		if nextPageToken == "" {
+			if resp.TotalSize > 0 {
+				total = resp.TotalSize
+			}
 			all = append(all, resp.Data...)
-			return Page{Items: all, TotalSize: resp.TotalSize}, nil
+			return Page{Items: all, TotalSize: total}, nil
 		}
-		if resp.NextPageToken == next {
-			return Page{Items: all, NextPageToken: resp.NextPageToken, TotalSize: total}, nil
+		// Сервер вернул уже использованный токен — цикл; повторную страницу не добавляем.
+		if nextPageToken == next {
+			return Page{Items: all, NextPageToken: nextPageToken, TotalSize: total}, nil
+		}
+		if _, ok := seen[nextPageToken]; ok {
+			return Page{Items: all, NextPageToken: nextPageToken, TotalSize: total}, nil
+		}
+		if resp.TotalSize > 0 {
+			total = resp.TotalSize
 		}
 		all = append(all, resp.Data...)
-		total = resp.TotalSize
-		next = resp.NextPageToken
+		seen[nextPageToken] = struct{}{}
+		next = nextPageToken
 	}
 	return Page{Items: all, NextPageToken: next, TotalSize: total}, nil
 }
