@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SourceCraftRepoHealthChecker.Application.Ai.Options;
+using SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 using SourceCraftRepoHealthChecker.Application.Authentication.UseCases;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
 using SourceCraftRepoHealthChecker.Application.Options;
@@ -19,6 +21,7 @@ public static class DependencyInjection
         services.AddOptions<HealthCheckOptions>().Bind(configuration.GetSection(nameof(HealthCheckOptions)));
         services.AddOptions<SchedulingOptions>().Bind(configuration.GetSection(nameof(SchedulingOptions)));
         services.AddOptions<ScalingOptions>().Bind(configuration.GetSection(nameof(ScalingOptions)));
+        services.AddOptions<AiOptions>().Bind(configuration.GetSection(nameof(AiOptions)));
         services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
@@ -38,6 +41,8 @@ public static class DependencyInjection
         services.AddScoped<IGetUserRepositoriesUseCase, GetUserRepositoriesUseCase>();
         services.AddScoped<IScheduledAnalysisRunner, ScheduledAnalysisRunner>();
         services.AddSingleton<IAnalysisQueue, ChannelAnalysisQueue>();
+        services.AddScoped<IAiSummaryUseCase, AiSummaryUseCase>();
+        services.AddScoped<IStoreAiSettingsUseCase, StoreAiSettingsUseCase>();
 
         return services;
     }

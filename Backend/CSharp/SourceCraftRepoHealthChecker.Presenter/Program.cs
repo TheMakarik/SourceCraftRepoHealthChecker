@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -21,6 +22,7 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddDataProtection();
 builder.Services.AddSingleton<UserTicketProtector>();
 builder.Services.AddProblemDetails();
@@ -42,6 +44,7 @@ app.MapHealthEndpoints();
 app.MapRepositoryEndpoints();
 app.MapReportEndpoints();
 app.MapAuthenticationEndpoints();
+app.MapAiEndpoints();
 app.MapPageEndpoints();
 
 app.Run();
