@@ -57,11 +57,16 @@
 │   │   ├── SourceCraftRepoHealthChecker.infrastructure/   # Реализации: БД, внешние API
 │   │   └── SourceCraftRepoHealthChecker.Presenter/        # Точка входа: веб-API + DI (composition root)
 │   └── Go/                                                # Go-бэкенд
-├── Tests/                                                 # Тесты
-├── Skills/                                                # Скиллы opencode
-├── check-file-count.ps1                                   # Число файлов (лимит 10 000)
-├── check-repo-size.ps1                                    # Размер репозитория (лимит 500 МБ)
-├── check-repo-health.ps1                                  # Обе проверки вместе
+├── Tests/                                                 # Модульные и интеграционные тесты
+├── Skills/                                                # Скиллы opencode/Claude
+├── Docs/                                                  # Документация (API.md)
+├── Scripts/                                               # PowerShell-скрипты сборки/тестов для CI
+├── .github/workflows/                                     # GitHub Actions
+├── .sourcecraft/ci.yaml                                   # SourceCraft CI
+├── .claude/skills                                         # Симлинк на Skills/ (для Claude Code)
+├── AGENTS.md
+├── CLAUDE.md                                              # Redirect на AGENTS.md
+├── FEATURES.md                                            # Статус реализации по ТЗ
 ├── opencode.json
 └── SourceCraftRepoHealthChecker.slnx
 ```
@@ -100,6 +105,7 @@
 
 ## Код-стайл и скиллы
 
-- Весь C# пишется по скиллу `Skills/csharp-code-style`.
-- Коллекции — `Skills/csharp-collections`, настройки — `Skills/csharp-options`, тесты — `Skills/csharp-testing`.
-- Все C#-скиллы именуются с префиксом `csharp-`.
+- Скиллы лежат в `Skills/`, каждый — `<имя>/SKILL.md` с YAML-фронтматтером (`name`, `description`). Нейминг — с префиксом области: C#-скиллы `csharp-`, фронтенд-скиллы `frontend-`.
+- Подключение: opencode — через `opencode.json` (`skills.paths: ["Skills"]`); Claude Code — через симлинк `.claude/skills → Skills/`. Общий редирект — `CLAUDE.md → @AGENTS.md`.
+- **C#**: `Skills/csharp-code-style` (обязателен весь C#), `Skills/csharp-collections` (коллекции/LINQ), `Skills/csharp-efcore` (сущности, `DbContext`, миграции), `Skills/csharp-options` (`IOptions<T>`, `appsettings.json`), `Skills/csharp-testing` (xUnit/FakeItEasy/FluentAssertions).
+- **Фронтенд**: `Skills/frontend-start` (порядок старта: ТЗ/API/дизайн → стек → MCP → компонентная архитектура), `Skills/frontend-stack` (TypeScript, современный CSS, адаптивность, библиотеки).
