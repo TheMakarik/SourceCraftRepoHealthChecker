@@ -142,14 +142,23 @@ func toSecurityFinding(f appsec.DefectGroupDto) contract.SecurityFinding {
 		title = f.RuleID
 	}
 	return contract.SecurityFinding{
-		ID:       id,
-		Kind:     toFindingKind(f.EngineType, f.Engine),
-		Severity: toFindingSeverity(f.Severity),
-		Status:   toFindingStatus(f.Status),
-		Title:    title,
-		Package:  optionalString(f.RuleID),
-		FilePath: optionalString(f.FileName),
+		ID:        id,
+		Kind:      toFindingKind(f.EngineType, f.Engine),
+		Severity:  toFindingSeverity(f.Severity),
+		Status:    toFindingStatus(f.Status),
+		Title:     title,
+		Package:   optionalString(f.RuleID),
+		FilePath:  optionalString(f.FileName),
+		CvssScore: optionalFloat64(f.CvssScore),
 	}
+}
+
+func optionalFloat64(value float64) *float64 {
+	if value == 0 {
+		return nil
+	}
+
+	return &value
 }
 
 func toFindingKind(engineType int32, engine string) contract.SecurityFindingKind {

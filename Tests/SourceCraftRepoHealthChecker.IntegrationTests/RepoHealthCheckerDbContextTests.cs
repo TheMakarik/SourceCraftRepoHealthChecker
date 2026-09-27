@@ -170,6 +170,7 @@ public sealed class RepoHealthCheckerDbContextTests : IDisposable
                 MaxActionLength = 2048,
                 MaxExpectedImpactLength = 1024,
                 MaxSourceReferenceLength = 512
-            }));
+            }),
+            Options.Create(new SecurityFindingOptions { MaxTitleLength = 512, MaxPackageLength = 256, MaxFilePathLength = 1024 }));
     }
 }

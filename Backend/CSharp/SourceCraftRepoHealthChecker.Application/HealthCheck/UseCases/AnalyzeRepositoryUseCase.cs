@@ -27,6 +27,7 @@ public sealed class AnalyzeRepositoryUseCase(
     IAnomalyDetector anomalyDetector,
     IOptions<RepositoryOptions> repositoryOptions,
     IOptions<RecommendationOptions> recommendationOptions,
+    IOptions<SecurityFindingOptions> securityFindingOptions,
     TimeProvider timeProvider,
     ILogger<AnalyzeRepositoryUseCase> logger) : IAnalyzeRepositoryUseCase
 {
@@ -71,7 +72,7 @@ public sealed class AnalyzeRepositoryUseCase(
 
         var now = timeProvider.GetUtcNow();
         var repository = await UpsertRepositoryAsync(repositoryResult.Data, request.UserId, now, cancellationToken);
-        var analysisRun = CreateAnalysisRun(request, repository.Id, healthCheck, anomalies, now);
+        var analysisRun = CreateAnalysisRun(request, repository.Id, healthCheck, anomalies, facts.Findings, now);
 
         dbContext.AnalysisRuns.Add(analysisRun);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -81,7 +82,7 @@ public sealed class AnalyzeRepositoryUseCase(
         return new AnalyzeRepositoryResult(healthCheck, analysisRun.Id);
     }
 
-    private AnalysisRun CreateAnalysisRun(AnalyzeRepositoryRequest request, Guid repositoryId, HealthCheckResult healthCheck, IReadOnlyCollection<ActivityAnomaly> anomalies, DateTimeOffset now)
+    private AnalysisRun CreateAnalysisRun(AnalyzeRepositoryRequest request, Guid repositoryId, HealthCheckResult healthCheck, IReadOnlyCollection<ActivityAnomaly> anomalies, IReadOnlyCollection<SecurityFinding> findings, DateTimeOffset now)
     {
         var options = recommendationOptions.Value;
         var analysisRun = new AnalysisRun
@@ -153,6 +154,23 @@ public sealed class AnalyzeRepositoryUseCase(
                 Action = Truncate($"Проверьте активность автора {anomaly.AuthorLogin}.", options.MaxActionLength),
                 ExpectedImpact = Truncate("Снижает риск искусственного завышения активности.", options.MaxExpectedImpactLength),
                 SourceReference = Truncate("Activity:anomaly", options.MaxSourceReferenceLength)
+            });
+        }
+
+        var findingOptions = securityFindingOptions.Value;
+        foreach (var finding in findings)
+        {
+            analysisRun.Findings.Add(new AnalysisFinding
+            {
+                Id = Guid.NewGuid(),
+                AnalysisRunId = analysisRun.Id,
+                Kind = finding.Kind,
+                Severity = finding.Severity,
+                Status = finding.Status,
+                Title = Truncate(finding.Title, findingOptions.MaxTitleLength),
+                Package = finding.Package is null ? null : Truncate(finding.Package, findingOptions.MaxPackageLength),
+                FilePath = finding.FilePath is null ? null : Truncate(finding.FilePath, findingOptions.MaxFilePathLength),
+                CvssScore = finding.CvssScore
             });
         }
 

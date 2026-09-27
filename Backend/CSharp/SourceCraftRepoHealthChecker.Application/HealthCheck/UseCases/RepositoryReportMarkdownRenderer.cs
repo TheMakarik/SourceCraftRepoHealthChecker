@@ -46,6 +46,21 @@ public static class RepositoryReportMarkdownRenderer
         AppendHighlights(builder, "Сильные стороны", analysis.Strengths);
         AppendHighlights(builder, "Слабые стороны", analysis.Weaknesses);
 
+        builder.AppendLine("## Находки безопасности");
+        builder.AppendLine();
+        if (analysis.Findings.Count == 0)
+        {
+            builder.AppendLine("Находок нет.");
+        }
+        else
+        {
+            builder.AppendLine("| Тип | Правило | Критичность | CVSS | Статус | Файл/пакет |");
+            builder.AppendLine("|---|---|---|---|---|---|");
+            foreach (var finding in analysis.Findings)
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {finding.Kind} | {finding.Title} | {finding.Severity} | {finding.CvssScore?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—"} | {finding.Status} | {finding.FilePath ?? finding.Package ?? "—"} |"));
+        }
+        builder.AppendLine();
+
         builder.AppendLine("## Рекомендации");
         builder.AppendLine();
         if (analysis.Recommendations.Count == 0)

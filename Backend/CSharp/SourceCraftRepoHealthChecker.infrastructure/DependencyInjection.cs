@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddOptions<UserAiOptions>().Bind(configuration.GetSection(nameof(UserAiOptions)));
         services.AddOptions<RepositoryOptions>().Bind(configuration.GetSection(nameof(RepositoryOptions)));
         services.AddOptions<RecommendationOptions>().Bind(configuration.GetSection(nameof(RecommendationOptions)));
+        services.AddOptions<SecurityFindingOptions>().Bind(configuration.GetSection(nameof(SecurityFindingOptions)));
         services.AddOptions<AiTokenEncryptionOptions>().Bind(configuration.GetSection(nameof(AiTokenEncryptionOptions)));
         services.AddOptions<DataProtectionStorageOptions>().Bind(configuration.GetSection(nameof(DataProtectionStorageOptions)));
         services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(nameof(DatabaseOptions)));

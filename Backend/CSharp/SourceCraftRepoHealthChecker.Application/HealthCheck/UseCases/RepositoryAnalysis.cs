@@ -15,4 +15,5 @@ public sealed record RepositoryAnalysis(
     IReadOnlyCollection<RepositoryAnalysisMetric> Metrics,
     IReadOnlyCollection<RepositoryAnalysisCategory> Strengths,
     IReadOnlyCollection<RepositoryAnalysisCategory> Weaknesses,
-    IReadOnlyCollection<RepositoryAnalysisRecommendation> Recommendations);
+    IReadOnlyCollection<RepositoryAnalysisRecommendation> Recommendations,
+    IReadOnlyCollection<RepositoryAnalysisFinding> Findings);

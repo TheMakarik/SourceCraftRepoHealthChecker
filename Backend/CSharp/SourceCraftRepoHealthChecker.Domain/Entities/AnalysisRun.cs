@@ -16,5 +16,6 @@ public sealed class AnalysisRun
 
     public ICollection<CategoryScore> CategoryScores { get; set; } = [];
     public ICollection<MetricScore> Metrics { get; set; } = [];
+    public ICollection<AnalysisFinding> Findings { get; set; } = [];
     public ICollection<Recommendation> Recommendations { get; set; } = [];
 }

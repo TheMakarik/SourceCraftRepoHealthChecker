@@ -191,13 +191,14 @@ const (
 
 // SecurityFinding соответствует Application.SourceCraft.Models.SecurityFinding.
 type SecurityFinding struct {
-	ID       string                `json:"id"`
-	Kind     SecurityFindingKind   `json:"kind"`
-	Severity SecuritySeverity      `json:"severity"`
-	Status   SecurityFindingStatus `json:"status"`
-	Title    string                `json:"title"`
-	Package  *string               `json:"package"`
-	FilePath *string               `json:"filePath"`
+	ID        string                `json:"id"`
+	Kind      SecurityFindingKind   `json:"kind"`
+	Severity  SecuritySeverity      `json:"severity"`
+	Status    SecurityFindingStatus `json:"status"`
+	Title     string                `json:"title"`
+	Package   *string               `json:"package"`
+	FilePath  *string               `json:"filePath"`
+	CvssScore *float64              `json:"cvssScore"`
 }
 
 // FormatTimeSpan приводит длительность к формату TimeSpan "c" ([d.]hh:mm:ss[.fffffff]),

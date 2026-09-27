@@ -56,6 +56,9 @@ public sealed class RepositoryAnalysisTests : IDisposable
         actual.Weaknesses.Select(item => item.Category).Should().Contain(ScoreCategory.CodeHealth);
         actual.Recommendations.Should().HaveCount(2);
         actual.Recommendations.First().Priority.Should().Be(RecommendationPriority.Critical);
+        actual.Findings.Should().ContainSingle();
+        actual.Findings.Single().Title.Should().Be("CVE-2026-0001");
+        actual.Findings.Single().CvssScore.Should().Be(9.8);
     }
 
     [Fact]
@@ -83,6 +86,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
         content.Should().Contain("CodeHealth");
         content.Should().Contain("Почему важно");
         content.Should().Contain("Устраните уязвимости");
+        content.Should().Contain("CVE-2026-0001");
     }
 
     [Fact]
@@ -203,6 +207,18 @@ public sealed class RepositoryAnalysisTests : IDisposable
             Action = "Устраните уязвимости",
             ExpectedImpact = "+20 баллов",
             SourceReference = "Security"
+        });
+
+        run.Findings.Add(new AnalysisFinding
+        {
+            Id = Guid.NewGuid(),
+            Kind = SecurityFindingKind.Sca,
+            Severity = SecuritySeverity.Critical,
+            Status = SecurityFindingStatus.Open,
+            Title = "CVE-2026-0001",
+            Package = "example-package",
+            FilePath = null,
+            CvssScore = 9.8
         });
 
         repository.AnalysisRuns.Add(run);

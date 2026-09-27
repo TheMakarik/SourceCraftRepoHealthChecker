@@ -1,3 +1,5 @@
+using SourceCraftRepoHealthChecker.Domain.Enums;
+
 namespace SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 
 public sealed record SecurityFinding(
@@ -7,4 +9,5 @@ public sealed record SecurityFinding(
     SecurityFindingStatus Status,
     string Title,
     string? Package,
-    string? FilePath);
+    string? FilePath,
+    double? CvssScore = null);

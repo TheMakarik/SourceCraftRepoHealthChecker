@@ -12,13 +12,15 @@ public sealed class RepoHealthCheckerDbContext(
     IOptions<UserOptions> userOptions,
     IOptions<UserAiOptions> userAiOptions,
     IOptions<RepositoryOptions> repositoryOptions,
-    IOptions<RecommendationOptions> recommendationOptions)
+    IOptions<RecommendationOptions> recommendationOptions,
+    IOptions<SecurityFindingOptions> securityFindingOptions)
     : DbContext(options), IRepoHealthCheckerDbContext
 {
     private readonly UserOptions _userOptions = userOptions.Value;
     private readonly UserAiOptions _userAiOptions = userAiOptions.Value;
     private readonly RepositoryOptions _repositoryOptions = repositoryOptions.Value;
     private readonly RecommendationOptions _recommendationOptions = recommendationOptions.Value;
+    private readonly SecurityFindingOptions _securityFindingOptions = securityFindingOptions.Value;
 
     public DbSet<User> Users => Set<User>();
 
@@ -31,6 +33,8 @@ public sealed class RepoHealthCheckerDbContext(
     public DbSet<CategoryScore> CategoryScores => Set<CategoryScore>();
 
     public DbSet<MetricScore> MetricScores => Set<MetricScore>();
+
+    public DbSet<AnalysisFinding> AnalysisFindings => Set<AnalysisFinding>();
 
     public DbSet<Recommendation> Recommendations => Set<Recommendation>();
 
@@ -91,6 +95,15 @@ public sealed class RepoHealthCheckerDbContext(
 
         #region MetricScore
         modelBuilder.Entity<MetricScore>();
+        #endregion
+
+        #region AnalysisFinding
+        modelBuilder.Entity<AnalysisFinding>(entity =>
+        {
+            entity.Property(x => x.Title).HasMaxLength(_securityFindingOptions.MaxTitleLength);
+            entity.Property(x => x.Package).HasMaxLength(_securityFindingOptions.MaxPackageLength);
+            entity.Property(x => x.FilePath).HasMaxLength(_securityFindingOptions.MaxFilePathLength);
+        });
         #endregion
 
         #region Recommendation

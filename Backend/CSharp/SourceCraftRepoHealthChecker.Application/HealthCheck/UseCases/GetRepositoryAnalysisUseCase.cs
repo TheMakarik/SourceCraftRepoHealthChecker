@@ -19,6 +19,8 @@ public sealed class GetRepositoryAnalysisUseCase(
             .Include(item => item.AnalysisRuns)
                 .ThenInclude(run => run.Metrics)
             .Include(item => item.AnalysisRuns)
+                .ThenInclude(run => run.Findings)
+            .Include(item => item.AnalysisRuns)
                 .ThenInclude(run => run.Recommendations)
             .FirstOrDefaultAsync(item => item.SourceCraftId == sourceCraftId, cancellationToken);
 
@@ -62,6 +64,18 @@ public sealed class GetRepositoryAnalysisUseCase(
                 item.SourceReference ?? string.Empty))
             .ToArray();
 
+        var findings = run.Findings
+            .OrderByDescending(item => item.Severity)
+            .Select(item => new RepositoryAnalysisFinding(
+                item.Kind.ToString(),
+                item.Severity.ToString(),
+                item.Status.ToString(),
+                item.Title,
+                item.Package,
+                item.FilePath,
+                item.CvssScore))
+            .ToArray();
+
         return new RepositoryAnalysis(
             repository.SourceCraftId,
             repository.Name,
@@ -77,6 +91,7 @@ public sealed class GetRepositoryAnalysisUseCase(
             metrics,
             strengths,
             weaknesses,
-            recommendations);
+            recommendations,
+            findings);
     }
 }

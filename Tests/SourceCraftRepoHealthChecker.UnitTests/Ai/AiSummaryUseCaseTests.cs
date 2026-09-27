@@ -62,6 +62,7 @@ public sealed class AiSummaryUseCaseTests
             [],
             [],
             [],
+            [],
             []);
 
     private static IRepoHealthCheckerDbContext CreateDbContext(Guid? userId)

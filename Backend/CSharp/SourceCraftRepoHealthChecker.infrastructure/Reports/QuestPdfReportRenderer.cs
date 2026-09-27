@@ -109,6 +109,17 @@ public sealed class QuestPdfReportRenderer : IReportPdfRenderer
                         }
                     }
 
+                    column.Item().Text("Находки безопасности").SemiBold().FontSize(14);
+                    if (analysis.Findings.Count == 0)
+                    {
+                        column.Item().Text("Находок нет.");
+                    }
+                    else
+                    {
+                        foreach (var finding in analysis.Findings)
+                            column.Item().Text($"[{finding.Severity}] {finding.Kind}: {finding.Title} (CVSS {finding.CvssScore?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—"}) — {finding.Status}, {finding.FilePath ?? finding.Package ?? "—"}");
+                    }
+
                     column.Item().Text("Рекомендации").SemiBold().FontSize(14);
                     if (analysis.Recommendations.Count == 0)
                     {

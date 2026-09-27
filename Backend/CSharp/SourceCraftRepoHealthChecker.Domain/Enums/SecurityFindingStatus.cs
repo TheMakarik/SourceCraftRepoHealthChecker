@@ -1,4 +1,4 @@
-namespace SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
+namespace SourceCraftRepoHealthChecker.Domain.Enums;
 
 public enum SecurityFindingStatus
 {

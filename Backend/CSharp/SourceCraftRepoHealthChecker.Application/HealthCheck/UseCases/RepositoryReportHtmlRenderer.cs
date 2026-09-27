@@ -44,6 +44,19 @@ public static class RepositoryReportHtmlRenderer
         AppendList(builder, "Сильные стороны", analysis.Strengths);
         AppendList(builder, "Слабые стороны", analysis.Weaknesses);
 
+        builder.Append("<h2>Находки безопасности</h2>");
+        if (analysis.Findings.Count == 0)
+        {
+            builder.Append("<p>Находок нет.</p>");
+        }
+        else
+        {
+            builder.Append("<table><thead><tr><th>Тип</th><th>Правило</th><th>Критичность</th><th>CVSS</th><th>Статус</th><th>Файл/пакет</th></tr></thead><tbody>");
+            foreach (var finding in analysis.Findings)
+                builder.Append($"<tr><td>{WebUtility.HtmlEncode(finding.Kind)}</td><td>{WebUtility.HtmlEncode(finding.Title)}</td><td>{WebUtility.HtmlEncode(finding.Severity)}</td><td>{finding.CvssScore?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) ?? "—"}</td><td>{WebUtility.HtmlEncode(finding.Status)}</td><td>{WebUtility.HtmlEncode(finding.FilePath ?? finding.Package ?? "—")}</td></tr>");
+            builder.Append("</tbody></table>");
+        }
+
         builder.Append("<h2>Рекомендации</h2>");
         if (analysis.Recommendations.Count == 0)
         {
