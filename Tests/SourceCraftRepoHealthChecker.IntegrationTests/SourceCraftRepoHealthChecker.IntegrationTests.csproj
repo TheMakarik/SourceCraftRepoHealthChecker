@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="7.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -23,6 +24,7 @@
     <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
     <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Domain\SourceCraftRepoHealthChecker.Domain.csproj" />
     <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.infrastructure\SourceCraftRepoHealthChecker.infrastructure.csproj" />
+    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Presenter\SourceCraftRepoHealthChecker.Presenter.csproj" />
   </ItemGroup>
 
   <ItemGroup>

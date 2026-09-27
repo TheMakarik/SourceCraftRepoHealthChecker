@@ -61,6 +61,7 @@
 ├── Skills/                                                # Скиллы opencode/Claude
 ├── Docs/                                                  # Документация (API.md)
 ├── Scripts/                                               # PowerShell-скрипты сборки/тестов для CI
+├── Dev/                                                   # Скрипты установки зависимостей для разработки (setup-deps.sh/.bat)
 ├── .github/workflows/                                     # GitHub Actions
 ├── .sourcecraft/ci.yaml                                   # SourceCraft CI
 ├── .claude/skills                                         # Симлинк на Skills/ (для Claude Code)
