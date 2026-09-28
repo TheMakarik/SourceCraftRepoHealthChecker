@@ -29,7 +29,7 @@ public sealed class RepoHealthCheckerDbContextFactory : IDesignTimeDbContextFact
 
         return new RepoHealthCheckerDbContext(
             options,
-            global::Microsoft.Extensions.Options.Options.Create(new UserOptions { MaxYaIdLength = 64, MaxLoginLength = 64, MaxDisplayNameLength = 128, MaxEmailLength = 256, MaxSourceCraftTokenLength = 4096 }),
+            global::Microsoft.Extensions.Options.Options.Create(new UserOptions { MaxYaIdLength = 64, MaxLoginLength = 64, MaxDisplayNameLength = 128, MaxEmailLength = 256, MaxAvatarUrlLength = 512, MaxSourceCraftTokenLength = 4096 }),
             global::Microsoft.Extensions.Options.Options.Create(new UserAiOptions { MaxBaseUrlLength = 512, MaxModelLength = 128, MaxTokenLength = 4096 }),
             global::Microsoft.Extensions.Options.Options.Create(new RepositoryOptions { MaxSourceCraftIdLength = 128, MaxNameLength = 256, MaxFullNameLength = 512, MaxUrlLength = 512, MaxLanguageLength = 64 }),
             global::Microsoft.Extensions.Options.Options.Create(new RecommendationOptions { MaxTitleLength = 256, MaxProblemLength = 2048, MaxWhyImportantLength = 2048, MaxEvidenceLength = 2048, MaxActionLength = 2048, MaxExpectedImpactLength = 1024, MaxSourceReferenceLength = 512 }),

@@ -8,6 +8,16 @@ public static class AiEndpoints
 {
     public static IEndpointRouteBuilder MapAiEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/me/ai", async (HttpContext context, IGetAiSettingsUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var userId = context.GetCurrentUserId();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            var settings = await useCase.GetAsync(userId.Value, cancellationToken);
+            return settings is null ? Results.NoContent() : Results.Ok(settings);
+        });
+
         endpoints.MapPut("/api/me/ai", async (StoreAiSettingsRequest request, HttpContext context, IStoreAiSettingsUseCase useCase, CancellationToken cancellationToken) =>
         {
             var userId = context.GetCurrentUserId();
@@ -16,6 +26,17 @@ public static class AiEndpoints
 
             await useCase.StoreAsync(userId.Value, request.Provider, request.BaseUrl, request.Model, request.Token, cancellationToken);
             return Results.NoContent();
+        });
+
+        endpoints.MapGet("/api/me/ai/models", (IGetAiModelsUseCase useCase) => Results.Ok(useCase.Get()));
+
+        endpoints.MapPost("/api/me/ai/test", async (HttpContext context, ITestAiConnectionUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var userId = context.GetCurrentUserId();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            return Results.Ok(await useCase.TestAsync(userId.Value, cancellationToken));
         });
 
         endpoints.MapPost("/api/repositories/{id}/ai-summary", async (string id, HttpContext context, IAiSummaryUseCase useCase, CancellationToken cancellationToken) =>

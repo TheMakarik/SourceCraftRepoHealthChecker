@@ -145,6 +145,7 @@ public sealed class RepoHealthCheckerDbContextTests : IDisposable
                 MaxLoginLength = 64,
                 MaxDisplayNameLength = 128,
                 MaxEmailLength = 256,
+                MaxAvatarUrlLength = 512,
                 MaxSourceCraftTokenLength = 4096
             }),
             Options.Create(new UserAiOptions

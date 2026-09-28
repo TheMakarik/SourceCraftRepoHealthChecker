@@ -26,7 +26,8 @@ public sealed class SourceCraftAuthenticationAdapter(
             user.Id,
             user.Login,
             user.DisplayName,
-            string.IsNullOrEmpty(user.DefaultEmail) ? null : user.DefaultEmail);
+            string.IsNullOrEmpty(user.DefaultEmail) ? null : user.DefaultEmail,
+            user.AvatarUrl);
     }
 
     public async Task<SourceCraftUser> GetCurrentUserAsync(string accessToken, CancellationToken cancellationToken)

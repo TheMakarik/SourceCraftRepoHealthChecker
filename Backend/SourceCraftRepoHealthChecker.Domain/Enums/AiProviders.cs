@@ -7,6 +7,5 @@ public enum AiProviders
     Anthropic,
     GoogleGemini,
     Yandex,
-    XAi,
     DeepSeek,
 }

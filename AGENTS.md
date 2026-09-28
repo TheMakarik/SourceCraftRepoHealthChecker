@@ -55,11 +55,14 @@
 │   ├── SourceCraftRepoHealthChecker.Application/          # Сценарии использования, абстракции
 │   ├── SourceCraftRepoHealthChecker.infrastructure/       # Реализации: EF/БД, внешние API (Refit), git (LibGit2Sharp), S3 (Minio), DotEnv
 │   └── SourceCraftRepoHealthChecker.Presenter/            # Точка входа: веб-API + DI (composition root)
+├── Frontend/                                              # SPA: React + TypeScript + Fluent UI + Vite
 ├── Tests/                                                 # Модульные и интеграционные тесты
 ├── Skills/                                                # Скиллы opencode/Claude
 ├── Docs/                                                  # Документация (API.md)
-├── Scripts/                                               # PowerShell-скрипты сборки/тестов для CI
-├── Dev/                                                   # Скрипты установки зависимостей для разработки (setup-deps.sh/.bat)
+├── Scripts/                                               # PowerShell-скрипты сборки/тестов + start.sh/.bat (Docker)
+├── Dev/                                                   # Скрипты установки зависимостей (setup-deps.sh/.bat)
+├── docker-compose.yml                                     # PostgreSQL + MinIO + backend + frontend
+├── .env.example                                           # Шаблон секретов для docker-compose
 ├── .github/workflows/                                     # GitHub Actions
 ├── .sourcecraft/ci.yaml                                   # SourceCraft CI
 ├── .claude/skills                                         # Симлинк на Skills/ (для Claude Code)
@@ -101,6 +104,11 @@
 - **Активность/Issues:** дата последней активности, коммиты в окне, contributors, релизы (MR — по `MergeRequestsForFullScore`); зависшие issue считаются по `UpdatedAt` (с откатом на `CreatedAt`).
 - **«Нет данных»** — отдельный статус, не плохой результат. Если Security недоступен (AppSec недоступен или не настроен), ядро добавляет явную пометку «Подключите AppSec SourceCraft» без штрафа.
 - **Рекомендации** строятся на фактах из `MetricScore.RawValue` (например, «TODO — 47, самый старый комментарий — 200 дн.»), с приоритетом и `SourceReference`.
+
+## Работа с субагентами
+
+- Крупные задачи распараллеливать: минимум **3 субагента**, в крайнем случае — 2. Не запускать одного агента на большую задачу.
+- Делить работу по непересекающимся файлам, чтобы агенты не конфликтовали.
 
 ## Код-стайл и скиллы
 

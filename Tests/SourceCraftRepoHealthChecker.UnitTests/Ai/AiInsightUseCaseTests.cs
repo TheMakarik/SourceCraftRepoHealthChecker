@@ -117,6 +117,7 @@ public sealed class AiInsightUseCaseTests
     private static AiOptions CreateOptions() => new()
     {
         SystemPrompt = "prompt",
+        TestPrompt = "prompt",
         RecommendationsPrompt = "RECOMMENDATIONS-INSTRUCTION",
         ExplanationPrompt = "EXPLANATION-INSTRUCTION",
         ActionPlanPrompt = "ACTION-PLAN-INSTRUCTION",
@@ -127,7 +128,6 @@ public sealed class AiInsightUseCaseTests
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",
         GoogleGeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
         YandexBaseUrl = "https://llm.api.cloud.yandex.net/v1",
-        XAiBaseUrl = "https://api.x.ai/v1",
         DeepSeekBaseUrl = "https://api.deepseek.com/v1"
     };
 }

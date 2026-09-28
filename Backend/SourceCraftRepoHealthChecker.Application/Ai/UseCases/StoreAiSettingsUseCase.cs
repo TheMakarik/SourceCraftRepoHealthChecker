@@ -11,7 +11,7 @@ public sealed class StoreAiSettingsUseCase(
     ISecretProtector secretProtector,
     TimeProvider timeProvider) : IStoreAiSettingsUseCase
 {
-    public async Task StoreAsync(Guid userId, AiProviders provider, string? baseUrl, string model, string token, CancellationToken cancellationToken)
+    public async Task StoreAsync(Guid userId, AiProviders provider, string? baseUrl, string model, string? token, CancellationToken cancellationToken)
     {
         var userAi = (await dbContext.UserAis.Where(item => item.UserId == userId).ToListAsync(cancellationToken)).FirstOrDefault();
         var now = timeProvider.GetUtcNow();
@@ -25,7 +25,8 @@ public sealed class StoreAiSettingsUseCase(
         userAi.AiProvider = provider;
         userAi.AiBaseUrl = baseUrl;
         userAi.AiModel = model;
-        userAi.AiToken = secretProtector.Protect(token);
+        if (!string.IsNullOrWhiteSpace(token))
+            userAi.AiToken = secretProtector.Protect(token);
         userAi.UpdatedAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);

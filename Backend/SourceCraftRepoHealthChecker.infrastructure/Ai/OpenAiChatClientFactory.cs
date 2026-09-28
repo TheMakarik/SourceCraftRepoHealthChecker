@@ -24,7 +24,6 @@ public sealed class OpenAiChatClientFactory(IOptions<AiOptions> options) : IChat
         AiProviders.Anthropic => options.Value.AnthropicBaseUrl,
         AiProviders.GoogleGemini => options.Value.GoogleGeminiBaseUrl,
         AiProviders.Yandex => options.Value.YandexBaseUrl,
-        AiProviders.XAi => options.Value.XAiBaseUrl,
         AiProviders.DeepSeek => options.Value.DeepSeekBaseUrl,
         _ => options.Value.OpenAiBaseUrl
     };

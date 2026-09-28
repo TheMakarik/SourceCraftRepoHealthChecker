@@ -5,6 +5,8 @@ using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.UseCases;
 using SourceCraftRepoHealthChecker.Presenter.Authentication;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
@@ -22,6 +24,9 @@ public static class RepositoryEndpoints
             return Results.Ok(await useCase.GetAsync(query, cancellationToken));
         });
 
+        endpoints.MapGet("/api/repositories/languages", async (IGetRepositoryLanguagesUseCase useCase, CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.GetAsync(cancellationToken)));
+
         endpoints.MapGet("/api/repositories/{id}/analysis", async (string id, HttpContext context, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
         {
             var analysis = await useCase.GetAsync(id, cancellationToken);
@@ -33,8 +38,29 @@ public static class RepositoryEndpoints
             return Results.Ok(analysis);
         });
 
+        endpoints.MapGet("/api/repositories/{id}/history", async (string id, IGetRepositoryHistoryUseCase useCase, CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.GetAsync(id, cancellationToken)));
+
         endpoints.MapGet("/api/repositories/{id}/structure", async (string id, ISourceCraftStructureSource source, CancellationToken cancellationToken) =>
             Results.Ok(await source.GetStructureAsync(id, cancellationToken)));
+
+        endpoints.MapGet("/api/repositories/{id}/tree", async (string id, string? path, bool? recursive, IGetRepositoryTreeUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var result = await useCase.GetAsync(id, path ?? string.Empty, recursive ?? false, cancellationToken);
+            return Results.Ok(result.Data ?? new RepositoryTree([], false));
+        });
+
+        endpoints.MapGet("/api/repositories/{id}/file", async (string id, string path, IGetRepositoryFileUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var result = await useCase.GetAsync(id, path, cancellationToken);
+            return result.Data is null ? Results.NotFound() : Results.Ok(result.Data);
+        });
+
+        endpoints.MapGet("/api/repositories/{id}/folders", async (string id, IGetRepositoryFoldersUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var result = await useCase.GetAsync(id, cancellationToken);
+            return Results.Ok(result.Data ?? []);
+        });
 
         return endpoints;
     }

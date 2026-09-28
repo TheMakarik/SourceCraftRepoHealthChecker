@@ -69,4 +69,14 @@ public interface ISourceCraftApi
         [AliasAs("page_size")] int pageSize,
         [AliasAs("page_token")] string? pageToken,
         CancellationToken cancellationToken);
+
+    [Get("/repos/id:{id}/trees")]
+    public Task<TreePageDto> GetTreesAsync(
+        string id,
+        [AliasAs("revision")] string? revision,
+        [AliasAs("path")] string? path,
+        [AliasAs("recursive")] bool? recursive,
+        [AliasAs("page_size")] int pageSize,
+        [AliasAs("page_token")] string? pageToken,
+        CancellationToken cancellationToken);
 }

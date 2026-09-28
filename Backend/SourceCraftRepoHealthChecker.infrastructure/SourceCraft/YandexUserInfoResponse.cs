@@ -18,4 +18,10 @@ internal sealed record YandexUserInfoResponse
 
     [JsonPropertyName("default_email")]
     public string? DefaultEmail { get; init; }
+
+    [JsonPropertyName("default_avatar_id")]
+    public string? DefaultAvatarId { get; init; }
+
+    [JsonPropertyName("is_avatar_empty")]
+    public bool IsAvatarEmpty { get; init; }
 }

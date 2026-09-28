@@ -43,6 +43,10 @@ public sealed class LiveAiDeepSeekTests : IClassFixture<ApiFactory>
         var summaryBody = await summary.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         summaryBody!["summary"].ToString().Should().NotBeNullOrWhiteSpace();
 
+        var answers = new System.Text.StringBuilder();
+        answers.AppendLine("===== AI-SUMMARY =====");
+        answers.AppendLine(summaryBody!["summary"].ToString());
+
         foreach (var kind in new[] { "recommendations", "explanation", "action-plan", "security-triage", "risk-forecast" })
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/repositories/r1/ai-insights/{kind}");
@@ -51,7 +55,12 @@ public sealed class LiveAiDeepSeekTests : IClassFixture<ApiFactory>
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"kind={kind}");
             var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
             body!["content"].ToString().Should().NotBeNullOrWhiteSpace($"kind={kind}");
+            answers.AppendLine();
+            answers.AppendLine($"===== AI-INSIGHT: {kind} =====");
+            answers.AppendLine(body!["content"].ToString());
         }
+
+        File.WriteAllText("/tmp/opencode/deepseek-answers.txt", answers.ToString());
     }
 
     [Fact]

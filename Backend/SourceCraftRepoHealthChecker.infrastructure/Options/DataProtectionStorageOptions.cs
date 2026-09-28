@@ -8,4 +8,10 @@ public sealed class DataProtectionStorageOptions
     public required string SecretKey { get; init; }
     public string Prefix { get; init; } = "dataprotection-keys/";
     public bool UseSsl { get; init; } = true;
+
+    public string? KeyPath
+    {
+        get => field;
+        set => field = string.IsNullOrWhiteSpace(value) ? null : Environment.ExpandEnvironmentVariables(value);
+    }
 }

@@ -84,7 +84,10 @@ public sealed class YandexIdClient(HttpClient httpClient, IOptions<YandexIdOptio
             throw new InvalidOperationException("Yandex ID user info has no id");
 
         var displayName = FirstNonEmpty(info.DisplayName, info.RealName, info.Login);
-        return new YandexIdUser(info.Id, info.Login ?? string.Empty, displayName, info.DefaultEmail ?? string.Empty);
+        var avatarUrl = info.IsAvatarEmpty || string.IsNullOrEmpty(info.DefaultAvatarId)
+            ? null
+            : $"https://avatars.yandex.net/get-yandex-avatar/100/{info.DefaultAvatarId}/islands-100";
+        return new YandexIdUser(info.Id, info.Login ?? string.Empty, displayName, info.DefaultEmail ?? string.Empty, avatarUrl);
     }
 
     private async Task<YandexTokenResponse> ReadTokenResponseAsync(HttpResponseMessage response, CancellationToken cancellationToken)

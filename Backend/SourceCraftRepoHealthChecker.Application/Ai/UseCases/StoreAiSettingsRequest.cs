@@ -6,4 +6,4 @@ public sealed record StoreAiSettingsRequest(
     AiProviders Provider,
     string? BaseUrl,
     string Model,
-    string Token);
+    string? Token);

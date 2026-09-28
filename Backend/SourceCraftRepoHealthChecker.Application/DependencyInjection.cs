@@ -11,6 +11,8 @@ using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Scheduling.Options;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Options;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.UseCases;
 
 namespace SourceCraftRepoHealthChecker.Application;
 
@@ -22,8 +24,11 @@ public static class DependencyInjection
         services.AddOptions<SchedulingOptions>().Bind(configuration.GetSection(nameof(SchedulingOptions)));
         services.AddOptions<ScalingOptions>().Bind(configuration.GetSection(nameof(ScalingOptions)));
         services.AddOptions<AiOptions>().Bind(configuration.GetSection(nameof(AiOptions)));
+        services.AddOptions<AiModelsOptions>().Bind(configuration.GetSection(nameof(AiModelsOptions)));
         services.AddOptions<AnomalyDetectionOptions>().Bind(configuration.GetSection(nameof(AnomalyDetectionOptions)));
         services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
+        services.AddOptions<RepositoryHistoryOptions>().Bind(configuration.GetSection(nameof(RepositoryHistoryOptions)));
+        services.AddOptions<RepositoryBrowsingOptions>().Bind(configuration.GetSection(nameof(RepositoryBrowsingOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
         services.AddSingleton<ICategoryScoreCalculator, CategoryScoreCalculator>();
@@ -35,9 +40,11 @@ public static class DependencyInjection
         services.AddScoped<IGetRepositoryAnalysisUseCase, GetRepositoryAnalysisUseCase>();
         services.AddScoped<IExportRepositoryReportUseCase, ExportRepositoryReportUseCase>();
         services.AddScoped<IGetRepositoryLeaderboardUseCase, GetRepositoryLeaderboardUseCase>();
+        services.AddScoped<IGetRepositoryLanguagesUseCase, GetRepositoryLanguagesUseCase>();
         services.AddScoped<IRefreshRepositoriesUseCase, RefreshRepositoriesUseCase>();
         services.AddScoped<IAuthenticateUserUseCase, AuthenticateUserUseCase>();
         services.AddScoped<IGetCurrentUserUseCase, GetCurrentUserUseCase>();
+        services.AddScoped<IGetTokenOverviewUseCase, GetTokenOverviewUseCase>();
         services.AddScoped<IStoreSourceCraftTokenUseCase, StoreSourceCraftTokenUseCase>();
         services.AddScoped<IResolveSourceCraftTokenUseCase, ResolveSourceCraftTokenUseCase>();
         services.AddScoped<IGetUserRepositoriesUseCase, GetUserRepositoriesUseCase>();
@@ -46,6 +53,13 @@ public static class DependencyInjection
         services.AddScoped<IAiSummaryUseCase, AiSummaryUseCase>();
         services.AddScoped<IAiInsightUseCase, AiInsightUseCase>();
         services.AddScoped<IStoreAiSettingsUseCase, StoreAiSettingsUseCase>();
+        services.AddScoped<IGetAiSettingsUseCase, GetAiSettingsUseCase>();
+        services.AddSingleton<IGetAiModelsUseCase, GetAiModelsUseCase>();
+        services.AddScoped<ITestAiConnectionUseCase, TestAiConnectionUseCase>();
+        services.AddScoped<IGetRepositoryHistoryUseCase, GetRepositoryHistoryUseCase>();
+        services.AddScoped<IGetRepositoryTreeUseCase, GetRepositoryTreeUseCase>();
+        services.AddScoped<IGetRepositoryFileUseCase, GetRepositoryFileUseCase>();
+        services.AddScoped<IGetRepositoryFoldersUseCase, GetRepositoryFoldersUseCase>();
 
         return services;
     }

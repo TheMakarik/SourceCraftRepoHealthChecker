@@ -31,6 +31,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ScalingOptions:WorkerEnabled", "false");
         builder.UseSetting("ScalingOptions:SchedulerEnabled", "false");
         builder.UseSetting("DatabaseOptions:AutoMigrate", "false");
+        builder.UseSetting("Authentication:FrontendRedirectUrl", "");
 
         builder.ConfigureServices(services =>
         {

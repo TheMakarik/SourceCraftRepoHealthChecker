@@ -16,7 +16,6 @@ public sealed class OpenAiChatClientFactoryTests
     [InlineData(AiProviders.Anthropic)]
     [InlineData(AiProviders.GoogleGemini)]
     [InlineData(AiProviders.Yandex)]
-    [InlineData(AiProviders.XAi)]
     [InlineData(AiProviders.DeepSeek)]
     public void Create_ForEveryProvider_ReturnsClient(AiProviders provider)
     {
@@ -40,6 +39,7 @@ public sealed class OpenAiChatClientFactoryTests
     private static AiOptions CreateOptions() => new()
     {
         SystemPrompt = "prompt",
+        TestPrompt = "prompt",
         RecommendationsPrompt = "prompt",
         ExplanationPrompt = "prompt",
         ActionPlanPrompt = "prompt",
@@ -50,7 +50,6 @@ public sealed class OpenAiChatClientFactoryTests
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",
         GoogleGeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
         YandexBaseUrl = "https://llm.api.cloud.yandex.net/v1",
-        XAiBaseUrl = "https://api.x.ai/v1",
         DeepSeekBaseUrl = "https://api.deepseek.com/v1"
     };
 }

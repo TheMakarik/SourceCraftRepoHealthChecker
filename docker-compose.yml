@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: sourcecraft_repo_health
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - srhc-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Backend/SourceCraftRepoHealthChecker.Presenter/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=sourcecraft_repo_health;Username=postgres;Password=${POSTGRES_PASSWORD:-postgres}"
+      DatabaseOptions__AutoMigrate: "true"
+      AiTokenEncryptionOptions__Key: ${AI_TOKEN_ENCRYPTION_KEY}
+      SourceCraftServiceOptions__BaseUrl: "https://api.sourcecraft.tech"
+      SourceCraftServiceOptions__ServiceToken: ${SOURCECRAFT_PAT}
+      AppSecOptions__BaseUrl: "https://appsec.sourcecraft.tech"
+      YandexIdOptions__ClientId: ${YANDEX_CLIENT_ID}
+      YandexIdOptions__ClientSecret: ${YANDEX_CLIENT_SECRET}
+      YandexIdOptions__RedirectUri: ${YANDEX_REDIRECT_URI:-http://localhost:8080/auth/callback}
+      Authentication__FrontendRedirectUrl: "/cabinet"
+      DataProtectionStorageOptions__KeyPath: "/keys"
+      GitOptions__ServiceToken: ${SOURCECRAFT_PAT}
+      GitOptions__WorkDir: "/tmp/srhc"
+      GitOptions__GitUsername: "git"
+      SchedulingOptions__Enabled: "true"
+      ScalingOptions__SchedulerEnabled: "true"
+      ScalingOptions__WorkerEnabled: "true"
+    volumes:
+      - srhc-keys:/keys
+    ports:
+      - "5172:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  srhc-postgres:
+  srhc-keys:

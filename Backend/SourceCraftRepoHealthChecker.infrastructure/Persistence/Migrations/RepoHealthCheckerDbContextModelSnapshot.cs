@@ -274,6 +274,10 @@ namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AvatarUrl")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
                     b.Property<long>("CreatedAt")
                         .HasColumnType("bigint");
 

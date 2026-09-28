@@ -4,4 +4,5 @@ public sealed record AuthenticatedUser(
     Guid UserId,
     string YaId,
     string Login,
-    string DisplayName);
+    string DisplayName,
+    string? AvatarUrl = null);

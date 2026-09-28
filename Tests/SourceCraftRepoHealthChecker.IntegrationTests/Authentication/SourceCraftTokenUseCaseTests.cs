@@ -119,6 +119,7 @@ public sealed class SourceCraftTokenUseCaseTests : IDisposable
             MaxLoginLength = 64,
             MaxDisplayNameLength = 128,
             MaxEmailLength = 256,
+            MaxAvatarUrlLength = 512,
             MaxSourceCraftTokenLength = 4096
         });
 }

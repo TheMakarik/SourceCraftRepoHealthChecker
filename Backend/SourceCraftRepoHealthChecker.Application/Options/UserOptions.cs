@@ -6,5 +6,6 @@ public sealed class UserOptions
     public required int MaxLoginLength { get; init; }
     public required int MaxDisplayNameLength { get; init; }
     public required int MaxEmailLength { get; init; }
+    public required int MaxAvatarUrlLength { get; init; }
     public required int MaxSourceCraftTokenLength { get; init; }
 }

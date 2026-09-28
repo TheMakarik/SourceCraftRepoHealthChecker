@@ -10,6 +10,6 @@ public sealed class GetCurrentUserUseCase(IRepoHealthCheckerDbContext dbContext)
         var user = await dbContext.Users.FirstOrDefaultAsync(item => item.Id == userId, cancellationToken);
         return user is null
             ? null
-            : new AuthenticatedUser(user.Id, user.YaId, user.Login, user.DisplayName);
+            : new AuthenticatedUser(user.Id, user.YaId, user.Login, user.DisplayName, user.AvatarUrl);
     }
 }

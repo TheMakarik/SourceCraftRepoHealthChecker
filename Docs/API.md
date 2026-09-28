@@ -13,12 +13,14 @@
 | `GET /api/repositories/{id}/report?format=markdown\|json\|html\|pdf` | Выгрузка отчёта (по умолчанию markdown) |
 | `GET /api/repositories/{id}/report.md` | Отчёт Markdown (совместимость) |
 | `GET /api/repositories/{id}/structure` | Health Check по папкам (структура) |
+| `GET /api/repositories/{id}/history` | История Score (точки `{ analyzedAt, score }` для графика динамики) |
 | `GET /auth/login` | Начать вход через Я ID (state-cookie + редирект) |
 | `GET /auth/callback?code=&state=` | Callback Я ID → подписанный тикет-куки |
 | `GET /api/me` | Текущий пользователь |
 | `GET /api/me/repositories` | Доступные пользователю репозитории (PAT из `Authorization` или сохранённый) |
 | `POST /api/me/repositories/{id}/analyze` | Запустить анализ своего репозитория |
 | `PUT /api/me/ai` | Сохранить настройки ИИ (провайдер, модель, baseUrl, токен — шифрованно) |
+| `GET /api/me/ai` | Текущие настройки ИИ (без токена): 204, если не настроено |
 | `POST /api/repositories/{id}/ai-summary` | AI-summary через выбранного провайдера |
 | `POST /api/repositories/{id}/ai-insights/{kind}` | AI-разбор: `recommendations`, `explanation`, `action-plan`, `security-triage`, `risk-forecast` |
 

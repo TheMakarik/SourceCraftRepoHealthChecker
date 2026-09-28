@@ -37,11 +37,14 @@ public sealed class AuthenticateUserUseCase(
 
         user.Login = Truncate(sourceCraftUser.Login, options.MaxLoginLength);
         user.DisplayName = Truncate(sourceCraftUser.DisplayName, options.MaxDisplayNameLength);
+        user.AvatarUrl = string.IsNullOrEmpty(sourceCraftUser.AvatarUrl)
+            ? null
+            : Truncate(sourceCraftUser.AvatarUrl, options.MaxAvatarUrlLength);
         user.LastLoginAt = now;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new AuthenticatedUser(user.Id, user.YaId, user.Login, user.DisplayName);
+        return new AuthenticatedUser(user.Id, user.YaId, user.Login, user.DisplayName, user.AvatarUrl);
     }
 
     private static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..maxLength];

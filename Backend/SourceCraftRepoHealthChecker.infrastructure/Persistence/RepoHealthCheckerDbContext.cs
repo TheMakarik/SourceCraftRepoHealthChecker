@@ -54,6 +54,7 @@ public sealed class RepoHealthCheckerDbContext(
             entity.Property(x => x.Login).HasMaxLength(_userOptions.MaxLoginLength);
             entity.Property(x => x.DisplayName).HasMaxLength(_userOptions.MaxDisplayNameLength);
             entity.Property(x => x.Email).HasMaxLength(_userOptions.MaxEmailLength);
+            entity.Property(x => x.AvatarUrl).HasMaxLength(_userOptions.MaxAvatarUrlLength);
             entity.Property(x => x.SourceCraftToken).HasMaxLength(_userOptions.MaxSourceCraftTokenLength);
             entity.HasIndex(x => x.YaId).IsUnique();
         });
