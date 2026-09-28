@@ -2,7 +2,7 @@
 rem setup-deps.bat — установка зависимостей для разработки и запуска тестов бэкенда (Windows).
 rem
 rem ЧТО ДЕЛАЕТ:
-rem   Ставит .NET SDK 10 и Go 1.26 (плюс git), затем печатает версии для проверки.
+rem   Ставит .NET SDK 10 (плюс git), затем печатает версии для проверки.
 rem   Скрипт идемпотентный: повторный запуск ничего не ломает.
 rem
 rem ЧЕМ СТАВИТ (менеджеры пакетов):
@@ -11,10 +11,9 @@ rem   * choco  — если winget недоступен, но установле
 rem   * dotnet-install.ps1 — официальный установщик Microsoft, если SDK нет ни в winget, ни в choco.
 rem
 rem ОТКУДА КАЧАЕТ:
-rem   * winget: Git.Git, GoLang.Go, Microsoft.DotNet.SDK.10 (магазин winget / репозитории вендоров);
-rem   * choco:  git, golang, dotnet-sdk (community-репозиторий chocolatey.org);
-rem   * .NET:  официальный установщик Microsoft https://dot.net/v1/dotnet-install.ps1 (channel 10.0);
-rem   * Go:    менеджеры сами тянут официальный архив с https://go.dev/dl/.
+rem   * winget: Git.Git, Microsoft.DotNet.SDK.10 (магазин winget / репозитории вендоров);
+rem   * choco:  git, dotnet-sdk (community-репозиторий chocolatey.org);
+rem   * .NET:  официальный установщик Microsoft https://dot.net/v1/dotnet-install.ps1 (channel 10.0).
 rem
 rem ФРОНТЕНД:
 rem   Скрипт пока НЕ ставит Node.js и пакетный менеджер для фронтенда — это нужно будет добавить
@@ -25,28 +24,25 @@ set DOTNET_CHANNEL=10.0
 
 where winget >nul 2>nul
 if %errorlevel%==0 (
-  echo ==^> winget: Git.Git GoLang.Go Microsoft.DotNet.SDK.10
+  echo ==^> winget: Git.Git Microsoft.DotNet.SDK.10
   winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements
-  winget install --id GoLang.Go -e --accept-source-agreements --accept-package-agreements
   winget install --id Microsoft.DotNet.SDK.10 -e --accept-source-agreements --accept-package-agreements
   goto verify
 )
 
 where choco >nul 2>nul
 if %errorlevel%==0 (
-  echo ==^> choco: git golang dotnet-sdk
-  choco install -y git golang dotnet-sdk
+  echo ==^> choco: git dotnet-sdk
+  choco install -y git dotnet-sdk
   goto verify
 )
 
 echo ==^> winget и choco не найдены. Ставлю .NET официальным установщиком от Microsoft.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Invoke-WebRequest -UseBasicParsing https://dot.net/v1/dotnet-install.ps1 -OutFile $env:TEMP\dotnet-install.ps1; & $env:TEMP\dotnet-install.ps1 -Channel %DOTNET_CHANNEL%"
-echo ==^> Go придётся поставить вручную: https://go.dev/dl/
 
 :verify
 echo.
 echo ==^> Готово. Версии:
 where dotnet >nul 2>nul && dotnet --version || echo   dotnet: не найден (перезапустите терминал)
-where go >nul 2>nul && go version || echo   go: не найден (перезапустите терминал)
 endlocal

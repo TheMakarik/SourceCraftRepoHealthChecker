@@ -22,7 +22,7 @@ public sealed class LargeRepositoryTests : IDisposable
 
     private readonly TempFileSystem _tempFileSystem = new();
     private readonly HealthCheckOptions _healthCheckOptions = HealthCheckOptionsLoader.Load();
-    private readonly LocalGitRepositoryReader systemUnderTests = new();
+    private readonly LocalGitRepositoryReader systemUnderTests = new(TimeProvider.System);
     private readonly ITestOutputHelper _output;
 
     public LargeRepositoryTests(ITestOutputHelper output)

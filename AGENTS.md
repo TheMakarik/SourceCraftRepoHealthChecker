@@ -4,7 +4,7 @@
 
 **SourceCraftRepoHealthChecker** — веб-сервис оценки «здоровья» открытых репозиториев SourceCraft. Считает **Repo Health Score** (0–100) по шести категориям, объясняет оценку и формирует приоритизированные рекомендации. Авторизация — через **Я ID**.
 
-Бэкенд реализуется на **C#** (луковичная архитектура) и **Go**. Обязательный стек ТЗ не задаёт — `C# + Go` это решение команды.
+Бэкенд — единый **C#**-сервис (луковичная архитектура). Обязательный стек ТЗ не задаёт — это решение команды. Сбор данных из API SourceCraft/AppSec, git-аналитика и работа с S3 выполняются **в самом сервисе** (отдельного Go-микросервиса нет). Конфигурация читается в том числе из `.env` через абстракцию `IEnvironmentFileLoader` (библиотека DotNetEnv скрыта в infrastructure), внешние HTTP — через Refit за интерфейсами.
 
 ## Требования ТЗ (правила разработки)
 
@@ -50,13 +50,11 @@
 
 ```
 .
-├── Backend/
-│   ├── CSharp/                                            # C#-бэкенд (луковичная архитектура)
-│   │   ├── SourceCraftRepoHealthChecker.Domain/           # Ядро
-│   │   ├── SourceCraftRepoHealthChecker.Application/      # Сценарии использования, абстракции
-│   │   ├── SourceCraftRepoHealthChecker.infrastructure/   # Реализации: БД, внешние API
-│   │   └── SourceCraftRepoHealthChecker.Presenter/        # Точка входа: веб-API + DI (composition root)
-│   └── Go/                                                # Go-бэкенд
+├── Backend/                                               # C#-бэкенд (луковичная архитектура)
+│   ├── SourceCraftRepoHealthChecker.Domain/               # Ядро
+│   ├── SourceCraftRepoHealthChecker.Application/          # Сценарии использования, абстракции
+│   ├── SourceCraftRepoHealthChecker.infrastructure/       # Реализации: EF/БД, внешние API (Refit), git (LibGit2Sharp), S3 (Minio), DotEnv
+│   └── SourceCraftRepoHealthChecker.Presenter/            # Точка входа: веб-API + DI (composition root)
 ├── Tests/                                                 # Модульные и интеграционные тесты
 ├── Skills/                                                # Скиллы opencode/Claude
 ├── Docs/                                                  # Документация (API.md)

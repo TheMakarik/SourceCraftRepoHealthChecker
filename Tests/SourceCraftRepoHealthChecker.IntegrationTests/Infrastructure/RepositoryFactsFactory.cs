@@ -10,7 +10,7 @@ public static class RepositoryFactsFactory
 {
     public static async Task<RepositoryFacts> ReadAsync(string repositoryPath, CancellationToken cancellationToken)
     {
-        IGitRepositoryReader reader = new LocalGitRepositoryReader();
+        IGitRepositoryReader reader = new LocalGitRepositoryReader(TimeProvider.System);
 
         var activity = await reader.GetCommitActivityAsync(repositoryPath, cancellationToken);
         var contributors = await reader.GetContributorsAsync(repositoryPath, cancellationToken);

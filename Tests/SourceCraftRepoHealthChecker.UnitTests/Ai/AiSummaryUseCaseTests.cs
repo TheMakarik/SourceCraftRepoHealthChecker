@@ -90,6 +90,11 @@ public sealed class AiSummaryUseCaseTests
     private static AiOptions CreateOptions() => new()
     {
         SystemPrompt = "prompt",
+        RecommendationsPrompt = "prompt",
+        ExplanationPrompt = "prompt",
+        ActionPlanPrompt = "prompt",
+        SecurityTriagePrompt = "prompt",
+        RiskForecastPrompt = "prompt",
         OpenAiBaseUrl = "https://api.openai.com/v1",
         OllamaBaseUrl = "http://localhost:11434/v1",
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",

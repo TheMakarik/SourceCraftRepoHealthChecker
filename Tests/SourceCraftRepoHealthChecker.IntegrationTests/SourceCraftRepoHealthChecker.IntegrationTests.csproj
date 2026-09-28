@@ -21,15 +21,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Domain\SourceCraftRepoHealthChecker.Domain.csproj" />
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.infrastructure\SourceCraftRepoHealthChecker.infrastructure.csproj" />
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Presenter\SourceCraftRepoHealthChecker.Presenter.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.Domain\SourceCraftRepoHealthChecker.Domain.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.infrastructure\SourceCraftRepoHealthChecker.infrastructure.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.Presenter\SourceCraftRepoHealthChecker.Presenter.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Scripts\**\*.ps1" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Presenter\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Backend\SourceCraftRepoHealthChecker.Presenter\appsettings.json" Link="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

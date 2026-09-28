@@ -8,7 +8,7 @@ public sealed class GitRepositoryReaderTests : IDisposable
 {
     private readonly TempFileSystem _tempFileSystem = new();
     private readonly string _repositoryPath;
-    private readonly LocalGitRepositoryReader systemUnderTests = new();
+    private readonly LocalGitRepositoryReader systemUnderTests = new(TimeProvider.System);
 
     public GitRepositoryReaderTests()
     {

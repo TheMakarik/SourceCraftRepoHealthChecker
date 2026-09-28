@@ -20,23 +20,16 @@
 | `POST /api/me/repositories/{id}/analyze` | Запустить анализ своего репозитория |
 | `PUT /api/me/ai` | Сохранить настройки ИИ (провайдер, модель, baseUrl, токен — шифрованно) |
 | `POST /api/repositories/{id}/ai-summary` | AI-summary через выбранного провайдера |
+| `POST /api/repositories/{id}/ai-insights/{kind}` | AI-разбор: `recommendations`, `explanation`, `action-plan`, `security-triage`, `risk-forecast` |
 
-## Внутренний контракт Go-сервиса
+## Источники данных (внутри сервиса)
 
-Базовый хост — `SourceCraftServiceOptions:BaseUrl`. Конверт ответа:
-`{ "requestId", "collectedAt", "status": "Available|NoData|Unavailable", "data", "reason", "nextPageToken" }`.
+Отдельного микросервиса нет: сбор данных выполняют адаптеры `infrastructure` за портами `Application`.
 
-| Метод и путь | Источник |
-|---|---|
-| `POST /auth/url`, `POST /auth/token`, `GET /auth/me`, `GET /auth/repositories` | Я ID OAuth |
-| `GET /repositories`, `GET /repositories/{id}` | API SourceCraft |
-| `GET /repositories/{id}/activity/commits\|contributors\|releases` | git / API |
-| `GET /repositories/{id}/issues`, `.../merge-requests` | API SourceCraft |
-| `GET /repositories/{id}/pipelines` | API SourceCraft |
-| `GET /repositories/{id}/security/findings` | AppSec API |
-| `GET /repositories/{id}/code-health` | git (TODO/FIXME) |
-| `GET /repositories/{id}/documentation` | git (файлы/инструкции) |
-| `GET /repositories/{id}/structure` | git (структура папок) |
-| `PUT\|GET\|DELETE /repositories/{id}/snapshots/{runId}` | S3-снапшоты (TTL) |
-| `POST /internal/snapshots/reap` | Таймер-очистка (внутренний токен) |
-| `POST /internal/queue/messages` | Message Queue-хендлер (внутренний токен) |
+| Источник | Где | Данные |
+|---|---|---|
+| SourceCraft REST (`https://api.sourcecraft.tech`, Refit) | `infrastructure/SourceCraft/ISourceCraftApi.cs` | каталог, репозиторий, issues, MR, релизы, CI-запуски, `/user`, `/me/repos` |
+| AppSec SourceCraft (`https://appsec.sourcecraft.tech`, Refit) | `infrastructure/SourceCraft/SourceCraftSecurityAdapter.cs` | находки SAST/SCA/secrets (`GET /v1/defect-groups`) |
+| git (LibGit2Sharp) | `infrastructure/SourceCraft/LocalGitRepositoryReader.cs` | коммиты, контрибьюторы, TODO/FIXME, документация, структура |
+| Yandex ID OAuth (`https://oauth.yandex.ru`) | `infrastructure/SourceCraft/YandexIdClient.cs` | вход и профиль пользователя |
+| Конфигурация `.env` | `infrastructure/Configuration/DotEnvEnvironmentFileLoader.cs` (за портом `IEnvironmentFileLoader`) | значения настроек |

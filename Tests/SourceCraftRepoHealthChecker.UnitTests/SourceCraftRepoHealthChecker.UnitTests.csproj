@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
-    <ProjectReference Include="..\..\Backend\CSharp\SourceCraftRepoHealthChecker.infrastructure\SourceCraftRepoHealthChecker.infrastructure.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.Application\SourceCraftRepoHealthChecker.Application.csproj" />
+    <ProjectReference Include="..\..\Backend\SourceCraftRepoHealthChecker.infrastructure\SourceCraftRepoHealthChecker.infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
