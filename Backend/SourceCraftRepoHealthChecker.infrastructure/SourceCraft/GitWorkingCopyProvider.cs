@@ -109,8 +109,19 @@ public sealed class GitWorkingCopyProvider(
 
     private static string ResolveCloneUrl(SourceCraftRepository repository)
     {
+        if (!string.IsNullOrWhiteSpace(repository.CloneUrl))
+            return StripCredentials(repository.CloneUrl!);
+
         var url = repository.Url.TrimEnd('/');
         return url.EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? url : url + ".git";
+    }
+
+    private static string StripCredentials(string cloneUrl)
+    {
+        if (!Uri.TryCreate(cloneUrl, UriKind.Absolute, out var uri) || string.IsNullOrEmpty(uri.UserInfo))
+            return cloneUrl;
+
+        return new UriBuilder(uri) { UserName = string.Empty, Password = string.Empty }.Uri.ToString();
     }
 
     private static string ResolveWorkDirectory(GitOptions options)

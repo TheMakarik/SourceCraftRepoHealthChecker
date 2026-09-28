@@ -10,6 +10,7 @@ public sealed record RepositoryDto
     public bool IsEmpty { get; init; }
     public string? Visibility { get; init; }
     public string? WebUrl { get; init; }
+    public CloneUrlDto? CloneUrl { get; init; }
     public DateTimeOffset LastUpdated { get; init; }
     public RepositoryLanguageDto? Language { get; init; }
     public RepositoryRatingDto? Rating { get; init; }

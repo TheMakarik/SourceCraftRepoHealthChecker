@@ -9,4 +9,5 @@ public sealed record SourceCraftRepository(
     int LikesCount,
     DateTimeOffset LastActivityAt,
     bool IsPrivate,
-    string DefaultBranch);
+    string DefaultBranch,
+    string? CloneUrl = null);

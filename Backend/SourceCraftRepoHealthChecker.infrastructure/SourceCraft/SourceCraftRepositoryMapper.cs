@@ -25,6 +25,7 @@ internal static class SourceCraftRepositoryMapper
             likes,
             repository.LastUpdated,
             !string.Equals(repository.Visibility, "public", StringComparison.Ordinal),
-            repository.DefaultBranch ?? string.Empty);
+            repository.DefaultBranch ?? string.Empty,
+            repository.CloneUrl?.Https);
     }
 }
