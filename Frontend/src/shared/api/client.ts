@@ -13,6 +13,7 @@ import type {
   ReportFormat,
   RepositoryComparison,
   RepositoryFile,
+  RepositoryOwnership,
   RepositoryTree,
   SourceCraftResult,
   SourceCraftUser,
@@ -108,6 +109,9 @@ export const api = {
 
   folders: (id: string) =>
     request<FolderReport[]>(`/api/repositories/${encodeURIComponent(id)}/folders`),
+
+  ownership: (id: string) =>
+    request<SourceCraftResult<RepositoryOwnership>>(`/api/repositories/${encodeURIComponent(id)}/ownership`),
 
   reportUrl: (id: string, format: ReportFormat) =>
     `${baseUrl}/api/repositories/${encodeURIComponent(id)}/report?format=${format}`,

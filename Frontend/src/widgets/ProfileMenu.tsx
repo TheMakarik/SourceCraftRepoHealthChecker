@@ -11,6 +11,7 @@ import {
   PopoverSurface,
   PopoverTrigger
 } from "@fluentui/react-components";
+import { authLoginUrl } from "../shared/api/client";
 import { useLogout, useMe } from "../shared/api/hooks";
 
 export function ProfileMenu() {
@@ -19,7 +20,21 @@ export function ProfileMenu() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const displayName = me.data?.displayName || me.data?.login || "Пользователь";
+  if (!me.isSuccess)
+    return (
+      <Button
+        as="a"
+        href={authLoginUrl}
+        appearance="primary"
+        size="small"
+        title="Войти через Я ID"
+        style={{ fontSize: "0.72rem", minWidth: 0, padding: "0.35rem 0.45rem" }}
+      >
+        Войти
+      </Button>
+    );
+
+  const displayName = me.data.displayName || me.data.login || "Пользователь";
   const initials = displayName.trim().charAt(0).toUpperCase();
 
   return (
@@ -33,7 +48,7 @@ export function ProfileMenu() {
       >
         <PopoverTrigger disableButtonEnhancement>
           <button className="app__nav-link app__profile" title="Профиль">
-            {me.data?.avatarUrl ? (
+            {me.data.avatarUrl ? (
               <img className="user-avatar" src={me.data.avatarUrl} alt="" />
             ) : (
               <span className="user-avatar">{initials}</span>
@@ -42,15 +57,15 @@ export function ProfileMenu() {
         </PopoverTrigger>
         <PopoverSurface className="profile-card">
           <div className="profile-card__head">
-            {me.data?.avatarUrl ? (
+            {me.data.avatarUrl ? (
               <img className="user-avatar user-avatar--lg" src={me.data.avatarUrl} alt="" />
             ) : (
               <span className="user-avatar user-avatar--lg">{initials}</span>
             )}
             <div>
               <div style={{ fontWeight: 600 }}>{displayName}</div>
-              <div className="muted">Я ID: {me.data?.login ?? "—"}</div>
-              <div className="muted">{me.data?.email || "—"}</div>
+              <div className="muted">Я ID: {me.data.login ?? "—"}</div>
+              <div className="muted">{me.data.email || "—"}</div>
             </div>
           </div>
           <Button
@@ -71,7 +86,7 @@ export function ProfileMenu() {
           <DialogBody>
             <DialogTitle>Выйти из аккаунта?</DialogTitle>
             <DialogContent>
-              Вы действительно хотите выйти? Для работы с сервисом потребуется снова войти через Я ID.
+              Вы действительно хотите выйти? Для работы с личными разделами потребуется снова войти через Я ID.
             </DialogContent>
             <DialogActions>
               <Button appearance="secondary" onClick={() => setConfirmOpen(false)}>

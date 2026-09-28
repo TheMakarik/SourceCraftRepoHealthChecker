@@ -1,7 +1,6 @@
-import { Badge, Spinner } from "@fluentui/react-components";
+import { Badge } from "@fluentui/react-components";
 import type { FolderReport } from "../shared/api/types";
 import { scoreTone } from "../shared/api/labels";
-import { useFolders } from "../shared/api/hooks";
 
 interface FolderQuality {
   score: number;
@@ -28,58 +27,38 @@ const criterion = (present: boolean, label: string) => (
   </Badge>
 );
 
-export function FoldersPanel({ repositoryId }: { repositoryId: string | undefined }) {
-  const folders = useFolders(repositoryId);
-  const items = [...(folders.data ?? [])].sort((left, right) => left.path.localeCompare(right.path));
-
-  if (folders.isPending)
-    return (
-      <div className="row">
-        <Spinner size="tiny" />
-        <span className="muted">Загружаем папки…</span>
-      </div>
-    );
-
-  if (folders.isError)
-    return <span className="muted">Не удалось загрузить список папок.</span>;
-
-  if (items.length === 0)
-    return <span className="muted">Папки не найдены.</span>;
+export function FolderStats({ folder }: { folder: FolderReport }) {
+  const quality = folderQuality(folder);
 
   return (
-    <div className="folder-list">
-      <div className="folder-list__head">
-        <span>Папка</span>
-        <span>Файлы</span>
-        <span>Маркеры</span>
-        <span>Практики</span>
-        <span className="folder-list__score">Индикатор</span>
+    <div className="folder-stats">
+      <div className="folder-stats__head">
+        <span className="folder-stats__path" title={folder.path}>{folder.path || "."}</span>
+        <span className={`pill pill--${quality.tone}`}>{quality.score}</span>
       </div>
-      {items.map((folder) => {
-        const quality = folderQuality(folder);
-        return (
-          <div className="folder-row" key={folder.path}>
-            <span className="folder-row__path" title={folder.path}>{folder.path || "."}</span>
-            <span>{folder.files}</span>
-            <span className="row" style={{ gap: "0.35rem" }}>
-              <Badge appearance="tint" color={folder.todoCount > 0 ? "warning" : "subtle"}>
-                TODO: {folder.todoCount}
-              </Badge>
-              <Badge appearance="tint" color={folder.fixmeCount > 0 ? "danger" : "subtle"}>
-                FIXME: {folder.fixmeCount}
-              </Badge>
-            </span>
-            <span className="row" style={{ gap: "0.35rem" }}>
-              {criterion(folder.readme, "README")}
-              {criterion(folder.license, "LICENSE")}
-              {criterion(folder.tests, "TESTS")}
-            </span>
-            <span className="folder-list__score">
-              <span className={`pill pill--${quality.tone}`}>{quality.score}</span>
-            </span>
-          </div>
-        );
-      })}
+      <div className="metric-row">
+        <span>Файлов в папке</span>
+        <strong>{folder.files}</strong>
+      </div>
+      <div className="metric-row">
+        <span>TODO / FIXME</span>
+        <span className="row" style={{ gap: "0.35rem" }}>
+          <Badge appearance="tint" color={folder.todoCount > 0 ? "warning" : "subtle"}>
+            TODO: {folder.todoCount}
+          </Badge>
+          <Badge appearance="tint" color={folder.fixmeCount > 0 ? "danger" : "subtle"}>
+            FIXME: {folder.fixmeCount}
+          </Badge>
+        </span>
+      </div>
+      <div className="metric-row">
+        <span>Практики</span>
+        <span className="row" style={{ gap: "0.35rem" }}>
+          {criterion(folder.readme, "README")}
+          {criterion(folder.license, "LICENSE")}
+          {criterion(folder.tests, "TESTS")}
+        </span>
+      </div>
     </div>
   );
 }

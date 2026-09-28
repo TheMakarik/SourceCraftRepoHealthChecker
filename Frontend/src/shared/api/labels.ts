@@ -27,7 +27,6 @@ export const priorityLabels: Record<Priority, string> = {
 
 export const providerLabels: Record<AiProvider, string> = {
   OpenAI: "OpenAI",
-  Ollama: "Ollama",
   Anthropic: "Anthropic",
   GoogleGemini: "Google Gemini",
   Yandex: "Yandex",

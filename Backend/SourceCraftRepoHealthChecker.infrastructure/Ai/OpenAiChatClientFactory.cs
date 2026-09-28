@@ -20,7 +20,6 @@ public sealed class OpenAiChatClientFactory(IOptions<AiOptions> options) : IChat
     private string ResolveBaseUrl(AiProviders provider) => provider switch
     {
         AiProviders.OpenAI => options.Value.OpenAiBaseUrl,
-        AiProviders.Ollama => options.Value.OllamaBaseUrl,
         AiProviders.Anthropic => options.Value.AnthropicBaseUrl,
         AiProviders.GoogleGemini => options.Value.GoogleGeminiBaseUrl,
         AiProviders.Yandex => options.Value.YandexBaseUrl,

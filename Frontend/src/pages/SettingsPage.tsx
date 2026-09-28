@@ -21,10 +21,12 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAiModels, useMeAi, useMeTokens, useStoreAi, useStoreSourceCraftToken, useTestAi } from "../shared/api/hooks";
+import { useAiModels, useMe, useMeAi, useMeTokens, useStoreAi, useStoreSourceCraftToken, useTestAi } from "../shared/api/hooks";
 import { Key24Regular, Play24Regular, Save24Regular, Sparkle24Regular } from "@fluentui/react-icons";
 import type { AiProvider } from "../shared/api/types";
 import { providerLabels } from "../shared/api/labels";
+import { LoginGate } from "../app/LoginGate";
+import { LoadingView } from "../shared/ui/Status";
 
 const tokenSchema = z.object({ token: z.string().min(1, "Введите токен") });
 const aiSchema = z.object({
@@ -100,8 +102,11 @@ function SecretDialog({
 }
 
 export function SettingsPage() {
-  const tokens = useMeTokens(true);
-  const meAi = useMeAi(true);
+  const me = useMe();
+  const isAuthenticated = me.isSuccess;
+  const isAnonymous = !me.isPending && !me.isSuccess;
+  const tokens = useMeTokens(isAuthenticated);
+  const meAi = useMeAi(isAuthenticated);
   const modelsQuery = useAiModels();
   const storeToken = useStoreSourceCraftToken();
   const storeAi = useStoreAi();
@@ -169,6 +174,16 @@ export function SettingsPage() {
       { provider, model: aiForm.getValues("model"), token, baseUrl: aiForm.getValues("baseUrl") || null },
       { onSuccess: () => setAiTokenDialogOpen(false) }
     );
+
+  if (me.isPending)
+    return (
+      <Card className="card stack">
+        <LoadingView />
+      </Card>
+    );
+
+  if (isAnonymous)
+    return <LoginGate inline />;
 
   return (
     <div className="stack">

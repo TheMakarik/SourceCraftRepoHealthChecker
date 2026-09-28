@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddOptions<SourceCraftServiceOptions>().Bind(configuration.GetSection(nameof(SourceCraftServiceOptions)));
         services.AddOptions<YandexIdOptions>().Bind(configuration.GetSection(nameof(YandexIdOptions)));
         services.AddOptions<GitOptions>().Bind(configuration.GetSection(nameof(GitOptions)));
+        services.AddOptions<GitCacheOptions>().Bind(configuration.GetSection(nameof(GitCacheOptions)));
         services.AddOptions<UserOptions>().Bind(configuration.GetSection(nameof(UserOptions)));
         services.AddOptions<UserAiOptions>().Bind(configuration.GetSection(nameof(UserAiOptions)));
         services.AddOptions<RepositoryOptions>().Bind(configuration.GetSection(nameof(RepositoryOptions)));
@@ -147,6 +148,7 @@ public static class DependencyInjection
         services.AddHostedService<AnalysisWorkerBackgroundService>();
 
         services.AddSingleton<IGitRepositoryReader, LocalGitRepositoryReader>();
+        services.AddSingleton<GitWorkingCopyCache>();
         services.AddScoped<GitWorkingCopyProvider>();
 
         services.Scan(scan => scan

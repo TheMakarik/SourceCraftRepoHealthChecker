@@ -1,17 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-import type { AiInsightKind, AiProvider, RepositoryIntegrity, RepositoryOwnership, SourceCraftResult } from "./types";
+import type { AiInsightKind, AiProvider, RepositoryIntegrity } from "./types";
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
-
-const fetchOwnership = async (id: string): Promise<SourceCraftResult<RepositoryOwnership>> => {
-  const response = await fetch(`${apiBaseUrl}/api/repositories/${encodeURIComponent(id)}/ownership`, {
-    credentials: "include"
-  });
-  if (!response.ok)
-    throw new Error(`HTTP ${response.status}`);
-  return (await response.json()) as SourceCraftResult<RepositoryOwnership>;
-};
 
 const fetchIntegrity = async (id: string): Promise<RepositoryIntegrity> => {
   const response = await fetch(`${apiBaseUrl}/api/repositories/${encodeURIComponent(id)}/integrity`, {
@@ -90,13 +81,14 @@ export const useFolders = (id: string | undefined) =>
     queryKey: ["folders", id],
     queryFn: () => api.folders(id as string),
     enabled: Boolean(id),
-    retry: false
+    retry: false,
+    staleTime: 5 * 60_000
   });
 
 export const useOwnership = (id: string | undefined) =>
   useQuery({
     queryKey: ["ownership", id],
-    queryFn: () => fetchOwnership(id as string),
+    queryFn: () => api.ownership(id as string),
     enabled: Boolean(id),
     retry: false,
     staleTime: 5 * 60_000

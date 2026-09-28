@@ -12,41 +12,26 @@ public sealed class GitWorkingCopyProvider(
     ISourceCraftRepositoryCatalog catalog,
     ISourceCraftAuthentication authentication,
     ISourceCraftAccessTokenAccessor accessTokenAccessor,
+    GitWorkingCopyCache workingCopyCache,
     IOptions<GitOptions> gitOptions,
     IOptions<SourceCraftServiceOptions> sourceCraftOptions,
-    ILogger<GitWorkingCopyProvider> logger) : IDisposable
+    ILogger<GitWorkingCopyProvider> logger)
 {
-    private readonly Dictionary<string, GitWorkingCopy> _workingCopies = new(StringComparer.Ordinal);
-    private readonly SemaphoreSlim _cloneGate = new(1, 1);
-
-    public async Task<SourceCraftResult<GitWorkingCopy>> AcquireAsync(string repositoryId, CancellationToken cancellationToken)
+    public Task<SourceCraftResult<GitWorkingCopy>> AcquireAsync(string repositoryId, CancellationToken cancellationToken)
     {
-        await _cloneGate.WaitAsync(cancellationToken);
-        try
-        {
-            if (_workingCopies.TryGetValue(repositoryId, out var cached))
-                return new SourceCraftResult<GitWorkingCopy>(DataStatus.Available, cached, null);
-
-            var result = await CreateAsync(repositoryId, cancellationToken);
-            if (result.Status == DataStatus.Available && result.Data is not null)
-                _workingCopies[repositoryId] = result.Data;
-
-            return result;
-        }
-        finally
-        {
-            _cloneGate.Release();
-        }
+        return workingCopyCache.GetOrCreateAsync(
+            repositoryId,
+            (cloneDirectory, cloneToken) => CreateAsync(repositoryId, cloneDirectory, cloneToken),
+            cancellationToken);
     }
 
-    private async Task<SourceCraftResult<GitWorkingCopy>> CreateAsync(string repositoryId, CancellationToken cancellationToken)
+    private async Task<SourceCraftResult<GitWorkingCopy>> CreateAsync(string repositoryId, string cloneDirectory, CancellationToken cancellationToken)
     {
         var repositoryResult = await catalog.GetRepositoryAsync(repositoryId, cancellationToken);
         if (repositoryResult.Status != DataStatus.Available || repositoryResult.Data is null)
             return new SourceCraftResult<GitWorkingCopy>(repositoryResult.Status, null, repositoryResult.Reason);
 
         var options = gitOptions.Value;
-        var cloneDirectory = Path.Join(ResolveWorkDirectory(options), $"srhc-{Guid.NewGuid():n}.git");
 
         try
         {
@@ -163,16 +148,6 @@ public sealed class GitWorkingCopyProvider(
         return new UriBuilder(uri) { UserName = string.Empty, Password = string.Empty }.Uri.ToString();
     }
 
-    private static string ResolveWorkDirectory(GitOptions options)
-    {
-        var workDirectory = options.WorkDir;
-        if (string.IsNullOrWhiteSpace(workDirectory))
-            return Path.GetTempPath();
-
-        Directory.CreateDirectory(workDirectory);
-        return workDirectory;
-    }
-
     private static long GetDirectorySize(string directory)
     {
         var total = 0L;
@@ -203,14 +178,5 @@ public sealed class GitWorkingCopyProvider(
         catch (UnauthorizedAccessException)
         {
         }
-    }
-
-    public void Dispose()
-    {
-        foreach (var workingCopy in _workingCopies.Values)
-            TryDelete(workingCopy.Path);
-
-        _workingCopies.Clear();
-        _cloneGate.Dispose();
     }
 }

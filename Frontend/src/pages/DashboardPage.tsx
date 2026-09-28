@@ -32,7 +32,6 @@ import { CategoryTabs } from "../widgets/CategoryTabs";
 import { AnalysisStatusBadge } from "../widgets/AnalysisStatusBadge";
 import { AnalysisStatusPanel, type AnalysisPanelPhase } from "../widgets/AnalysisStatusPanel";
 import { MetricsTable } from "../widgets/MetricsTable";
-import { FoldersPanel } from "../widgets/FoldersPanel";
 import { FileBrowser } from "../widgets/FileBrowser";
 import { api, ApiError } from "../shared/api/client";
 import { insightLabels } from "../shared/api/labels";
@@ -278,12 +277,7 @@ export function DashboardPage() {
         </Card>
 
         <Card className="card stack">
-          <div style={{ fontWeight: 600 }}>Папки</div>
-          <FoldersPanel repositoryId={id} />
-        </Card>
-
-        <Card className="card stack">
-          <div style={{ fontWeight: 600 }}>Файлы</div>
+          <div style={{ fontWeight: 600 }}>Файлы и папки</div>
           <FileBrowser repositoryId={id} />
         </Card>
 
@@ -296,7 +290,7 @@ export function DashboardPage() {
             </div>
           ) : ownership.isError ? (
             <span className="muted">Не удалось загрузить данные о владельцах.</span>
-          ) : ownership.data?.status === "Available" && ownership.data.data ? (
+          ) : ownership.data?.status === "Available" && ownership.data.data && ownership.data.data.owners.length > 0 ? (
             <>
               <div className="row" style={{ gap: "0.5rem" }}>
                 <Badge appearance="tint" color={ownership.data.data.busFactor <= 1 ? "danger" : "informative"}>
@@ -327,7 +321,7 @@ export function DashboardPage() {
               </div>
             </>
           ) : (
-            <span className="muted">Нет данных о владельцах.</span>
+            <span className="muted">{ownership.data?.reason || "Нет данных о владельцах."}</span>
           )}
         </Card>
 

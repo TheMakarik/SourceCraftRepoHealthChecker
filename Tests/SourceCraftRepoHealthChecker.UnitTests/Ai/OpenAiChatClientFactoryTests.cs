@@ -12,7 +12,6 @@ public sealed class OpenAiChatClientFactoryTests
 
     [Theory]
     [InlineData(AiProviders.OpenAI)]
-    [InlineData(AiProviders.Ollama)]
     [InlineData(AiProviders.Anthropic)]
     [InlineData(AiProviders.GoogleGemini)]
     [InlineData(AiProviders.Yandex)]
@@ -46,7 +45,6 @@ public sealed class OpenAiChatClientFactoryTests
         SecurityTriagePrompt = "prompt",
         RiskForecastPrompt = "prompt",
         OpenAiBaseUrl = "https://api.openai.com/v1",
-        OllamaBaseUrl = "http://localhost:11434/v1",
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",
         GoogleGeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
         YandexBaseUrl = "https://llm.api.cloud.yandex.net/v1",

@@ -124,7 +124,6 @@ public sealed class AiInsightUseCaseTests
         SecurityTriagePrompt = "TRIAGE-INSTRUCTION",
         RiskForecastPrompt = "RISK-INSTRUCTION",
         OpenAiBaseUrl = "https://api.openai.com/v1",
-        OllamaBaseUrl = "http://localhost:11434/v1",
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",
         GoogleGeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
         YandexBaseUrl = "https://llm.api.cloud.yandex.net/v1",

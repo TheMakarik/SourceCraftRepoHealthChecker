@@ -12,7 +12,6 @@ export type Priority = "Critical" | "High" | "Medium" | "Low";
 
 export type AiProvider =
   | "OpenAI"
-  | "Ollama"
   | "Anthropic"
   | "GoogleGemini"
   | "Yandex"
@@ -207,6 +206,11 @@ export type RepositoryNodeType = "file" | "directory";
 
 export interface RepositoryTreeEntry {
   name: string;
+  path: string;
+  type: RepositoryNodeType;
+}
+
+export interface RepositoryTreeSelection {
   path: string;
   type: RepositoryNodeType;
 }
