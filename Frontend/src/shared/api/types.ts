@@ -81,6 +81,26 @@ export interface Analysis {
   findings: Finding[];
 }
 
+export interface RepositoryComparisonItem {
+  sourceCraftId: string;
+  name: string;
+  fullName: string;
+  url: string;
+  language: string;
+  likesCount: number;
+  lastActivityAt: string;
+  score: number | null;
+  analyzedAt?: string | null;
+  categories: CategoryScore[];
+  metrics: MetricScore[];
+  strengths: CategoryScore[];
+  weaknesses: CategoryScore[];
+}
+
+export interface RepositoryComparison {
+  items: RepositoryComparisonItem[];
+}
+
 export interface LeaderboardItem {
   place: number;
   sourceCraftId: string;
@@ -99,6 +119,14 @@ export interface LeaderboardPage {
   totalCount: number;
   page: number;
   pageSize: number;
+}
+
+export type IntegrityStatus = "ok" | "check" | "suspicious";
+
+export interface RepositoryIntegrity {
+  status: IntegrityStatus;
+  score: number;
+  signals: string[];
 }
 
 export interface SourceCraftResult<T> {
@@ -204,6 +232,19 @@ export interface FolderReport {
   readme: boolean;
   license: boolean;
   tests: boolean;
+}
+
+export interface OwnerStat {
+  login: string;
+  commits: number;
+  filesTouched: number;
+  topDirectories: string[];
+}
+
+export interface RepositoryOwnership {
+  owners: OwnerStat[];
+  busFactor: number;
+  totalContributors: number;
 }
 
 export type AnalysisStatusValue = "queued" | "running" | "completed" | "failed";

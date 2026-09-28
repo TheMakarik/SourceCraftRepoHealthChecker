@@ -11,6 +11,7 @@ import type {
   HistoryPoint,
   LeaderboardPage,
   ReportFormat,
+  RepositoryComparison,
   RepositoryFile,
   RepositoryTree,
   SourceCraftResult,
@@ -86,6 +87,9 @@ export const api = {
   languages: () => request<string[]>("/api/repositories/languages"),
 
   analysis: (id: string) => request<Analysis>(`/api/repositories/${encodeURIComponent(id)}/analysis`),
+
+  compare: (ids: string[]) =>
+    request<RepositoryComparison>(`/api/repositories/compare?ids=${ids.map(encodeURIComponent).join(",")}`),
 
   history: (id: string) => request<HistoryPoint[]>(`/api/repositories/${encodeURIComponent(id)}/history`),
 

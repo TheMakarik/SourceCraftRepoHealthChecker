@@ -14,9 +14,32 @@ public sealed class GitWorkingCopyProvider(
     ISourceCraftAccessTokenAccessor accessTokenAccessor,
     IOptions<GitOptions> gitOptions,
     IOptions<SourceCraftServiceOptions> sourceCraftOptions,
-    ILogger<GitWorkingCopyProvider> logger)
+    ILogger<GitWorkingCopyProvider> logger) : IDisposable
 {
+    private readonly Dictionary<string, GitWorkingCopy> _workingCopies = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _cloneGate = new(1, 1);
+
     public async Task<SourceCraftResult<GitWorkingCopy>> AcquireAsync(string repositoryId, CancellationToken cancellationToken)
+    {
+        await _cloneGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_workingCopies.TryGetValue(repositoryId, out var cached))
+                return new SourceCraftResult<GitWorkingCopy>(DataStatus.Available, cached, null);
+
+            var result = await CreateAsync(repositoryId, cancellationToken);
+            if (result.Status == DataStatus.Available && result.Data is not null)
+                _workingCopies[repositoryId] = result.Data;
+
+            return result;
+        }
+        finally
+        {
+            _cloneGate.Release();
+        }
+    }
+
+    private async Task<SourceCraftResult<GitWorkingCopy>> CreateAsync(string repositoryId, CancellationToken cancellationToken)
     {
         var repositoryResult = await catalog.GetRepositoryAsync(repositoryId, cancellationToken);
         if (repositoryResult.Status != DataStatus.Available || repositoryResult.Data is null)
@@ -48,7 +71,8 @@ public sealed class GitWorkingCopyProvider(
             return new SourceCraftResult<GitWorkingCopy>(DataStatus.Unavailable, null, "Repository exceeds analysis size limit");
         }
 
-        return new SourceCraftResult<GitWorkingCopy>(DataStatus.Available, new GitWorkingCopy(cloneDirectory), null);
+        logger.LogInformation("Cloned repository {RepositoryId} into a working copy", repositoryId);
+        return new SourceCraftResult<GitWorkingCopy>(DataStatus.Available, new GitWorkingCopy(cloneDirectory, deleteOnDispose: false), null);
     }
 
     private async Task CloneAsync(SourceCraftRepository repository, string cloneDirectory, UsernamePasswordCredentials? credentials, GitOptions options, CancellationToken cancellationToken)
@@ -60,11 +84,9 @@ public sealed class GitWorkingCopyProvider(
         var cloneToken = timeoutSource.Token;
         var fetchOptions = new FetchOptions
         {
-            OnTransferProgress = _ =>
-            {
-                cloneToken.ThrowIfCancellationRequested();
-                return true;
-            }
+            // libgit2 invokes this callback from native code: throwing here would crash the process,
+            // so cancellation is signalled by returning false, which surfaces as UserCancelledException.
+            OnTransferProgress = _ => !cloneToken.IsCancellationRequested
         };
         if (credentials is not null)
             fetchOptions.CredentialsProvider = (_, _, _) => credentials;
@@ -78,7 +100,24 @@ public sealed class GitWorkingCopyProvider(
             cloneOptions.BranchName = repository.DefaultBranch;
 
         var cloneUrl = ResolveCloneUrl(repository);
-        await Task.Run(() => Repository.Clone(cloneUrl, cloneDirectory, cloneOptions), cloneToken);
+        try
+        {
+            await Task.Run(() => Repository.Clone(cloneUrl, cloneDirectory, cloneOptions), cloneToken);
+            if (cloneToken.IsCancellationRequested)
+                ThrowCloneCancellation(cancellationToken);
+        }
+        catch (UserCancelledException) when (cloneToken.IsCancellationRequested)
+        {
+            ThrowCloneCancellation(cancellationToken);
+        }
+    }
+
+    private static void ThrowCloneCancellation(CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            throw new OperationCanceledException(cancellationToken);
+
+        throw new TimeoutException("Repository clone exceeded the configured timeout");
     }
 
     private async Task<UsernamePasswordCredentials?> ResolveCredentialsAsync(GitOptions options, CancellationToken cancellationToken)
@@ -164,5 +203,14 @@ public sealed class GitWorkingCopyProvider(
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    public void Dispose()
+    {
+        foreach (var workingCopy in _workingCopies.Values)
+            TryDelete(workingCopy.Path);
+
+        _workingCopies.Clear();
+        _cloneGate.Dispose();
     }
 }

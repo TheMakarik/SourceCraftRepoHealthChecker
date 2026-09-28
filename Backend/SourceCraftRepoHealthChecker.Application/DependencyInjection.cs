@@ -8,6 +8,10 @@ using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Services;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
+using SourceCraftRepoHealthChecker.Application.Integrity.Services;
+using SourceCraftRepoHealthChecker.Application.Integrity.UseCases;
+using SourceCraftRepoHealthChecker.Application.Ownership.Options;
+using SourceCraftRepoHealthChecker.Application.Ownership.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Scheduling.Options;
@@ -29,6 +33,7 @@ public static class DependencyInjection
         services.AddOptions<UserTicketOptions>().Bind(configuration.GetSection(nameof(UserTicketOptions)));
         services.AddOptions<RepositoryHistoryOptions>().Bind(configuration.GetSection(nameof(RepositoryHistoryOptions)));
         services.AddOptions<RepositoryBrowsingOptions>().Bind(configuration.GetSection(nameof(RepositoryBrowsingOptions)));
+        services.AddOptions<OwnershipOptions>().Bind(configuration.GetSection(nameof(OwnershipOptions)));
 
         services.AddSingleton<IMetricNormalizer, MetricNormalizer>();
         services.AddSingleton<ICategoryScoreCalculator, CategoryScoreCalculator>();
@@ -60,6 +65,10 @@ public static class DependencyInjection
         services.AddScoped<IGetRepositoryTreeUseCase, GetRepositoryTreeUseCase>();
         services.AddScoped<IGetRepositoryFileUseCase, GetRepositoryFileUseCase>();
         services.AddScoped<IGetRepositoryFoldersUseCase, GetRepositoryFoldersUseCase>();
+        services.AddScoped<ICompareRepositoriesUseCase, CompareRepositoriesUseCase>();
+        services.AddSingleton<RepositoryIntegrityCalculator>();
+        services.AddScoped<IComputeRepositoryIntegrityUseCase, ComputeRepositoryIntegrityUseCase>();
+        services.AddScoped<IGetRepositoryOwnershipUseCase, GetRepositoryOwnershipUseCase>();
 
         return services;
     }

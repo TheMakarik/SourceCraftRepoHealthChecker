@@ -19,8 +19,10 @@
 | `GET /api/me` | Текущий пользователь |
 | `GET /api/me/repositories` | Доступные пользователю репозитории (PAT из `Authorization` или сохранённый) |
 | `POST /api/me/repositories/{id}/analyze` | Запустить анализ своего репозитория |
-| `PUT /api/me/ai` | Сохранить настройки ИИ (провайдер, модель, baseUrl, токен — шифрованно) |
+| `PUT /api/me/ai` | Сохранить настройки ИИ (провайдер, модель, baseUrl, токен — шифрованно; без токена сохраняются только провайдер/модель) |
 | `GET /api/me/ai` | Текущие настройки ИИ (без токена): 204, если не настроено |
+| `GET /api/me/ai/models` | Курируемый список моделей по провайдерам: `[{ provider, models }]` (публичный) |
+| `POST /api/me/ai/test` | Тестовый запрос к сохранённым провайдеру/модели/токену: `{ ok, message }` |
 | `POST /api/repositories/{id}/ai-summary` | AI-summary через выбранного провайдера |
 | `POST /api/repositories/{id}/ai-insights/{kind}` | AI-разбор: `recommendations`, `explanation`, `action-plan`, `security-triage`, `risk-forecast` |
 

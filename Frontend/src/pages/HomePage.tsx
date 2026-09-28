@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  Badge,
   Button,
   Dropdown,
   Option,
@@ -13,12 +14,44 @@ import {
   TableRow
 } from "@fluentui/react-components";
 import { ArrowLeft24Regular, ArrowRight24Regular, ArrowSync24Regular } from "@fluentui/react-icons";
-import { useLanguages, useLeaderboard, useRefresh } from "../shared/api/hooks";
+import { useLanguages, useLeaderboard, useRefresh, useRepositoryIntegrity } from "../shared/api/hooks";
 import { formatDate, formatDateShort, languageDisplayName, scoreTone, toneColor } from "../shared/api/labels";
+import type { IntegrityStatus } from "../shared/api/types";
 import { appConfig } from "../shared/config";
 import { ErrorView, LoadingView } from "../shared/ui/Status";
 import { LanguageTabs } from "../widgets/LanguageTabs";
 import { RepoActionsButton, RepoContextMenu } from "../widgets/RepoContextMenu";
+
+const integrityLabels: Record<IntegrityStatus, string> = {
+  ok: "Чисто",
+  check: "Проверяется",
+  suspicious: "Подозрительно"
+};
+
+const integrityColors: Record<IntegrityStatus, "success" | "warning" | "danger"> = {
+  ok: "success",
+  check: "warning",
+  suspicious: "danger"
+};
+
+function IntegrityBadge({ sourceCraftId }: { sourceCraftId: string }) {
+  const integrity = useRepositoryIntegrity(sourceCraftId);
+  if (integrity.isPending)
+    return <Spinner size="tiny" />;
+  if (integrity.isError || !integrity.data)
+    return <span className="muted">—</span>;
+
+  const { status, signals } = integrity.data;
+  return (
+    <Badge
+      appearance="tint"
+      color={integrityColors[status]}
+      title={signals.length > 0 ? signals.join("\n") : undefined}
+    >
+      {integrityLabels[status]}
+    </Badge>
+  );
+}
 
 export function HomePage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
@@ -112,6 +145,7 @@ export function HomePage() {
                 <TableHeaderCell>Язык</TableHeaderCell>
                 <TableHeaderCell>Активность</TableHeaderCell>
                 <TableHeaderCell>Проанализирован</TableHeaderCell>
+                <TableHeaderCell>Достоверность</TableHeaderCell>
                 <TableHeaderCell aria-label="Действия" />
               </TableRow>
             </TableHeader>
@@ -134,6 +168,9 @@ export function HomePage() {
                     </TableCell>
                     <TableCell title={formatDate(item.lastActivityAt)}>{formatDateShort(item.lastActivityAt)}</TableCell>
                     <TableCell title={formatDate(item.analyzedAt)}>{formatDate(item.analyzedAt)}</TableCell>
+                    <TableCell>
+                      <IntegrityBadge sourceCraftId={item.sourceCraftId} />
+                    </TableCell>
                     <TableCell>
                       <RepoActionsButton url={item.url} fullName={item.fullName} />
                     </TableCell>

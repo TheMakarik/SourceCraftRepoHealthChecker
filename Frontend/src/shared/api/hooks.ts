@@ -1,6 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
-import type { AiInsightKind, AiProvider } from "./types";
+import type { AiInsightKind, AiProvider, RepositoryIntegrity, RepositoryOwnership, SourceCraftResult } from "./types";
+
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+const fetchOwnership = async (id: string): Promise<SourceCraftResult<RepositoryOwnership>> => {
+  const response = await fetch(`${apiBaseUrl}/api/repositories/${encodeURIComponent(id)}/ownership`, {
+    credentials: "include"
+  });
+  if (!response.ok)
+    throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as SourceCraftResult<RepositoryOwnership>;
+};
+
+const fetchIntegrity = async (id: string): Promise<RepositoryIntegrity> => {
+  const response = await fetch(`${apiBaseUrl}/api/repositories/${encodeURIComponent(id)}/integrity`, {
+    credentials: "include"
+  });
+  if (!response.ok)
+    throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as RepositoryIntegrity;
+};
 
 export interface LeaderboardQuery {
   language?: string;
@@ -20,6 +40,14 @@ export const useAnalysis = (id: string | undefined) =>
     queryKey: ["analysis", id],
     queryFn: () => api.analysis(id as string),
     enabled: Boolean(id),
+    retry: false
+  });
+
+export const useComparison = (ids: string[]) =>
+  useQuery({
+    queryKey: ["comparison", ids],
+    queryFn: () => api.compare(ids),
+    enabled: ids.length >= 2 && ids.length <= 4,
     retry: false
   });
 
@@ -63,6 +91,24 @@ export const useFolders = (id: string | undefined) =>
     queryFn: () => api.folders(id as string),
     enabled: Boolean(id),
     retry: false
+  });
+
+export const useOwnership = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["ownership", id],
+    queryFn: () => fetchOwnership(id as string),
+    enabled: Boolean(id),
+    retry: false,
+    staleTime: 5 * 60_000
+  });
+
+export const useRepositoryIntegrity = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["integrity", id],
+    queryFn: () => fetchIntegrity(id as string),
+    enabled: Boolean(id),
+    retry: false,
+    staleTime: 5 * 60_000
   });
 
 export const useHealth = () =>
@@ -109,6 +155,7 @@ export const useAnalyze = () => {
       queryClient.invalidateQueries({ queryKey: ["folders", id] });
       queryClient.invalidateQueries({ queryKey: ["tree", id] });
       queryClient.invalidateQueries({ queryKey: ["file", id] });
+      queryClient.invalidateQueries({ queryKey: ["ownership", id] });
     }
   });
 };
