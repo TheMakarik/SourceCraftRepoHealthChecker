@@ -62,25 +62,27 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
     onSelectionChange([]);
   };
 
-  const toggleLanguage = (language: string) => {
-    if (!multiSelect) {
-      onSelectionChange([language]);
-      return;
-    }
-    onSelectionChange(
-      selected.includes(language) ? selected.filter((item) => item !== language) : [...selected, language]
-    );
-  };
-
-  const activate = (language: string | null) => {
+  const activate = (language: string | null, additive: boolean) => {
     if (longPressRef.current) {
       longPressRef.current = false;
       return;
     }
-    if (language === null)
+    if (language === null) {
       activateAll();
-    else
-      toggleLanguage(language);
+      return;
+    }
+
+    const effectiveMulti = additive || multiSelect;
+    if (effectiveMulti) {
+      if (additive && !multiSelect)
+        setMultiSelect(true);
+      onSelectionChange(
+        selected.includes(language) ? selected.filter((item) => item !== language) : [...selected, language]
+      );
+      return;
+    }
+
+    onSelectionChange([language]);
   };
 
   const pressHandlers = (language: string | null) => ({
@@ -90,13 +92,17 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
     onPointerCancel: cancelLongPress
   });
 
+  const clickHandlers = (language: string | null) => ({
+    onClick: (event: React.MouseEvent) => activate(language, event.ctrlKey || event.metaKey)
+  });
+
   return (
     <div
       className={`lang-tabs${multiSelect ? " lang-tabs--multi" : ""}`}
       ref={scrollRef}
       role="tablist"
       aria-label="Фильтр по языку"
-      title={multiSelect ? "Мультивыбор: клик переключает языки. «Все» сбрасывает." : "Долгое нажатие на язык включает мультивыбор"}
+      title={multiSelect ? "Мультивыбор: клик переключает языки. «Все» сбрасывает." : "Ctrl/Cmd + клик или долгое нажатие — мультивыбор языков"}
     >
       <button
         type="button"
@@ -105,7 +111,7 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
         className={`lang-tab${allSelected ? " lang-tab--active" : ""}`}
         onContextMenu={(event) => event.preventDefault()}
         {...pressHandlers(null)}
-        onClick={() => activate(null)}
+        {...clickHandlers(null)}
       >
         Все
       </button>
@@ -123,7 +129,7 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
             }`}
             onContextMenu={(event) => event.preventDefault()}
             {...pressHandlers(language)}
-            onClick={() => activate(language)}
+            {...clickHandlers(language)}
           >
             {languageDisplayName(language)}
           </button>
