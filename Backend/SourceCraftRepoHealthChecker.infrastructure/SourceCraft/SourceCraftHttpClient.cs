@@ -3,14 +3,17 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Domain.Enums;
+using SourceCraftRepoHealthChecker.infrastructure.Options;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
 public sealed class SourceCraftHttpClient(
     HttpClient httpClient,
     ISourceCraftAccessTokenAccessor accessTokenAccessor,
+    IOptions<SourceCraftServiceOptions> serviceOptions,
     ILogger<SourceCraftHttpClient> logger)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -54,6 +57,9 @@ public sealed class SourceCraftHttpClient(
     private void ApplyAuthorization(HttpRequestMessage request, string? accessToken)
     {
         var token = accessToken ?? accessTokenAccessor.Token;
+        if (string.IsNullOrEmpty(token))
+            token = serviceOptions.Value.ServiceToken;
+
         if (!string.IsNullOrEmpty(token))
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }

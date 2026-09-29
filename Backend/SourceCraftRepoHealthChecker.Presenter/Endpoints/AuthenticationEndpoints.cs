@@ -102,6 +102,7 @@ public static class AuthenticationEndpoints
             IAnalyzeRepositoryUseCase useCase,
             IResolveSourceCraftTokenUseCase tokenUseCase,
             ISourceCraftAccessTokenAccessor accessTokenAccessor,
+            ISourceCraftSystemCallScope systemCallScope,
             IAnalysisStatusHub statusHub,
             CancellationToken cancellationToken) =>
         {
@@ -110,6 +111,8 @@ public static class AuthenticationEndpoints
             var token = await ResolveTokenAsync(context, tokenUseCase, cancellationToken);
             if (!string.IsNullOrEmpty(token))
                 accessTokenAccessor.Token = token;
+
+            using var systemScope = userId is null && string.IsNullOrEmpty(token) ? systemCallScope.Begin() : null;
 
             statusHub.Publish(id, AnalysisStatuses.Running, null);
             try
