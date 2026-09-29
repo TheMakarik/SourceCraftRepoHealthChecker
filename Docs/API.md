@@ -26,6 +26,20 @@
 | `POST /api/repositories/{id}/ai-summary` | AI-summary через выбранного провайдера |
 | `POST /api/repositories/{id}/ai-insights/{kind}` | AI-разбор: `recommendations`, `explanation`, `action-plan`, `security-triage`, `risk-forecast` |
 
+## Публичный API и функции со звёздочкой (bonus)
+
+| Метод и путь | Назначение |
+|---|---|
+| `GET /api/public/repositories/{id}/score` | Публичный Score с версией методики (без входа) |
+| `GET /api/public/repositories/{id}/badge.svg` | SVG quality badge с текущим Score (`image/svg+xml`, публичный) |
+| `GET /api/repositories/compare?ids=a,b[,c,d]` | Сравнение 2–4 репозиториев по Score, категориям и метрикам |
+| `GET /api/repositories/{id}/integrity` | Индекс достоверности (защита рейтинга от накрутки) |
+| `GET /api/repositories/{id}/ownership` | Владельцы и bus factor по git-истории |
+| `GET /api/repositories/{id}/folders` | Анализ по папкам (файлы, TODO/FIXME, README/LICENSE/tests) |
+| `GET /api/repositories/{id}/tree` / `file` | Дерево файлов и содержимое файла |
+| `GET /api/repositories/languages` | Присутствующие языки для фильтра рейтинга |
+| `GET /api/me/tokens` / `GET /api/me/ai/tokens` | Статус сохранённых токенов (без значений) |
+
 ## Источники данных (внутри сервиса)
 
 Отдельного микросервиса нет: сбор данных выполняют адаптеры `infrastructure` за портами `Application`.

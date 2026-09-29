@@ -1,29 +1,35 @@
 # Сдача проекта — чек-лист (TZ 12.2)
 
-Итоговый комплект материалов для сдачи SourceCraftRepoHealthChecker. Заполните плейсхолдеры
-`TODO:` перед отправкой.
+Итоговый комплект материалов для сдачи SourceCraftRepoHealthChecker. Плейсхолдеры `TODO:`
+оставлены только для **внешних** артефактов (адрес демо-стенда, слайды, видео) — их заполняют
+после публикации.
 
 ## 1. Ссылка на репозиторий в SourceCraft
 
 - Репозиторий: https://git.sourcecraft.dev/themakarik/repo-health-checker
-- README с описанием, стеком и запуском: `README.md` (корень репозитория).
-- Лицензия и вклад: см. репозиторий.
+- Зеркало на GitHub: https://github.com/TheMakarik/SourceCraftRepoHealthChecker
+- README с описанием, стеком и запуском: [`README.md`](../README.md).
+- Лицензия: [`LICENSE.txt`](../LICENSE.txt); правила поведения: [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md);
+  владельцы кода: [`CODEOWNERS`](../CODEOWNERS).
 
 ## 2. URL демонстрационного стенда
 
-- Демо-стенд: `TODO: <URL стенда>`
+- Демо-стенд: `TODO: <URL стенда>` (внешний ресурс, публикуется после развёртывания)
 - Публичный рейтинг: `TODO: <URL>/`
 - Пример страницы анализа: `TODO: <URL>/repositories/<sourceCraftId>`
 - Методика: `TODO: <URL>/methodology`
 
-> Если стенд поднимается локально, использовать порты ниже: Frontend `http://localhost:8080`,
-> Backend API `http://localhost:5172`.
+> Локальный запуск (порты фиксированы): Frontend `http://localhost:8080`,
+> Backend API `http://localhost:5172`. Анализ репозитория доступен по
+> `http://localhost:8080/repositories/<sourceCraftId>`, методика — по `http://localhost:8080/methodology`.
 
 ## 3. Инструкция запуска
 
-Скрипты — `Scripts/start.sh` (Linux/macOS) и `Scripts/start.bat` (Windows): создают `.env` из
-`.env.example` (включая генерацию `AI_TOKEN_ENCRYPTION_KEY`), собирают и поднимают
-PostgreSQL + бэкенд + фронтенд через Docker Compose.
+Скрипты — [`Scripts/start.sh`](../Scripts/start.sh) (Linux/macOS) и
+[`Scripts/start.bat`](../Scripts/start.bat) (Windows): создают `.env` из `.env.example` (включая
+генерацию `AI_TOKEN_ENCRYPTION_KEY`), собирают и поднимают PostgreSQL + бэкенд + фронтенд через
+Docker Compose. Интерактивная подготовка секретов — [`prepare.sh`](../prepare.sh) /
+[`prepare.bat`](../prepare.bat).
 
 ```bash
 cp .env.example .env      # заполните SOURCECRAFT_PAT и YANDEX_CLIENT_ID/SECRET
@@ -32,20 +38,22 @@ cp .env.example .env      # заполните SOURCECRAFT_PAT и YANDEX_CLIENT_
 
 - Frontend: http://localhost:8080
 - Backend API: http://localhost:5172
-- Сервисы: `docker-compose.yml` (PostgreSQL + backend + frontend). MinIO в Compose нет;
-  S3-совместимое хранилище DataProtection — опционально (см. `Docs/ARCHITECTURE.md`).
+- Сервисы: [`docker-compose.yml`](../docker-compose.yml) (PostgreSQL + backend + frontend). MinIO в
+  Compose нет; S3-совместимое хранилище DataProtection — опционально (см. `Docs/ARCHITECTURE.md`).
 
-Подробности сборки/тестов — `Docs/ARCHITECTURE.md`, контракт — `Docs/API.md`.
+Подробности сборки/тестов — [`ARCHITECTURE.md`](ARCHITECTURE.md), контракт — [`API.md`](API.md).
 
 ## 4. Сопроводительная документация
 
 - Архитектура и методика: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - Контракт API: [`API.md`](API.md)
-- Правила разработки и структура: `AGENTS.md`
+- Крупный репозиторий (сквозной прогон TZ 9.2/11.1): [`LARGE_REPO.md`](LARGE_REPO.md)
+- Правила разработки и структура: [`AGENTS.md`](../AGENTS.md)
 
 ## 5. Примеры отчётов
 
-Отчёт по репозиторию (открытый репозиторий доступен всем): замените `<id>` на `sourceCraftId`.
+Отчёты выгружаются по репозиторию; для публичного репозитория доступны без входа. Шаблоны
+эндпоинтов (полный контракт — [`API.md`](API.md)):
 
 | Формат | Эндпоинт |
 |---|---|
@@ -54,7 +62,12 @@ cp .env.example .env      # заполните SOURCECRAFT_PAT и YANDEX_CLIENT_
 | HTML | `GET /api/repositories/<id>/report?format=html` |
 | PDF | `GET /api/repositories/<id>/report?format=pdf` |
 
-Примеры (заполнить после публикации стенда):
+Локальные примеры (замените `<id>` на `sourceCraftId`):
+
+- Markdown: `http://localhost:5172/api/repositories/<id>/report.md`
+- PDF: `http://localhost:5172/api/repositories/<id>/report?format=pdf`
+
+После публикации стенда те же пути доступны на внешнем URL:
 
 - Markdown: `TODO: <URL>/api/repositories/<id>/report.md`
 - PDF: `TODO: <URL>/api/repositories/<id>/report?format=pdf`
@@ -68,9 +81,9 @@ cp .env.example .env      # заполните SOURCECRAFT_PAT и YANDEX_CLIENT_
 рейтинг с защитой от накрутки (индекс достоверности) помогает сравнивать проекты по здоровью, а не
 только по популярности. Периодический пересчёт по расписанию поддерживает актуальность оценок.
 
-## 7. Презентация и видео
+## 7. Презентация и видео (внешние артефакты)
 
 - Презентация: `TODO: ссылка на слайды`
 - Демонстрационное видео: `TODO: ссылка на видео`
-- Сценарий демо: `TODO: 1) рейтинг и фильтр; 2) страница анализа; 3) вход через Я ID и анализ
-  своего репозитория; 4) выгрузка отчёта Markdown/PDF`
+- Сценарий демо: 1) рейтинг и фильтр по языкам; 2) страница анализа (Score, категории,
+  рекомендации); 3) вход через Я ID и анализ своего репозитория; 4) выгрузка отчёта Markdown/PDF.

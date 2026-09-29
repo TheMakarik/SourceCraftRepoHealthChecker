@@ -22,4 +22,6 @@ public sealed record RepositoryFacts(
     DataStatus CodeHealthAvailability,
     CodeHealthReport? CodeHealth,
     DataStatus DocumentationAvailability,
-    DocumentationReport? Documentation);
+    DocumentationReport? Documentation,
+    bool IssuesPartial = false,
+    bool MergeRequestsPartial = false);

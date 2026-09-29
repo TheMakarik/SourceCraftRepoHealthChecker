@@ -10,4 +10,5 @@ public sealed record RepositoryLeaderboardItem(
     int LikesCount,
     string Language,
     DateTimeOffset LastActivityAt,
-    DateTimeOffset? AnalyzedAt);
+    DateTimeOffset? AnalyzedAt,
+    int? PlaceDelta = null);

@@ -126,6 +126,83 @@ public sealed class RepositoryLeaderboardTests : IDisposable
         actual.TotalCount.Should().Be(3);
     }
 
+    [Fact]
+    public async Task GetAsync_WhenHasCiFilterTrue_ReturnsOnlyRepositoriesWithCi()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20, HasCi: true), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b");
+        actual.TotalCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenHasCiFilterFalse_ReturnsOnlyRepositoriesWithoutCi()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20, HasCi: false), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("a", "c");
+        actual.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenScoreRangeSpecified_ReturnsRepositoriesWithinRange()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20, MinScore: 80, MaxScore: 90), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a");
+        actual.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenMinScoreSpecified_ExcludesRepositoriesWithoutScore()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20, MinScore: 0), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a");
+        actual.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenScoreRangeReversed_NormalizesBounds()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20, MinScore: 90, MaxScore: 80), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a");
+        actual.TotalCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenSortedByScore_ReturnsPlaceDeltaFromPreviousRun()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+
+        // Assert
+        actual.Items.Single(item => item.SourceCraftId == "a").PlaceDelta.Should().Be(-1);
+        actual.Items.Single(item => item.SourceCraftId == "b").PlaceDelta.Should().BeNull();
+        actual.Items.Single(item => item.SourceCraftId == "c").PlaceDelta.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenSortedByLikes_ReturnsNoPlaceDelta()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Likes, 1, 20), CancellationToken.None);
+
+        // Assert
+        actual.Items.Should().OnlyContain(item => item.PlaceDelta == null);
+    }
+
     private static void Seed(RepoHealthCheckerDbContext context)
     {
         var repositoryA = CreateRepository("a", "C#", likes: 10, activity: ActivityA);
@@ -133,7 +210,9 @@ public sealed class RepositoryLeaderboardTests : IDisposable
         repositoryA.AnalysisRuns.Add(CreateRun(10, ActivityA.AddDays(-1)));
 
         var repositoryB = CreateRepository("b", "Go", likes: 5, activity: ActivityB);
-        repositoryB.AnalysisRuns.Add(CreateRun(90, ActivityB.AddDays(1)));
+        var runB = CreateRun(90, ActivityB.AddDays(1));
+        runB.Metrics.Add(CreateMetric(MetricCode.CiCdPresence, 1));
+        repositoryB.AnalysisRuns.Add(runB);
 
         var repositoryC = CreateRepository("c", "C#", likes: 50, activity: ActivityC);
         repositoryC.AnalysisRuns.Add(CreateRun(100, ActivityC.AddDays(1), DataStatus.NoData));
@@ -166,5 +245,15 @@ public sealed class RepositoryLeaderboardTests : IDisposable
         DataStatus = dataStatus,
         StartedAt = completedAt,
         CompletedAt = completedAt
+    };
+
+    private static MetricScore CreateMetric(MetricCode code, double rawValue) => new()
+    {
+        Id = Guid.NewGuid(),
+        Code = code,
+        RawValue = rawValue,
+        NormalizedScore = rawValue > 0 ? 100 : 0,
+        Weight = 1,
+        DataStatus = DataStatus.Available
     };
 }

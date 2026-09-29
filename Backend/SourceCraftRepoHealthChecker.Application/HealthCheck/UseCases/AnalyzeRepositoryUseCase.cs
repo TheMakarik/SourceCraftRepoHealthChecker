@@ -90,7 +90,9 @@ public sealed class AnalyzeRepositoryUseCase(
                 codeHealth.Status,
                 codeHealth.Data,
                 documentation.Status,
-                documentation.Data);
+                documentation.Data,
+                issues.IsPartial,
+                mergeRequests.IsPartial);
 
             var healthCheck = await healthCheckEngine.CheckAsync(facts, cancellationToken);
             var anomalies = anomalyDetector.Detect(facts);
@@ -126,12 +128,10 @@ public sealed class AnalyzeRepositoryUseCase(
             return true;
 
         if (userId is null)
-            return true;
+            return false;
 
-        if (repository?.OwnerId is not null)
-            return repository.OwnerId == userId;
-
-        return true;
+        var ownerId = repository?.OwnerId ?? source.OwnerUserId;
+        return ownerId is not null && ownerId == userId;
     }
 
     private void PopulateAnalysisRun(AnalysisRun analysisRun, HealthCheckResult healthCheck, IReadOnlyCollection<ActivityAnomaly> anomalies, IReadOnlyCollection<SecurityFinding> findings)

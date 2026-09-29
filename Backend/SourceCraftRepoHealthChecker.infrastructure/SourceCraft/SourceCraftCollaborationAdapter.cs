@@ -29,7 +29,7 @@ public sealed class SourceCraftCollaborationAdapter(
             if (error is not null)
                 return SourceCraftFailure.Unavailable<IReadOnlyCollection<IssueInfo>>(error);
 
-            var isPartial = settings.MaxItems > 0 && issues.Count >= settings.MaxItems;
+            var isPartial = issues.Truncated || results.Length > settings.MaxResponseLookups;
             return new SourceCraftResult<IReadOnlyCollection<IssueInfo>>(DataStatus.Available, results, null, isPartial);
         }
         catch (OperationCanceledException)
@@ -60,7 +60,7 @@ public sealed class SourceCraftCollaborationAdapter(
             if (error is not null)
                 return SourceCraftFailure.Unavailable<IReadOnlyCollection<MergeRequestInfo>>(error);
 
-            var isPartial = settings.MaxItems > 0 && pullRequests.Count >= settings.MaxItems;
+            var isPartial = pullRequests.Truncated || results.Length > settings.MaxResponseLookups;
             return new SourceCraftResult<IReadOnlyCollection<MergeRequestInfo>>(DataStatus.Available, results, null, isPartial);
         }
         catch (OperationCanceledException)

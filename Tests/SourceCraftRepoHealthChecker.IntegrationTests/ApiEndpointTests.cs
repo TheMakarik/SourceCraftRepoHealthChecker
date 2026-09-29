@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using SourceCraftRepoHealthChecker.IntegrationTests.Infrastructure;
 
@@ -48,6 +49,35 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
         using var client = CreateClient();
         var response = await client.GetAsync("/api/repositories");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Repositories_WithFilters_ReturnsLeaderboard()
+    {
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories?hasCi=true&minScore=0&maxScore=100&sort=score");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ReviewInsights_ReturnsSourceCraftEnvelope()
+    {
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/r1/review-insights");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        document.RootElement.GetProperty("status").GetString().Should().Be("Available");
+        document.RootElement.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Object);
+    }
+
+    [Fact]
+    public async Task ReviewInsights_ForPrivateRepositoryAnonymous_ReturnsNotFound()
+    {
+        _factory.SeedRepository("private-review", isPrivate: true, ownerId: Guid.NewGuid());
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/private-review/review-insights");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

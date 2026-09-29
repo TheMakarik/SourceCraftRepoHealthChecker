@@ -46,6 +46,7 @@ public static class DependencyInjection
         services.AddScoped<IGetRepositoryAnalysisUseCase, GetRepositoryAnalysisUseCase>();
         services.AddScoped<IExportRepositoryReportUseCase, ExportRepositoryReportUseCase>();
         services.AddScoped<IGetRepositoryLeaderboardUseCase, GetRepositoryLeaderboardUseCase>();
+        services.AddScoped<IGetRepositoryReviewInsightsUseCase, GetRepositoryReviewInsightsUseCase>();
         services.AddScoped<IGetRepositoryLanguagesUseCase, GetRepositoryLanguagesUseCase>();
         services.AddScoped<IRefreshRepositoriesUseCase, RefreshRepositoriesUseCase>();
         services.AddScoped<IAuthenticateUserUseCase, AuthenticateUserUseCase>();

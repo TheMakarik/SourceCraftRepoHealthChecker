@@ -29,11 +29,13 @@ public static class RepositoryEndpoints
             return Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) });
         });
 
-        endpoints.MapGet("/api/repositories", async (string[]? language, string? sort, int? page, int? pageSize, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories", async (string[]? language, string? sort, int? page, int? pageSize, bool? hasCi, int? minScore, int? maxScore, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
         {
-            var query = new RepositoryLeaderboardQuery(language ?? [], ParseSort(sort), page ?? 1, pageSize ?? 20);
+            var query = new RepositoryLeaderboardQuery(language ?? [], ParseSort(sort), page ?? 1, pageSize ?? 20, hasCi, minScore, maxScore);
             return Results.Ok(await useCase.GetAsync(query, cancellationToken));
         });
+
+        endpoints.MapReviewInsightsEndpoints();
 
         endpoints.MapGet("/api/repositories/languages", async (IGetRepositoryLanguagesUseCase useCase, CancellationToken cancellationToken) =>
             Results.Ok(await useCase.GetAsync(cancellationToken)));

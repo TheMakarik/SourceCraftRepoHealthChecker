@@ -79,6 +79,7 @@ app.MapPageEndpoints();
 app.MapCompareEndpoints();
 app.MapIntegrityEndpoints();
 app.MapOwnershipEndpoints();
+app.MapPublicEndpoints();
 
 app.MapGet("/ws/analysis", async (HttpContext context, IAnalysisStatusHub statusHub) =>
 {
