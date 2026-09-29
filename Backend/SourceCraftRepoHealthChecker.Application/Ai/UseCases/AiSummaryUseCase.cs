@@ -27,8 +27,15 @@ public sealed class AiSummaryUseCase(
 
         using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
 
-        var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis), cancellationToken: cancellationToken);
-        return new AiSummaryResult(completion.Text, userAi.AiProvider, userAi.AiModel);
+        try
+        {
+            var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis), chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
+            return new AiSummaryResult(completion.Text, userAi.AiProvider, userAi.AiModel);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new AiProviderException($"AI-провайдер {userAi.AiProvider} вернул ошибку: {exception.Message}", exception);
+        }
     }
 
     private string BuildPrompt(RepositoryAnalysis analysis)

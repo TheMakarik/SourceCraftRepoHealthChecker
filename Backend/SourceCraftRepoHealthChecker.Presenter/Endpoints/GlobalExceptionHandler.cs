@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using SourceCraftRepoHealthChecker.Application.Ai;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.SourceCraft;
 using SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
@@ -28,6 +29,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         InvalidAuthorizationCodeException => StatusCodes.Status400BadRequest,
         SourceCraftException => StatusCodes.Status502BadGateway,
         SourceCraftOperationException => StatusCodes.Status502BadGateway,
+        AiProviderException => StatusCodes.Status502BadGateway,
         YandexIdUnavailableException => StatusCodes.Status503ServiceUnavailable,
         TimeoutException => StatusCodes.Status503ServiceUnavailable,
         _ => null

@@ -148,6 +148,12 @@
   box-shadow: inset 0 0.15rem 0.35rem rgba(16, 24, 40, 0.22);
 }
 
+.lang-tab--active:hover,
+.lang-tab--pressed:hover {
+  background: var(--srhc-sidebar-active);
+  color: var(--srhc-ink);
+}
+
 .lang-cell {
   display: inline-flex;
   align-items: center;

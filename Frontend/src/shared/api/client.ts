@@ -34,6 +34,17 @@ export class ApiError extends Error {
   }
 }
 
+function extractErrorMessage(text: string, status: number): string {
+  if (!text)
+    return `HTTP ${status}`;
+  try {
+    const parsed = JSON.parse(text) as { message?: string; error?: string };
+    return parsed.message || parsed.error || text;
+  } catch {
+    return text;
+  }
+}
+
 async function send(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(`${baseUrl}${path}`, {
     credentials: "include",
@@ -46,7 +57,7 @@ async function send(path: string, init?: RequestInit): Promise<Response> {
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new ApiError(response.status, text || `HTTP ${response.status}`);
+    throw new ApiError(response.status, extractErrorMessage(text, response.status));
   }
 
   return response;
@@ -73,9 +84,11 @@ async function requestOrNull<T>(path: string, init?: RequestInit): Promise<T | n
 export const api = {
   health: () => request<{ status: string }>("/healthz"),
 
-  leaderboard: (options: { language?: string; sort?: string; page?: number; pageSize?: number } = {}) => {
+  leaderboard: (options: { languages?: string[]; sort?: string; page?: number; pageSize?: number } = {}) => {
     const query = new URLSearchParams();
-    if (options.language) query.set("language", options.language);
+    options.languages?.forEach((language) => {
+      if (language) query.append("language", language);
+    });
     if (options.sort) query.set("sort", options.sort);
     if (options.page) query.set("page", String(options.page));
     if (options.pageSize) query.set("pageSize", String(options.pageSize));

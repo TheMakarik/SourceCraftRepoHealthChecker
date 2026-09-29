@@ -32,7 +32,6 @@ import { CategoryTabs } from "../widgets/CategoryTabs";
 import { AnalysisStatusBadge } from "../widgets/AnalysisStatusBadge";
 import { AnalysisStatusPanel, type AnalysisPanelPhase } from "../widgets/AnalysisStatusPanel";
 import { MetricsTable } from "../widgets/MetricsTable";
-import { FileBrowser } from "../widgets/FileBrowser";
 import { api, ApiError } from "../shared/api/client";
 import { insightLabels } from "../shared/api/labels";
 
@@ -102,6 +101,9 @@ export function DashboardPage() {
       : "Не удалось запустить анализ. Проверьте соединение и попробуйте снова."
     : null;
 
+  const aiErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof ApiError && error.message ? error.message : fallback;
+
   const runAi = (kind?: AiInsightKind) => {
     setAiError(null);
     if (!id)
@@ -109,11 +111,11 @@ export function DashboardPage() {
     if (kind)
       insight.mutate(
         { id, kind },
-        { onError: () => setAiError("Не удалось получить AI-разбор. Войдите и настройте провайдера в личном кабинете.") }
+        { onError: (error) => setAiError(aiErrorMessage(error, "Не удалось получить AI-разбор. Войдите и настройте провайдера в личном кабинете.")) }
       );
     else
       summary.mutate(id, {
-        onError: () => setAiError("Не удалось получить AI-резюме. Войдите и настройте провайдера в личном кабинете.")
+        onError: (error) => setAiError(aiErrorMessage(error, "Не удалось получить AI-резюме. Войдите и настройте провайдера в личном кабинете."))
       });
   };
 
@@ -220,16 +222,16 @@ export function DashboardPage() {
                   >
                     AI-резюме
                   </Button>
-                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "pdf")} icon={<ArrowDownload24Regular />}>
+                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "pdf")} download icon={<ArrowDownload24Regular />}>
                     PDF
                   </Button>
-                  <Button as="a" href={api.reportMarkdownUrl(data.sourceCraftId)} icon={<ArrowDownload24Regular />}>
+                  <Button as="a" href={api.reportMarkdownUrl(data.sourceCraftId)} download icon={<ArrowDownload24Regular />}>
                     Markdown
                   </Button>
-                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "json")} icon={<ArrowDownload24Regular />} appearance="subtle">
+                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "json")} download icon={<ArrowDownload24Regular />} appearance="subtle">
                     JSON
                   </Button>
-                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "html")} icon={<ArrowDownload24Regular />} appearance="subtle">
+                  <Button as="a" href={api.reportUrl(data.sourceCraftId, "html")} download icon={<ArrowDownload24Regular />} appearance="subtle">
                     HTML
                   </Button>
                 </div>
@@ -274,11 +276,6 @@ export function DashboardPage() {
         <Card className="card stack">
           <div style={{ fontWeight: 600 }}>Метрики</div>
           <MetricsTable metrics={data.metrics} />
-        </Card>
-
-        <Card className="card stack">
-          <div style={{ fontWeight: 600 }}>Файлы и папки</div>
-          <FileBrowser repositoryId={id} />
         </Card>
 
         <Card className="card stack">
@@ -327,7 +324,18 @@ export function DashboardPage() {
 
         <div className="grid-2">
           <Card className="card stack">
-            <div style={{ fontWeight: 600 }}>Рекомендации</div>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 600 }}>Рекомендации</div>
+              <Button
+                size="small"
+                appearance="subtle"
+                icon={analyze.isPending ? <Spinner size="tiny" /> : <ArrowSync24Regular />}
+                disabled={analyze.isPending}
+                onClick={runAnalyze}
+              >
+                {analyze.isPending ? "Анализируем…" : "Анализировать"}
+              </Button>
+            </div>
             {data.recommendations.length === 0 ? <span className="muted">Рекомендаций нет.</span> : null}
             <Accordion multiple collapsible>
               {data.recommendations.map((recommendation, index) => (

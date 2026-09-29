@@ -14,7 +14,8 @@ public static class PageEndpoints
     {
         endpoints.MapGet("/rating", async (string? language, string? sort, int? page, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
         {
-            var query = new RepositoryLeaderboardQuery(language, RepositoryEndpoints.ParseSort(sort), page ?? 1, 20);
+            string[] languages = language is null ? [] : [language];
+            var query = new RepositoryLeaderboardQuery(languages, RepositoryEndpoints.ParseSort(sort), page ?? 1, 20);
             var result = await useCase.GetAsync(query, cancellationToken);
             return Results.Content(RatingPageRenderer.Render(result, language, RepositoryEndpoints.SortKey(query.Sort)), "text/html; charset=utf-8");
         });

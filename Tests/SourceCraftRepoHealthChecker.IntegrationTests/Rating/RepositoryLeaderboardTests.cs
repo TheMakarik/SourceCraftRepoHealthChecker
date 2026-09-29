@@ -40,7 +40,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WhenSortedByScore_OrdersDescendingWithPlace()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a", "c");
@@ -53,7 +53,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WhenRepositoryIsPrivate_ExcludesItFromLeaderboard()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().NotContain("private");
@@ -64,7 +64,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WhenLanguageFilterDiffersInCase_ReturnsMatchingRepositories()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery("c#", RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(["c#"], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("a", "c");
@@ -75,7 +75,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WhenLanguageFilter_ReturnsOnlyMatchingRepositories()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery("C#", RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(["C#"], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("a", "c");
@@ -83,10 +83,21 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAsync_WhenMultipleLanguagesFilter_ReturnsUnion()
+    {
+        // Act
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(["c#", "go"], RepositoryLeaderboardSort.Score, 1, 20), CancellationToken.None);
+
+        // Assert
+        actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a", "c");
+        actual.TotalCount.Should().Be(3);
+    }
+
+    [Fact]
     public async Task GetAsync_WhenSortedByLikes_OrdersByLikesDescending()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Likes, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Likes, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("c", "a", "b");
@@ -96,7 +107,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WhenSortedByActivity_OrdersByLastActivityDescending()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Activity, 1, 20), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Activity, 1, 20), CancellationToken.None);
 
         // Assert
         actual.Items.Select(item => item.SourceCraftId).Should().ContainInOrder("b", "a", "c");
@@ -106,7 +117,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
     public async Task GetAsync_WithPagination_ReturnsRequestedPageWithAbsolutePlaces()
     {
         // Act
-        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery(null, RepositoryLeaderboardSort.Score, 2, 2), CancellationToken.None);
+        var actual = await systemUnderTests.GetAsync(new RepositoryLeaderboardQuery([], RepositoryLeaderboardSort.Score, 2, 2), CancellationToken.None);
 
         // Assert
         actual.Items.Should().HaveCount(1);

@@ -14,7 +14,7 @@ const fetchIntegrity = async (id: string): Promise<RepositoryIntegrity> => {
 };
 
 export interface LeaderboardQuery {
-  language?: string;
+  languages?: string[];
   sort?: string;
   page?: number;
   pageSize?: number;

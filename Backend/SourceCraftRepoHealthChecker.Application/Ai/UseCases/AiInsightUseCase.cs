@@ -28,8 +28,15 @@ public sealed class AiInsightUseCase(
 
         using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
 
-        var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis, kind), cancellationToken: cancellationToken);
-        return new AiInsightResult(kind, completion.Text, userAi.AiProvider, userAi.AiModel);
+        try
+        {
+            var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis, kind), chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
+            return new AiInsightResult(kind, completion.Text, userAi.AiProvider, userAi.AiModel);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            throw new AiProviderException($"AI-провайдер {userAi.AiProvider} вернул ошибку: {exception.Message}", exception);
+        }
     }
 
     private string BuildPrompt(RepositoryAnalysis analysis, AiInsightKind kind) =>

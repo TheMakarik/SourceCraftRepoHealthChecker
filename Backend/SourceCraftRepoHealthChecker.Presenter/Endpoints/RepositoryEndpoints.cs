@@ -18,9 +18,9 @@ public static class RepositoryEndpoints
         endpoints.MapPost("/api/repositories/refresh", async (IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
             Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) }));
 
-        endpoints.MapGet("/api/repositories", async (string? language, string? sort, int? page, int? pageSize, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories", async (string[]? language, string? sort, int? page, int? pageSize, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
         {
-            var query = new RepositoryLeaderboardQuery(language, ParseSort(sort), page ?? 1, pageSize ?? 20);
+            var query = new RepositoryLeaderboardQuery(language ?? [], ParseSort(sort), page ?? 1, pageSize ?? 20);
             return Results.Ok(await useCase.GetAsync(query, cancellationToken));
         });
 

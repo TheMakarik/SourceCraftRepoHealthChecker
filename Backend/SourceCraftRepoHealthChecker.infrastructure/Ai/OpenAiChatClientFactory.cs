@@ -17,6 +17,14 @@ public sealed class OpenAiChatClientFactory(IOptions<AiOptions> options) : IChat
         return client.GetChatClient(model).AsIChatClient();
     }
 
+    public ChatOptions CreateOptions(AiProviders provider)
+    {
+        var chatOptions = new ChatOptions { MaxOutputTokens = options.Value.MaxOutputTokens };
+        if (provider == AiProviders.DeepSeek)
+            chatOptions.Reasoning = new ReasoningOptions { Effort = ReasoningEffort.None };
+        return chatOptions;
+    }
+
     private string ResolveBaseUrl(AiProviders provider) => provider switch
     {
         AiProviders.OpenAI => options.Value.OpenAiBaseUrl,

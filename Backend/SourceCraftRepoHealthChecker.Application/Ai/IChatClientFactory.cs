@@ -6,4 +6,6 @@ namespace SourceCraftRepoHealthChecker.Application.Ai;
 public interface IChatClientFactory
 {
     public IChatClient Create(AiProviders provider, string? baseUrl, string model, string apiKey);
+
+    public ChatOptions CreateOptions(AiProviders provider);
 }

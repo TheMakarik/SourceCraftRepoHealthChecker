@@ -278,7 +278,13 @@ export function SettingsPage() {
             {testAi.data.ok ? `Ответ модели: ${testAi.data.message}` : testAi.data.message}
           </span>
         ) : null}
-        {testAi.isError ? <span className="tone-bad">Не удалось выполнить тестовый запрос.</span> : null}
+        {testAi.isError ? (
+          <span className="tone-bad">
+            {testAi.error instanceof Error && testAi.error.message
+              ? testAi.error.message
+              : "Не удалось выполнить тестовый запрос."}
+          </span>
+        ) : null}
       </Card>
 
       <SecretDialog

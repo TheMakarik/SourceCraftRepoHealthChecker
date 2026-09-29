@@ -11,6 +11,7 @@ export interface LanguageTabsProps {
 
 export function LanguageTabs({ languages, selected, onSelectionChange }: LanguageTabsProps) {
   const [multiSelect, setMultiSelect] = useState(false);
+  const multiSelectRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<number | null>(null);
   const longPressRef = useRef(false);
@@ -37,6 +38,16 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
     []
   );
 
+  const enableMultiSelect = () => {
+    multiSelectRef.current = true;
+    setMultiSelect(true);
+  };
+
+  const resetMultiSelect = () => {
+    multiSelectRef.current = false;
+    setMultiSelect(false);
+  };
+
   const cancelLongPress = () => {
     if (timerRef.current !== null) {
       window.clearTimeout(timerRef.current);
@@ -49,7 +60,7 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
     cancelLongPress();
     timerRef.current = window.setTimeout(() => {
       longPressRef.current = true;
-      setMultiSelect(true);
+      enableMultiSelect();
       if (language && !selected.includes(language))
         onSelectionChange([...selected, language]);
     }, LONG_PRESS_MS);
@@ -57,9 +68,10 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
 
   const allSelected = selected.length === 0;
 
-  const activateAll = () => {
-    setMultiSelect(false);
-    onSelectionChange([]);
+  const toggleLanguage = (language: string) => {
+    onSelectionChange(
+      selected.includes(language) ? selected.filter((item) => item !== language) : [...selected, language]
+    );
   };
 
   const activate = (language: string | null, additive: boolean) => {
@@ -68,21 +80,17 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
       return;
     }
     if (language === null) {
-      activateAll();
+      resetMultiSelect();
+      onSelectionChange([]);
       return;
     }
 
-    const effectiveMulti = additive || multiSelect;
-    if (effectiveMulti) {
-      if (additive && !multiSelect)
-        setMultiSelect(true);
-      onSelectionChange(
-        selected.includes(language) ? selected.filter((item) => item !== language) : [...selected, language]
-      );
-      return;
-    }
-
-    onSelectionChange([language]);
+    if (additive)
+      enableMultiSelect();
+    if (additive || multiSelectRef.current)
+      toggleLanguage(language);
+    else
+      onSelectionChange([language]);
   };
 
   const pressHandlers = (language: string | null) => ({

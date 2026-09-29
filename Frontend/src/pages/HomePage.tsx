@@ -57,23 +57,16 @@ export function HomePage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sort, setSort] = useState<string>("score");
   const [page, setPage] = useState(1);
-  const languageFilter = selectedLanguages.length === 1 ? selectedLanguages[0] : undefined;
   const query = useMemo(
-    () => ({ language: languageFilter, sort, page, pageSize: appConfig.leaderboardPageSize }),
-    [languageFilter, sort, page]
+    () => ({ languages: selectedLanguages, sort, page, pageSize: appConfig.leaderboardPageSize }),
+    [selectedLanguages, sort, page]
   );
   const leaderboard = useLeaderboard(query);
   const languages = useLanguages();
   const refresh = useRefresh();
 
   const languageOptions = languages.data ?? [];
-  const items = useMemo(() => {
-    const pageItems = leaderboard.data?.items ?? [];
-    if (selectedLanguages.length <= 1)
-      return pageItems;
-    const selected = new Set(selectedLanguages.map((language) => language.toLowerCase()));
-    return pageItems.filter((item) => selected.has(item.language.toLowerCase()));
-  }, [leaderboard.data, selectedLanguages]);
+  const items = leaderboard.data?.items ?? [];
   const highestScore = items.reduce((max, item) => Math.max(max, item.score ?? 0), 0);
   const analyzed = items.filter((item) => item.analyzedAt).length;
 

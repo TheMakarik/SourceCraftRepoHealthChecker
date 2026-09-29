@@ -14,4 +14,5 @@ public sealed class AiOptions
     public required string GoogleGeminiBaseUrl { get; init; }
     public required string YandexBaseUrl { get; init; }
     public required string DeepSeekBaseUrl { get; init; }
+    public required int MaxOutputTokens { get; init; }
 }
