@@ -192,7 +192,11 @@ export async function streamAi(path: string, onEvent: (event: AiStreamEvent) => 
       if (!line)
         continue;
       try {
-        onEvent(JSON.parse(line.slice(5).trim()) as AiStreamEvent);
+        const parsed = JSON.parse(line.slice(5).trim()) as AiStreamEvent & { Type?: string; Text?: string };
+        onEvent({
+          type: (parsed.type ?? parsed.Type ?? "") as AiStreamEvent["type"],
+          text: parsed.text ?? parsed.Text
+        });
       } catch {
         // игнорируем неполный/битый чанк
       }

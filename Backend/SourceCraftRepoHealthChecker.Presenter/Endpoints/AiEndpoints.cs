@@ -115,9 +115,11 @@ public static class AiEndpoints
         }, "text/event-stream");
     }
 
+    private static readonly JsonSerializerOptions StreamJsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     private static async Task WriteEventAsync(StreamWriter writer, AiStreamEvent streamEvent, CancellationToken cancellationToken)
     {
-        await writer.WriteAsync($"data: {JsonSerializer.Serialize(streamEvent)}\n\n");
+        await writer.WriteAsync($"data: {JsonSerializer.Serialize(streamEvent, StreamJsonOptions)}\n\n");
         await writer.FlushAsync(cancellationToken);
     }
 }
