@@ -178,7 +178,7 @@
   margin-bottom: -1px;
   user-select: none;
   -webkit-user-select: none;
-  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .lang-tab:hover {
@@ -190,14 +190,14 @@
   background: var(--srhc-sidebar-active);
   color: var(--srhc-ink);
   border-color: var(--srhc-muted);
-  box-shadow: inset 0 0.15rem 0.35rem rgba(16, 24, 40, 0.18);
+
 }
 
 .lang-tab--pressed {
   background: var(--srhc-sidebar-active);
   color: var(--srhc-ink);
   border-color: var(--srhc-muted);
-  box-shadow: inset 0 0.15rem 0.35rem rgba(16, 24, 40, 0.22);
+
 }
 
 .lang-tab--active:hover,
