@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# start.sh — поднимает весь проект (PostgreSQL + MinIO + бэкенд + фронтенд) через Docker.
+# start.sh — поднимает весь проект (PostgreSQL + бэкенд + фронтенд) через Docker.
 # Если Docker не установлен — пытается установить его автоматически.
 set -euo pipefail
 
@@ -62,6 +62,5 @@ $SUDO docker compose up --build -d
 log "Готово. Открывайте:"
 echo "  Frontend:      http://localhost:8080"
 echo "  Backend API:   http://localhost:5172"
-echo "  MinIO console: http://localhost:9001"
 echo
 echo "Логи: $SUDO docker compose logs -f backend"

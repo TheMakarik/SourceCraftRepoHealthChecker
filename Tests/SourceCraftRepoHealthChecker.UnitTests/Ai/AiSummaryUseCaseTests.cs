@@ -60,7 +60,10 @@ public sealed class AiSummaryUseCaseTests
             [],
             [],
             [],
-            []);
+            [],
+            AnalysisStatus.Completed,
+            DateTimeOffset.UtcNow,
+            DataStatus.Available);
 
     private static AiOptions CreateOptions() => new()
     {

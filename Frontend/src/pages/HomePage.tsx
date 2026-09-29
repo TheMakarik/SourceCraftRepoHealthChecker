@@ -16,9 +16,12 @@ import {
 import { ArrowLeft24Regular, ArrowRight24Regular, ArrowSync24Regular } from "@fluentui/react-icons";
 import { useLanguages, useLeaderboard, useRefresh, useRepositoryIntegrity } from "../shared/api/hooks";
 import { formatDate, formatDateShort, languageDisplayName, scoreTone, toneColor } from "../shared/api/labels";
+import { ApiError } from "../shared/api/client";
+import { useAnalysisStatus } from "../shared/api/useAnalysisStatus";
 import type { IntegrityStatus } from "../shared/api/types";
 import { appConfig } from "../shared/config";
 import { ErrorView, LoadingView } from "../shared/ui/Status";
+import { AnalysisStatusBadge } from "../widgets/AnalysisStatusBadge";
 import { LanguageTabs } from "../widgets/LanguageTabs";
 import { RepoActionsButton, RepoContextMenu } from "../widgets/RepoContextMenu";
 
@@ -53,6 +56,28 @@ function IntegrityBadge({ sourceCraftId }: { sourceCraftId: string }) {
   );
 }
 
+function RepoStatus({
+  sourceCraftId,
+  score,
+  analyzedAt
+}: {
+  sourceCraftId: string;
+  score: number | null;
+  analyzedAt?: string | null;
+}) {
+  const { statusFor } = useAnalysisStatus();
+  const status = statusFor(sourceCraftId);
+  if (status)
+    return <AnalysisStatusBadge status={status} score={score} />;
+  if (analyzedAt)
+    return (
+      <span className="muted" title={`Последний успешный анализ: ${formatDate(analyzedAt)}`}>
+        Сохранён{score === null ? "" : ` · ${score}`}
+      </span>
+    );
+  return <span className="muted">—</span>;
+}
+
 export function HomePage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sort, setSort] = useState<string>("score");
@@ -74,6 +99,14 @@ export function HomePage() {
     setSelectedLanguages(next);
     setPage(1);
   };
+
+  const refreshErrorMessage = refresh.isError
+    ? refresh.error instanceof ApiError
+      ? refresh.error.status === 401
+        ? "Нужен вход и PAT — настройте в личном кабинете."
+        : `Не удалось обновить каталог (HTTP ${refresh.error.status}).`
+      : "Не удалось обновить каталог. Проверьте соединение и попробуйте снова."
+    : null;
 
   return (
     <div className="stack">
@@ -123,6 +156,7 @@ export function HomePage() {
         {refresh.isSuccess && refresh.data ? (
           <span className="tone-good">Обновлено: {refresh.data.refreshed}</span>
         ) : null}
+        {refreshErrorMessage ? <span className="tone-bad">{refreshErrorMessage}</span> : null}
 
         {leaderboard.isPending ? <LoadingView /> : null}
         {leaderboard.isError ? <ErrorView message="Не удалось загрузить рейтинг" /> : null}
@@ -138,6 +172,7 @@ export function HomePage() {
                 <TableHeaderCell>Язык</TableHeaderCell>
                 <TableHeaderCell>Активность</TableHeaderCell>
                 <TableHeaderCell>Проанализирован</TableHeaderCell>
+                <TableHeaderCell>Статус анализа</TableHeaderCell>
                 <TableHeaderCell>Достоверность</TableHeaderCell>
                 <TableHeaderCell aria-label="Действия" />
               </TableRow>
@@ -161,6 +196,9 @@ export function HomePage() {
                     </TableCell>
                     <TableCell title={formatDate(item.lastActivityAt)}>{formatDateShort(item.lastActivityAt)}</TableCell>
                     <TableCell title={formatDate(item.analyzedAt)}>{formatDate(item.analyzedAt)}</TableCell>
+                    <TableCell>
+                      <RepoStatus sourceCraftId={item.sourceCraftId} score={item.score} analyzedAt={item.analyzedAt} />
+                    </TableCell>
                     <TableCell>
                       <IntegrityBadge sourceCraftId={item.sourceCraftId} />
                     </TableCell>

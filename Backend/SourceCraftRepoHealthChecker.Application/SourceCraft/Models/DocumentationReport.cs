@@ -6,4 +6,6 @@ public sealed record DocumentationReport(
     bool HasContributing,
     bool HasCodeOwners,
     bool HasLocalRunInstructions,
-    bool HasBuildAndTestInstructions);
+    bool HasBuildAndTestInstructions,
+    string? LicenseId = null,
+    bool HasProjectStructure = false);

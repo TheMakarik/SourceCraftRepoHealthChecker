@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
@@ -8,7 +9,8 @@ namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
 public sealed class SourceCraftRepositoryCatalogAdapter(
     ISourceCraftApi api,
-    IOptions<SourceCraftServiceOptions> options) : ISourceCraftRepositoryCatalog
+    IOptions<SourceCraftServiceOptions> options,
+    ILogger<SourceCraftRepositoryCatalogAdapter> logger) : ISourceCraftRepositoryCatalog
 {
     public async Task<SourceCraftResult<IReadOnlyCollection<SourceCraftRepository>>> GetOpenRepositoriesAsync(CancellationToken cancellationToken)
     {
@@ -19,14 +21,16 @@ public sealed class SourceCraftRepositoryCatalogAdapter(
                 0,
                 settings.MaxPages,
                 (pageToken, token) => FetchRepositoriesAsync(pageToken, token),
-                cancellationToken);
+                cancellationToken,
+                logger);
             if (repositories.Count == 0)
                 return SourceCraftFailure.NoData<IReadOnlyCollection<SourceCraftRepository>>("source returned no repositories");
 
             return new SourceCraftResult<IReadOnlyCollection<SourceCraftRepository>>(
                 DataStatus.Available,
                 repositories.Select(SourceCraftRepositoryMapper.Map).ToArray(),
-                null);
+                null,
+                repositories.Truncated);
         }
         catch (OperationCanceledException)
         {

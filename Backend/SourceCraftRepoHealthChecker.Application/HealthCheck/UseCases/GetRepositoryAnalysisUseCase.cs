@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Options;
 using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
-using SourceCraftRepoHealthChecker.Domain.Entities;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 
 namespace SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
@@ -27,14 +26,19 @@ public sealed class GetRepositoryAnalysisUseCase(
         if (repository is null)
             return null;
 
-        var run = repository.AnalysisRuns
-            .Where(item => item.Status == AnalysisStatus.Completed)
+        var validRun = repository.AnalysisRuns
+            .Where(item => item.Status == AnalysisStatus.Completed && item.DataStatus == DataStatus.Available)
             .OrderByDescending(item => item.CompletedAt)
             .FirstOrDefault();
 
-        if (run is null)
+        var latestAttempt = repository.AnalysisRuns
+            .OrderByDescending(item => item.CompletedAt ?? item.StartedAt)
+            .FirstOrDefault();
+
+        if (latestAttempt is null)
             return null;
 
+        var run = validRun ?? latestAttempt;
         var thresholds = healthCheckOptions.Value.Recommendations;
         var categories = run.CategoryScores
             .Select(item => new RepositoryAnalysisCategory(item.Category, item.Score, item.DataStatus))
@@ -73,10 +77,11 @@ public sealed class GetRepositoryAnalysisUseCase(
                 item.Title,
                 item.Package,
                 item.FilePath,
-                item.CvssScore))
+                item.CvssScore,
+                item.ExternalId,
+                item.FileLine,
+                item.CommitSha))
             .ToArray();
-
-        var score = run.DataStatus == DataStatus.Available ? run.Score : null;
 
         return new RepositoryAnalysis(
             repository.SourceCraftId,
@@ -87,14 +92,17 @@ public sealed class GetRepositoryAnalysisUseCase(
             repository.IsPrivate,
             repository.OwnerId,
             repository.LikesCount,
-            score,
-            run.DataStatus,
-            run.CompletedAt,
+            validRun?.Score,
+            validRun?.DataStatus ?? latestAttempt.DataStatus,
+            validRun?.CompletedAt,
             categories,
             metrics,
             strengths,
             weaknesses,
             recommendations,
-            findings);
+            findings,
+            latestAttempt.Status,
+            latestAttempt.CompletedAt ?? latestAttempt.StartedAt,
+            latestAttempt.DataStatus);
     }
 }

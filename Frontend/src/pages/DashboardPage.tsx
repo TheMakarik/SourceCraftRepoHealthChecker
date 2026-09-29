@@ -22,10 +22,12 @@ import {
   priorityTone,
   formatDate,
   formatDateShort,
+  formatExpectedImpact,
   scoreGrade,
   scoreTone
 } from "../shared/api/labels";
 import { ErrorView, LoadingView } from "../shared/ui/Status";
+import { Markdown } from "../shared/ui/Markdown";
 import { appConfig } from "../shared/config";
 import { ScoreRing } from "../widgets/ScoreRing";
 import { CategoryCapsules } from "../widgets/CategoryCapsules";
@@ -380,7 +382,7 @@ export function DashboardPage() {
                       <RecommendationDetail label="Почему важно" value={recommendation.whyImportant} />
                       <RecommendationDetail label="Факты" value={recommendation.evidence} />
                       <RecommendationDetail label="Действие" value={recommendation.action} />
-                      <RecommendationDetail label="Ожидаемое влияние" value={recommendation.expectedImpact} />
+                      <RecommendationDetail label="Ожидаемое влияние" value={formatExpectedImpact(recommendation.expectedImpact)} />
                       {recommendation.sourceReference
                         ? <RecommendationDetail label="Источник" value={recommendation.sourceReference} />
                         : null}
@@ -484,7 +486,7 @@ export function DashboardPage() {
               <div className="reasoning__text">{aiReasoning}</div>
             </details>
           ) : null}
-          {aiText ? <div className="markdown">{aiText}</div> : null}
+          {aiText ? <Markdown content={aiText} /> : null}
         </Card>
 
         <span className="muted">

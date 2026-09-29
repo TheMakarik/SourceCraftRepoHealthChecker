@@ -83,7 +83,7 @@ public sealed class CiCdCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CiCd, facts);
 
         // Assert
-        actual.Score.Should().Be(57);
+        actual.Score.Should().Be(68);
         actual.Metrics.Single(x => x.Code == MetricCode.CiCdPresence).RawValue.Should().Be(2);
         actual.Metrics.Single(x => x.Code == MetricCode.CiCdSuccessRatio).RawValue.Should().Be(1);
         actual.Metrics.Single(x => x.Code == MetricCode.CiCdPipelineDuration).RawValue.Should().Be(30);

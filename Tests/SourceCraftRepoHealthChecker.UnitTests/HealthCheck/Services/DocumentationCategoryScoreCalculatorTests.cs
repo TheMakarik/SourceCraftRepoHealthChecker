@@ -66,7 +66,7 @@ public sealed class DocumentationCategoryScoreCalculatorTests
     public void Calculate_WhenAllDocumentationPresent_ReturnsMaximumScore()
     {
         // Arrange
-        var report = new DocumentationReport(true, true, true, true, true, true);
+        var report = new DocumentationReport(true, true, true, true, true, true, "MIT", true);
         var facts = RepositoryFactsBuilder.Build(documentation: report);
 
         // Act
@@ -75,7 +75,7 @@ public sealed class DocumentationCategoryScoreCalculatorTests
         // Assert
         actual.Score.Should().Be(100);
         actual.DataStatus.Should().Be(DataStatus.Available);
-        actual.Metrics.Should().HaveCount(6);
+        actual.Metrics.Should().HaveCount(7);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public sealed class DocumentationCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Documentation, facts);
 
         // Assert
-        actual.Score.Should().Be(56);
+        actual.Score.Should().Be(55);
     }
 
     [Fact]

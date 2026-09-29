@@ -57,7 +57,7 @@ export interface Recommendation {
   whyImportant: string;
   evidence: string;
   action: string;
-  expectedImpact: string;
+  expectedImpact: number | null;
   sourceReference: string;
 }
 

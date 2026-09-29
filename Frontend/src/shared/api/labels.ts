@@ -114,6 +114,12 @@ export function formatDateShort(value?: string | null): string {
   return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+export function formatExpectedImpact(value?: number | null): string {
+  if (value === null || value === undefined)
+    return "—";
+  return value > 0 ? `+${value} к Score` : `${value} к Score`;
+}
+
 export function dataStatusLabel(status: DataStatus): string {
   switch (status) {
     case "Available":

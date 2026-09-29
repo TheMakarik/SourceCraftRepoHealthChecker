@@ -117,6 +117,8 @@ public sealed class RepoHealthCheckerDbContext(
             entity.Property(x => x.Title).HasMaxLength(_securityFindingOptions.MaxTitleLength);
             entity.Property(x => x.Package).HasMaxLength(_securityFindingOptions.MaxPackageLength);
             entity.Property(x => x.FilePath).HasMaxLength(_securityFindingOptions.MaxFilePathLength);
+            entity.Property(x => x.ExternalId).HasMaxLength(_securityFindingOptions.MaxExternalIdLength);
+            entity.Property(x => x.CommitSha).HasMaxLength(_securityFindingOptions.MaxCommitShaLength);
         });
         #endregion
 

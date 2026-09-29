@@ -88,7 +88,10 @@ public sealed class AiInsightUseCaseTests
             [new RepositoryAnalysisCategory(ScoreCategory.Security, 90, DataStatus.Available)],
             [new RepositoryAnalysisCategory(ScoreCategory.Documentation, 20, DataStatus.Available)],
             [new RepositoryAnalysisRecommendation(RecommendationPriority.Critical, "title", "problem", "why", "evidence", "action", 5, "source")],
-            [new RepositoryAnalysisFinding("Sast", "Medium", "Open", "exec-detected", "python", "prepare_modules.py", null)]);
+            [new RepositoryAnalysisFinding("Sast", "Medium", "Open", "exec-detected", "python", "prepare_modules.py", null, null, null, null)],
+            AnalysisStatus.Completed,
+            DateTimeOffset.UtcNow,
+            DataStatus.Available);
 
     private static AiOptions CreateOptions() => new()
     {

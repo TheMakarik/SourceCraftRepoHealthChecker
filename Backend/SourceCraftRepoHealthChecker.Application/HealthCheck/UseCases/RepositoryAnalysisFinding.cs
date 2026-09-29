@@ -7,4 +7,7 @@ public sealed record RepositoryAnalysisFinding(
     string Title,
     string? Package,
     string? FilePath,
-    double? CvssScore);
+    double? CvssScore,
+    string? ExternalId = null,
+    int? FileLine = null,
+    string? CommitSha = null);

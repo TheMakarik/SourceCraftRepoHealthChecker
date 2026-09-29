@@ -8,7 +8,9 @@ public static class HealthCheckOptionsLoader
     public static HealthCheckOptions Load()
     {
         var path = Path.Join(AppContext.BaseDirectory, "appsettings.json");
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        using var document = JsonDocument.Parse(
+            File.ReadAllText(path),
+            new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
 
         if (!document.RootElement.TryGetProperty("HealthCheckOptions", out var section))
             throw new InvalidOperationException("Секция HealthCheckOptions отсутствует в appsettings.json.");

@@ -8,7 +8,7 @@ public sealed class GetRepositoryLanguagesUseCase(IRepoHealthCheckerDbContext db
     public async Task<IReadOnlyList<string>> GetAsync(CancellationToken cancellationToken)
     {
         var languages = await dbContext.Repositories
-            .Where(repository => !string.IsNullOrWhiteSpace(repository.Language))
+            .Where(repository => !repository.IsPrivate && !string.IsNullOrWhiteSpace(repository.Language))
             .Select(repository => repository.Language)
             .Distinct()
             .OrderBy(language => language.ToLower())

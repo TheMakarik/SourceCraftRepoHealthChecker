@@ -10,6 +10,8 @@ using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.UseCases;
+using SourceCraftRepoHealthChecker.Domain.Enums;
+using SourceCraftRepoHealthChecker.Presenter.Authentication;
 using SourceCraftRepoHealthChecker.infrastructure.Options;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
@@ -20,7 +22,8 @@ public static class RepositoryEndpoints
     {
         endpoints.MapPost("/api/repositories/refresh", async (HttpContext context, IOptions<SourceCraftServiceOptions> options, IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
         {
-            if (!IsAuthorizedInternalRequest(context, options.Value))
+            var authenticated = context.GetCurrentUserId() is not null;
+            if (!authenticated && !IsAuthorizedInternalRequest(context, options.Value))
                 return Results.Unauthorized();
 
             return Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) });
@@ -66,7 +69,12 @@ public static class RepositoryEndpoints
                 return Results.NotFound();
 
             var result = await useCase.GetAsync(id, path ?? string.Empty, recursive ?? false, cancellationToken);
-            return Results.Ok(result.Data ?? new RepositoryTree([], false));
+            if (result.Data is not null)
+                return Results.Ok(result.Data);
+
+            return result.Status == DataStatus.Unavailable
+                ? SourceUnavailable(result.Reason)
+                : Results.Ok(new RepositoryTree([], false));
         });
 
         endpoints.MapGet("/api/repositories/{id}/file", async (string id, string path, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryFileUseCase useCase, CancellationToken cancellationToken) =>
@@ -84,7 +92,12 @@ public static class RepositoryEndpoints
                 return Results.NotFound();
 
             var result = await useCase.GetAsync(id, cancellationToken);
-            return Results.Ok(result.Data ?? []);
+            if (result.Data is not null)
+                return Results.Ok(result.Data);
+
+            return result.Status == DataStatus.Unavailable
+                ? SourceUnavailable(result.Reason)
+                : Results.Ok((IReadOnlyList<RepositoryFolderAnalysis>)[]);
         });
 
         return endpoints;
@@ -103,6 +116,11 @@ public static class RepositoryEndpoints
         RepositoryLeaderboardSort.Activity => "activity",
         _ => "score"
     };
+
+    private static IResult SourceUnavailable(string? reason) =>
+        Results.Json(
+            new { error = "source_unavailable", status = nameof(DataStatus.Unavailable), reason },
+            statusCode: StatusCodes.Status503ServiceUnavailable);
 
     private static bool IsAuthorizedInternalRequest(HttpContext context, SourceCraftServiceOptions options)
     {

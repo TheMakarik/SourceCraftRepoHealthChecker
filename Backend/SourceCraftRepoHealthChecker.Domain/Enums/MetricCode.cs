@@ -29,5 +29,10 @@ public enum MetricCode
     IssuesCloseTime,
     CodeHealthTodo,
     CodeHealthFixme,
-    CodeHealthStaleComments
+    CodeHealthStaleComments,
+    IssuesCreated,
+    IssuesDynamics,
+    ActivityCommitTrend,
+    ActivityMergeRequestResponse,
+    DocumentationProjectStructure
 }

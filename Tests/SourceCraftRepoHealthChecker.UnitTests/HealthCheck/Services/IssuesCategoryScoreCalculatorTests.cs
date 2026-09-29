@@ -62,9 +62,11 @@ public sealed class IssuesCategoryScoreCalculatorTests
         // Assert
         actual.Score.Should().Be(100);
         actual.DataStatus.Should().Be(DataStatus.Available);
-        actual.Metrics.Should().HaveCount(4);
+        actual.Metrics.Should().HaveCount(7);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesFirstResponse).DataStatus.Should().Be(DataStatus.NoData);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesCloseTime).DataStatus.Should().Be(DataStatus.NoData);
+        actual.Metrics.Single(x => x.Code == MetricCode.IssuesClosed).DataStatus.Should().Be(DataStatus.NoData);
+        actual.Metrics.Single(x => x.Code == MetricCode.IssuesDynamics).DataStatus.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
@@ -81,7 +83,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Issues, facts);
 
         // Assert
-        actual.Score.Should().Be(63);
+        actual.Score.Should().Be(48);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesOpen).RawValue.Should().Be(1);
         var firstResponse = actual.Metrics.Single(x => x.Code == MetricCode.IssuesFirstResponse);
         firstResponse.DataStatus.Should().Be(DataStatus.Available);
@@ -103,7 +105,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Issues, facts);
 
         // Assert
-        actual.Score.Should().Be(76);
+        actual.Score.Should().Be(70);
         var closeTime = actual.Metrics.Single(x => x.Code == MetricCode.IssuesCloseTime);
         closeTime.DataStatus.Should().Be(DataStatus.Available);
         closeTime.RawValue.Should().Be(10);
@@ -211,7 +213,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
 
         // Assert
         actual.Metrics.Where(x => x.DataStatus == DataStatus.NoData).Should().HaveCount(1);
-        actual.Metrics.Where(x => x.DataStatus == DataStatus.Available).Should().HaveCount(3);
+        actual.Metrics.Where(x => x.DataStatus == DataStatus.Available).Should().HaveCount(6);
     }
 
     [Fact]

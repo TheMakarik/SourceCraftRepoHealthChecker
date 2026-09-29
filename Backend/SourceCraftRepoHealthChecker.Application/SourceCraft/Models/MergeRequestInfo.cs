@@ -9,4 +9,5 @@ public sealed record MergeRequestInfo(
     DateTimeOffset? MergedAt,
     DateTimeOffset? ClosedAt,
     DateTimeOffset? FirstResponseAt,
-    int ReviewCommentsCount);
+    int ReviewCommentsCount,
+    bool FirstResponseEvaluated = true);

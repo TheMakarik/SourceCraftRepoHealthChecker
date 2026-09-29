@@ -8,4 +8,5 @@ public sealed record IssueInfo(
     DateTimeOffset CreatedAt,
     DateTimeOffset? ClosedAt,
     DateTimeOffset? FirstResponseAt,
-    DateTimeOffset? UpdatedAt = null);
+    DateTimeOffset? UpdatedAt = null,
+    bool FirstResponseEvaluated = true);

@@ -5,4 +5,5 @@ namespace SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 public sealed record SourceCraftResult<T>(
     DataStatus Status,
     T? Data,
-    string? Reason);
+    string? Reason,
+    bool IsPartial = false);

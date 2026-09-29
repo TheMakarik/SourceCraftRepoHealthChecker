@@ -33,7 +33,7 @@ public sealed class HealthCheckEngineTests
             .ReturnsLazily((ScoreCategory category, RepositoryFacts facts) =>
                 new CategoryScoreResult(category, 50, 1, DataStatus.Available, []));
         A.CallTo(() => _healthScoreCalculator.Calculate(A<IReadOnlyCollection<CategoryScoreResult>>._)).Returns(new HealthScoreResult(42, DataStatus.Available));
-        A.CallTo(() => _recommendationGenerator.Generate(A<IReadOnlyCollection<CategoryScoreResult>>._)).Returns(recommendations);
+        A.CallTo(() => _recommendationGenerator.Generate(A<IReadOnlyCollection<CategoryScoreResult>>._, A<RepositoryFacts>._)).Returns(recommendations);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class HealthCheckEngineTests
     {
         // Arrange
         var expected = new RecommendationDraft(RecommendationPriority.Critical, "problem", "why", "evidence", "action", 5, "source");
-        A.CallTo(() => _recommendationGenerator.Generate(A<IReadOnlyCollection<CategoryScoreResult>>._))
+        A.CallTo(() => _recommendationGenerator.Generate(A<IReadOnlyCollection<CategoryScoreResult>>._, A<RepositoryFacts?>._))
             .Returns(new[] { expected });
         var facts = RepositoryFactsBuilder.Build();
 

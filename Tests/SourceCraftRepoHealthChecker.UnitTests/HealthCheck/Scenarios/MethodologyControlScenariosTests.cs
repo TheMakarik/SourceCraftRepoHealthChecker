@@ -249,7 +249,7 @@ public sealed class MethodologyControlScenariosTests
             findings: findings ?? [],
             pipelineRuns: pipelineRuns,
             codeHealth: codeHealth ?? new CodeHealthReport(0, 0, 0, null),
-            documentation: new DocumentationReport(true, true, true, true, true, true));
+            documentation: new DocumentationReport(true, true, true, true, true, true, "MIT", true));
     }
 
     private static SecurityFinding Finding(string id, SecuritySeverity severity) =>

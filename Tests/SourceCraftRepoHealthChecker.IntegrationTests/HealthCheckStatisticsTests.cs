@@ -27,15 +27,15 @@ public sealed class HealthCheckStatisticsTests : IDisposable
         var actual = await RunAsync(repositoryPath);
 
         // Assert
-        actual.Score.Should().Be(87);
+        actual.Score.Should().Be(88);
         actual.MethodologyVersion.Should().Be("1.0");
         actual.CalculatedAt.Should().Be(FixedNow);
 
         var activity = Category(actual, ScoreCategory.Activity);
         activity.DataStatus.Should().Be(DataStatus.Available);
-        activity.Score.Should().Be(57);
+        activity.Score.Should().Be(61);
         activity.Weight.Should().BeApproximately(0.15, 0.0001);
-        activity.Metrics.Should().HaveCount(4);
+        activity.Metrics.Should().HaveCount(5);
         Metric(activity, MetricCode.ActivityLastActivity).RawValue.Should().Be(7.08);
         Metric(activity, MetricCode.ActivityLastActivity).NormalizedScore.Should().Be(100);
         Metric(activity, MetricCode.ActivityCommitFrequency).RawValue.Should().Be(5);
@@ -48,8 +48,7 @@ public sealed class HealthCheckStatisticsTests : IDisposable
         var documentation = Category(actual, ScoreCategory.Documentation);
         documentation.DataStatus.Should().Be(DataStatus.Available);
         documentation.Score.Should().Be(100);
-        documentation.Metrics.Should().HaveCount(6);
-        documentation.Metrics.Should().OnlyContain(metric => metric.RawValue == 1 && metric.NormalizedScore == 100);
+        DocumentationFlags(documentation).Should().OnlyContain(metric => metric.RawValue == 1 && metric.NormalizedScore == 100);
 
         var codeHealth = Category(actual, ScoreCategory.CodeHealth);
         codeHealth.DataStatus.Should().Be(DataStatus.Available);
@@ -77,13 +76,13 @@ public sealed class HealthCheckStatisticsTests : IDisposable
         var actual = await RunAsync(repositoryPath);
 
         // Assert
-        actual.Score.Should().Be(40);
+        actual.Score.Should().Be(43);
         actual.CalculatedAt.Should().Be(FixedNow);
 
         var activity = Category(actual, ScoreCategory.Activity);
         activity.DataStatus.Should().Be(DataStatus.Available);
-        activity.Score.Should().Be(5);
-        activity.Metrics.Should().HaveCount(4);
+        activity.Score.Should().Be(10);
+        activity.Metrics.Should().HaveCount(5);
         Metric(activity, MetricCode.ActivityLastActivity).RawValue.Should().Be(759.08);
         Metric(activity, MetricCode.ActivityLastActivity).NormalizedScore.Should().Be(0);
         Metric(activity, MetricCode.ActivityCommitFrequency).RawValue.Should().Be(0);
@@ -95,9 +94,8 @@ public sealed class HealthCheckStatisticsTests : IDisposable
 
         var documentation = Category(actual, ScoreCategory.Documentation);
         documentation.DataStatus.Should().Be(DataStatus.Available);
-        documentation.Score.Should().Be(0);
-        documentation.Metrics.Should().HaveCount(6);
-        documentation.Metrics.Should().OnlyContain(metric => metric.RawValue == 0 && metric.NormalizedScore == 0);
+        documentation.Score.Should().Be(5);
+        DocumentationFlags(documentation).Should().OnlyContain(metric => metric.RawValue == 0 && metric.NormalizedScore == 0);
 
         var codeHealth = Category(actual, ScoreCategory.CodeHealth);
         codeHealth.DataStatus.Should().Be(DataStatus.Available);
@@ -131,13 +129,13 @@ public sealed class HealthCheckStatisticsTests : IDisposable
         var actual = await RunAsync(repositoryPath);
 
         // Assert
-        actual.Score.Should().Be(59);
+        actual.Score.Should().Be(61);
         actual.CalculatedAt.Should().Be(FixedNow);
 
         var activity = Category(actual, ScoreCategory.Activity);
         activity.DataStatus.Should().Be(DataStatus.Available);
-        activity.Score.Should().Be(62);
-        activity.Metrics.Should().HaveCount(4);
+        activity.Score.Should().Be(66);
+        activity.Metrics.Should().HaveCount(5);
         Metric(activity, MetricCode.ActivityLastActivity).RawValue.Should().Be(3.08);
         Metric(activity, MetricCode.ActivityLastActivity).NormalizedScore.Should().Be(100);
         Metric(activity, MetricCode.ActivityCommitFrequency).RawValue.Should().Be(5);
@@ -149,9 +147,8 @@ public sealed class HealthCheckStatisticsTests : IDisposable
 
         var documentation = Category(actual, ScoreCategory.Documentation);
         documentation.DataStatus.Should().Be(DataStatus.Available);
-        documentation.Score.Should().Be(0);
-        documentation.Metrics.Should().HaveCount(6);
-        documentation.Metrics.Should().OnlyContain(metric => metric.RawValue == 0 && metric.NormalizedScore == 0);
+        documentation.Score.Should().Be(5);
+        DocumentationFlags(documentation).Should().OnlyContain(metric => metric.RawValue == 0 && metric.NormalizedScore == 0);
 
         var codeHealth = Category(actual, ScoreCategory.CodeHealth);
         codeHealth.DataStatus.Should().Be(DataStatus.Available);
@@ -211,4 +208,17 @@ public sealed class HealthCheckStatisticsTests : IDisposable
 
     private static MetricScore Metric(CategoryScoreResult category, MetricCode code) =>
         category.Metrics.Single(candidate => candidate.Code == code);
+
+    private static readonly MetricCode[] DocumentationFlagCodes =
+    [
+        MetricCode.DocumentationReadme,
+        MetricCode.DocumentationLicense,
+        MetricCode.DocumentationContributing,
+        MetricCode.DocumentationCodeOwners,
+        MetricCode.DocumentationLocalRun,
+        MetricCode.DocumentationBuildAndTest
+    ];
+
+    private static IEnumerable<MetricScore> DocumentationFlags(CategoryScoreResult category) =>
+        category.Metrics.Where(metric => DocumentationFlagCodes.Contains(metric.Code));
 }

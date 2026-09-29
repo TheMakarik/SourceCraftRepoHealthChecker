@@ -25,6 +25,12 @@ public sealed class LocalGitRepositoryReader(
         @"\b(build|test|make)\b|сборка|тест",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    private static readonly HashSet<string> KnownStructureDirectories = new(StringComparer.Ordinal)
+    {
+        "src", "source", "tests", "test", "docs", "doc", "lib", "libs", "packages", "cmd",
+        "internal", "app", "api", "backend", "frontend", "scripts", "examples", "samples"
+    };
+
     public Task<CommitActivity> GetCommitActivityAsync(string repositoryPath, CancellationToken cancellationToken) =>
         Task.Run(() => ReadCommitActivity(repositoryPath, cancellationToken), cancellationToken);
 
@@ -186,10 +192,16 @@ public sealed class LocalGitRepositoryReader(
         var hasContributing = false;
         var hasCodeOwners = false;
         var instructions = new StringBuilder();
+        var licenseId = (string?)null;
+        var topLevelDirectories = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var (path, blob) in GitTreeReader.EnumerateBlobs(repository))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            var separatorIndex = path.IndexOf('/');
+            if (separatorIndex > 0)
+                topLevelDirectories.Add(path[..separatorIndex].ToLowerInvariant());
 
             var name = Path.GetFileName(path).ToLowerInvariant();
             if (name.StartsWith("readme", StringComparison.Ordinal))
@@ -200,6 +212,7 @@ public sealed class LocalGitRepositoryReader(
             else if (name.StartsWith("license", StringComparison.Ordinal) || name.StartsWith("licence", StringComparison.Ordinal) || name == "copying")
             {
                 hasLicense = true;
+                licenseId ??= DetectLicenseId(name, blob);
             }
             else if (name.StartsWith("contributing", StringComparison.Ordinal))
             {
@@ -219,7 +232,79 @@ public sealed class LocalGitRepositoryReader(
             hasContributing,
             hasCodeOwners,
             RunInstructionsPattern.IsMatch(documentationText),
-            BuildAndTestPattern.IsMatch(documentationText));
+            BuildAndTestPattern.IsMatch(documentationText),
+            licenseId,
+            topLevelDirectories.Overlaps(KnownStructureDirectories) || topLevelDirectories.Count >= 3);
+    }
+
+    private string? DetectLicenseId(string fileName, Blob blob)
+    {
+        var fromName = DetectLicenseFromFileName(fileName);
+        if (fromName is not null)
+            return fromName;
+
+        if (!IsWithinSizeLimit(blob) || blob.IsBinary)
+            return null;
+
+        return DetectLicenseFromContent(blob.GetContentText());
+    }
+
+    private static string? DetectLicenseFromFileName(string fileName)
+    {
+        var normalized = fileName.Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace(".", string.Empty, StringComparison.Ordinal);
+
+        if (normalized.Contains("apache", StringComparison.Ordinal))
+            return "Apache-2.0";
+        if (normalized.Contains("mit", StringComparison.Ordinal))
+            return "MIT";
+        if (normalized.Contains("agpl", StringComparison.Ordinal))
+            return "AGPL-3.0";
+        if (normalized.Contains("lgpl", StringComparison.Ordinal))
+            return "LGPL-3.0";
+        if (normalized.Contains("gpl3", StringComparison.Ordinal) || normalized.Contains("gplv3", StringComparison.Ordinal))
+            return "GPL-3.0";
+        if (normalized.Contains("gpl2", StringComparison.Ordinal) || normalized.Contains("gplv2", StringComparison.Ordinal))
+            return "GPL-2.0";
+        if (normalized.Contains("mpl", StringComparison.Ordinal))
+            return "MPL-2.0";
+        if (normalized.Contains("bsd3", StringComparison.Ordinal))
+            return "BSD-3-Clause";
+        if (normalized.Contains("bsd2", StringComparison.Ordinal))
+            return "BSD-2-Clause";
+        if (normalized.Contains("unlicense", StringComparison.Ordinal))
+            return "Unlicense";
+        if (normalized.Contains("isc", StringComparison.Ordinal))
+            return "ISC";
+
+        return null;
+    }
+
+    private static string? DetectLicenseFromContent(string content)
+    {
+        var normalized = content.ToLowerInvariant();
+
+        if (normalized.Contains("gnu affero general public license", StringComparison.Ordinal))
+            return "AGPL-3.0";
+        if (normalized.Contains("gnu lesser general public license", StringComparison.Ordinal))
+            return "LGPL-3.0";
+        if (normalized.Contains("gnu general public license", StringComparison.Ordinal))
+            return normalized.Contains("version 3", StringComparison.Ordinal) ? "GPL-3.0" : "GPL-2.0";
+        if (normalized.Contains("apache license", StringComparison.Ordinal) && normalized.Contains("version 2.0", StringComparison.Ordinal))
+            return "Apache-2.0";
+        if (normalized.Contains("mozilla public license", StringComparison.Ordinal))
+            return "MPL-2.0";
+        if (normalized.Contains("permission is hereby granted, free of charge", StringComparison.Ordinal))
+            return "MIT";
+        if (normalized.Contains("permission to use, copy, modify, and/or distribute this software", StringComparison.Ordinal))
+            return "ISC";
+        if (normalized.Contains("this is free and unencumbered software released into the public domain", StringComparison.Ordinal))
+            return "Unlicense";
+        if (normalized.Contains("redistribution and use in source and binary forms", StringComparison.Ordinal))
+            return normalized.Contains("neither the name", StringComparison.Ordinal) ? "BSD-3-Clause" : "BSD-2-Clause";
+
+        return null;
     }
 
     private static DateTimeOffset? FindOldestMarkerCommit(Repository repository, CancellationToken cancellationToken)

@@ -8,4 +8,5 @@ public sealed class DocumentationScoringOptions
     public required double CodeOwnersWeight { get; init; }
     public required double LocalRunWeight { get; init; }
     public required double BuildAndTestWeight { get; init; }
+    public double ProjectStructureWeight { get; init; } = 0.05;
 }

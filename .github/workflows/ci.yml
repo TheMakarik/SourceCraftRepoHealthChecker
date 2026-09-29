@@ -8,6 +8,22 @@ on:
 jobs:
   dotnet:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sourcecraft_repo_health
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SRHC_TEST_POSTGRES: "Host=127.0.0.1;Port=55432;Database=sourcecraft_repo_health;Username=postgres;Password=postgres"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4

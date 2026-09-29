@@ -54,10 +54,10 @@ public static class RepositoryReportMarkdownRenderer
         }
         else
         {
-            builder.AppendLine("| Тип | Правило | Критичность | CVSS | Статус | Файл/пакет |");
-            builder.AppendLine("|---|---|---|---|---|---|");
+            builder.AppendLine("| Тип | Правило | Критичность | CVSS | Статус | Файл/пакет | Ссылка |");
+            builder.AppendLine("|---|---|---|---|---|---|---|");
             foreach (var finding in analysis.Findings)
-                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {finding.Kind} | {finding.Title} | {finding.Severity} | {finding.CvssScore?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—"} | {finding.Status} | {finding.FilePath ?? finding.Package ?? "—"} |"));
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"| {finding.Kind} | {finding.Title} | {finding.Severity} | {finding.CvssScore?.ToString("0.#", CultureInfo.InvariantCulture) ?? "—"} | {finding.Status} | {finding.FilePath ?? finding.Package ?? "—"} | {FindingReference(finding)} |"));
         }
         builder.AppendLine();
 
@@ -96,6 +96,20 @@ public static class RepositoryReportMarkdownRenderer
             foreach (var category in categories)
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- {category.Category}: {category.Score}"));
         builder.AppendLine();
+    }
+
+    private static string FindingReference(RepositoryAnalysisFinding finding)
+    {
+        var location = finding.FileLine is null ? finding.FilePath : $"{finding.FilePath}:{finding.FileLine}";
+        var parts = new List<string>();
+        if (finding.ExternalId is { Length: > 0 } externalId)
+            parts.Add(externalId);
+        if (location is { Length: > 0 })
+            parts.Add(location);
+        if (finding.CommitSha is { Length: > 0 } commitSha)
+            parts.Add(commitSha.Length <= 8 ? commitSha : commitSha[..8]);
+
+        return parts.Count == 0 ? "—" : string.Join(", ", parts);
     }
 
     private static string StatusText(DataStatus status) => status switch

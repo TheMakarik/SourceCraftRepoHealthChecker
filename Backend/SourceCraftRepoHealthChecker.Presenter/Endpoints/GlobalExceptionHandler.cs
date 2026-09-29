@@ -12,35 +12,40 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
         var statusCode = MapStatusCode(exception);
-        if (statusCode is null)
-            return false;
+        var logLevel = statusCode >= StatusCodes.Status500InternalServerError ? LogLevel.Error : LogLevel.Warning;
+        logger.Log(logLevel, exception, "Request {Path} failed with {StatusCode}", context.Request.Path, statusCode);
 
-        logger.LogWarning(exception, "Request {Path} failed with {StatusCode}", context.Request.Path, statusCode);
-        context.Response.StatusCode = statusCode.Value;
-        await context.Response.WriteAsJsonAsync(new { error = ReasonPhrase(statusCode.Value), message = exception.Message }, cancellationToken);
+        if (context.Response.HasStarted)
+            return true;
+
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(new { error = ReasonPhrase(statusCode) }, cancellationToken);
         return true;
     }
 
-    private static int? MapStatusCode(Exception exception) => exception switch
+    private static int MapStatusCode(Exception exception) => exception switch
     {
+        RepositoryAccessDeniedException => StatusCodes.Status403Forbidden,
+        UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+        InvalidAuthorizationCodeException => StatusCodes.Status401Unauthorized,
         RepositoryNotFoundException => StatusCodes.Status404NotFound,
         KeyNotFoundException => StatusCodes.Status404NotFound,
         ArgumentException => StatusCodes.Status400BadRequest,
-        InvalidAuthorizationCodeException => StatusCodes.Status400BadRequest,
-        SourceCraftException => StatusCodes.Status502BadGateway,
-        SourceCraftOperationException => StatusCodes.Status502BadGateway,
-        AiProviderException => StatusCodes.Status502BadGateway,
+        SourceCraftException => StatusCodes.Status503ServiceUnavailable,
+        SourceCraftOperationException => StatusCodes.Status503ServiceUnavailable,
+        AiProviderException => StatusCodes.Status503ServiceUnavailable,
         YandexIdUnavailableException => StatusCodes.Status503ServiceUnavailable,
         TimeoutException => StatusCodes.Status503ServiceUnavailable,
-        _ => null
+        _ => StatusCodes.Status500InternalServerError
     };
 
     private static string ReasonPhrase(int statusCode) => statusCode switch
     {
-        StatusCodes.Status404NotFound => "not_found",
         StatusCodes.Status400BadRequest => "bad_request",
-        StatusCodes.Status502BadGateway => "source_unavailable",
-        StatusCodes.Status503ServiceUnavailable => "service_unavailable",
-        _ => "error"
+        StatusCodes.Status401Unauthorized => "unauthorized",
+        StatusCodes.Status403Forbidden => "forbidden",
+        StatusCodes.Status404NotFound => "not_found",
+        StatusCodes.Status503ServiceUnavailable => "source_unavailable",
+        _ => "internal_error"
     };
 }

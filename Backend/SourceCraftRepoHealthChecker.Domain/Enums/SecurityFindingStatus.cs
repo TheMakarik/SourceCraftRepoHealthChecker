@@ -4,5 +4,6 @@ public enum SecurityFindingStatus
 {
     Open,
     Fixed,
-    Ignored
+    Ignored,
+    FalsePositive
 }

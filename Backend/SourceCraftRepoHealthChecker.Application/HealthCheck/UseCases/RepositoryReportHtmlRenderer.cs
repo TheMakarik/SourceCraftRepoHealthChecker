@@ -51,9 +51,9 @@ public static class RepositoryReportHtmlRenderer
         }
         else
         {
-            builder.Append("<table><thead><tr><th>Тип</th><th>Правило</th><th>Критичность</th><th>CVSS</th><th>Статус</th><th>Файл/пакет</th></tr></thead><tbody>");
+            builder.Append("<table><thead><tr><th>Тип</th><th>Правило</th><th>Критичность</th><th>CVSS</th><th>Статус</th><th>Файл/пакет</th><th>Ссылка</th></tr></thead><tbody>");
             foreach (var finding in analysis.Findings)
-                builder.Append($"<tr><td>{WebUtility.HtmlEncode(finding.Kind)}</td><td>{WebUtility.HtmlEncode(finding.Title)}</td><td>{WebUtility.HtmlEncode(finding.Severity)}</td><td>{finding.CvssScore?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) ?? "—"}</td><td>{WebUtility.HtmlEncode(finding.Status)}</td><td>{WebUtility.HtmlEncode(finding.FilePath ?? finding.Package ?? "—")}</td></tr>");
+                builder.Append($"<tr><td>{WebUtility.HtmlEncode(finding.Kind)}</td><td>{WebUtility.HtmlEncode(finding.Title)}</td><td>{WebUtility.HtmlEncode(finding.Severity)}</td><td>{finding.CvssScore?.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) ?? "—"}</td><td>{WebUtility.HtmlEncode(finding.Status)}</td><td>{WebUtility.HtmlEncode(finding.FilePath ?? finding.Package ?? "—")}</td><td>{WebUtility.HtmlEncode(FindingReference(finding))}</td></tr>");
             builder.Append("</tbody></table>");
         }
 
@@ -97,6 +97,20 @@ public static class RepositoryReportHtmlRenderer
         builder.Append("</ul>");
     }
 
+    private static string FindingReference(RepositoryAnalysisFinding finding)
+    {
+        var location = finding.FileLine is null ? finding.FilePath : $"{finding.FilePath}:{finding.FileLine}";
+        var parts = new List<string>();
+        if (finding.ExternalId is { Length: > 0 } externalId)
+            parts.Add(externalId);
+        if (location is { Length: > 0 })
+            parts.Add(location);
+        if (finding.CommitSha is { Length: > 0 } commitSha)
+            parts.Add(commitSha.Length <= 8 ? commitSha : commitSha[..8]);
+
+        return parts.Count == 0 ? "—" : string.Join(", ", parts);
+    }
+
     private static string StatusText(DataStatus status) => status switch
     {
         DataStatus.Available => "Данные есть",
@@ -106,7 +120,4 @@ public static class RepositoryReportHtmlRenderer
 
     private static string ScoreText(int? score) =>
         score is null ? "нет данных" : $"{score}/100";
-
-    private static string ImpactText(int? impact) =>
-        impact is null ? "—" : $"+{impact} балл(ов) к итоговому Repo Health Score";
 }

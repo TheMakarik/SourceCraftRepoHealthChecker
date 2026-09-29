@@ -22,7 +22,7 @@ public sealed class HealthCheckEngine(
             .ToArray();
 
         var score = healthScoreCalculator.Calculate(categories);
-        var recommendations = recommendationGenerator.Generate(categories);
+        var recommendations = recommendationGenerator.Generate(categories, facts);
         var highlights = options.Value.Recommendations;
         var available = categories.Where(category => category.DataStatus == DataStatus.Available).ToArray();
 

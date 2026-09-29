@@ -68,7 +68,9 @@ public sealed class SourceCraftSecurityAdapter(
             title,
             Optional(defectGroup.RuleId),
             Optional(defectGroup.FileName),
-            defectGroup.CvssScore == 0 ? null : defectGroup.CvssScore);
+            defectGroup.CvssScore == 0 ? null : defectGroup.CvssScore,
+            defectGroup.StartLine == 0 ? null : defectGroup.StartLine,
+            Optional(defectGroup.LatestCommit));
     }
 
     private static SecurityFindingKind MapKind(int engineType, string? engine) =>
@@ -100,8 +102,14 @@ public sealed class SourceCraftSecurityAdapter(
         _ => SecuritySeverity.Low
     };
 
-    private static SecurityFindingStatus MapStatus(int status) =>
-        status == 0 ? SecurityFindingStatus.Open : SecurityFindingStatus.Fixed;
+    private static SecurityFindingStatus MapStatus(int status) => status switch
+    {
+        0 => SecurityFindingStatus.Open,
+        1 => SecurityFindingStatus.Fixed,
+        2 => SecurityFindingStatus.Ignored,
+        3 => SecurityFindingStatus.FalsePositive,
+        _ => SecurityFindingStatus.Open
+    };
 
     private static string? Optional(string? value) => string.IsNullOrEmpty(value) ? null : value;
 }

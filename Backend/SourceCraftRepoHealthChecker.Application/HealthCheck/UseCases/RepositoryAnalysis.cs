@@ -19,4 +19,7 @@ public sealed record RepositoryAnalysis(
     IReadOnlyCollection<RepositoryAnalysisCategory> Strengths,
     IReadOnlyCollection<RepositoryAnalysisCategory> Weaknesses,
     IReadOnlyCollection<RepositoryAnalysisRecommendation> Recommendations,
-    IReadOnlyCollection<RepositoryAnalysisFinding> Findings);
+    IReadOnlyCollection<RepositoryAnalysisFinding> Findings,
+    AnalysisStatus? LastAttemptStatus = null,
+    DateTimeOffset? LastAttemptAt = null,
+    DataStatus? LastAttemptDataStatus = null);

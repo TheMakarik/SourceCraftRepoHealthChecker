@@ -2,8 +2,9 @@
 # setup-deps.sh — установка зависимостей для разработки и запуска тестов бэкенда.
 #
 # ЧТО ДЕЛАЕТ:
-#   Ставит .NET SDK 10 (плюс базовые git/curl/tar/ca-certificates) и в конце печатает
-#   версии для проверки. Скрипт идемпотентный: повторный запуск ничего не ломает.
+#   Ставит .NET SDK 10, PostgreSQL (нужен интеграционным тестам), плюс базовые
+#   git/curl/tar/ca-certificates и в конце печатает версии для проверки.
+#   Скрипт идемпотентный: повторный запуск ничего не ломает.
 #
 # ЧЕМ СТАВИТ (менеджеры пакетов):
 #   * apt-get — Debian, Ubuntu, Astra Linux (DEB-дистрибутивы);
@@ -12,8 +13,8 @@
 #   версии .NET, автоматически используется официальный установщик (см. ниже).
 #
 # ОТКУДА КАЧАЕТ:
-#   * apt/dnf — репозитории дистрибутива (git, curl, ca-certificates, tar, а также попытка
-#     поставить dotnet-sdk-10.0);
+#   * apt/dnf — репозитории дистрибутива (git, curl, ca-certificates, tar, postgresql,
+#     а также попытка поставить dotnet-sdk-10.0);
 #   * .NET  — официальный установщик Microsoft: https://dot.net/v1/dotnet-install.sh (channel 10.0).
 #
 # СОВМЕСТИМОСТЬ:
@@ -71,8 +72,22 @@ install_dotnet() {
   log "Добавь в профиль: export PATH=\"\$HOME/.dotnet:\$PATH\""
 }
 
+install_postgres() {
+  case "$PKG" in
+    apt) log "apt-get: postgresql postgresql-client"; $SUDO apt-get install -y postgresql postgresql-client ;;
+    dnf) log "dnf: postgresql-server postgresql"; $SUDO dnf install -y postgresql-server postgresql ;;
+  esac
+}
+
 install_base
 install_dotnet
+install_postgres
 
 log "Готово. Версии:"
-echo "  dotnet: $(have dotnet && dotnet --version || echo 'не найден')"
+echo "  dotnet:   $(have dotnet && dotnet --version || echo 'не найден')"
+echo "  postgres: $(have psql && psql --version || echo 'не найден')"
+echo
+echo "Интеграционные тесты ждут PostgreSQL на 127.0.0.1:55432 (переопределяется через SRHC_TEST_POSTGRES)."
+echo "Быстрый вариант — Docker:"
+echo "  docker run -d --name srhc-test-postgres -p 55432:5432 \\"
+echo "    -e POSTGRES_DB=sourcecraft_repo_health -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres postgres:16"

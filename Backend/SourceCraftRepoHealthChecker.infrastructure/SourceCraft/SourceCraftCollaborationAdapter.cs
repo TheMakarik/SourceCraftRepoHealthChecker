@@ -24,11 +24,13 @@ public sealed class SourceCraftCollaborationAdapter(
 
             var results = issues.Select(MapIssue).ToArray();
             var lookupCount = Math.Min(results.Length, settings.MaxResponseLookups);
+            MarkUnevaluatedResponses(results, lookupCount);
             var error = await FetchIssueFirstResponsesAsync(issues, results, lookupCount, cancellationToken);
             if (error is not null)
                 return SourceCraftFailure.Unavailable<IReadOnlyCollection<IssueInfo>>(error);
 
-            return new SourceCraftResult<IReadOnlyCollection<IssueInfo>>(DataStatus.Available, results, null);
+            var isPartial = settings.MaxItems > 0 && issues.Count >= settings.MaxItems;
+            return new SourceCraftResult<IReadOnlyCollection<IssueInfo>>(DataStatus.Available, results, null, isPartial);
         }
         catch (OperationCanceledException)
         {
@@ -53,11 +55,13 @@ public sealed class SourceCraftCollaborationAdapter(
 
             var results = pullRequests.Select(MapPullRequest).ToArray();
             var lookupCount = Math.Min(results.Length, settings.MaxResponseLookups);
+            MarkUnevaluatedResponses(results, lookupCount);
             var error = await FetchPullRequestResponsesAsync(pullRequests, results, lookupCount, cancellationToken);
             if (error is not null)
                 return SourceCraftFailure.Unavailable<IReadOnlyCollection<MergeRequestInfo>>(error);
 
-            return new SourceCraftResult<IReadOnlyCollection<MergeRequestInfo>>(DataStatus.Available, results, null);
+            var isPartial = settings.MaxItems > 0 && pullRequests.Count >= settings.MaxItems;
+            return new SourceCraftResult<IReadOnlyCollection<MergeRequestInfo>>(DataStatus.Available, results, null, isPartial);
         }
         catch (OperationCanceledException)
         {
@@ -67,6 +71,18 @@ public sealed class SourceCraftCollaborationAdapter(
         {
             return SourceCraftFailure.Unavailable<IReadOnlyCollection<MergeRequestInfo>>(exception);
         }
+    }
+
+    private static void MarkUnevaluatedResponses(IList<IssueInfo> results, int lookupCount)
+    {
+        for (var index = lookupCount; index < results.Count; index++)
+            results[index] = results[index] with { FirstResponseEvaluated = false };
+    }
+
+    private static void MarkUnevaluatedResponses(IList<MergeRequestInfo> results, int lookupCount)
+    {
+        for (var index = lookupCount; index < results.Count; index++)
+            results[index] = results[index] with { FirstResponseEvaluated = false };
     }
 
     private async Task<Exception?> FetchIssueFirstResponsesAsync(

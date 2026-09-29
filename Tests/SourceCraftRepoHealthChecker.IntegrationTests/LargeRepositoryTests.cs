@@ -147,7 +147,9 @@ public sealed class LargeRepositoryTests : IDisposable
     private static RepositoryBrowsingOptions LoadBrowsingOptions()
     {
         var path = Path.Join(AppContext.BaseDirectory, "appsettings.json");
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        using var document = JsonDocument.Parse(
+            File.ReadAllText(path),
+            new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true });
         if (!document.RootElement.TryGetProperty(nameof(RepositoryBrowsingOptions), out var section))
             throw new InvalidOperationException("Секция RepositoryBrowsingOptions отсутствует в appsettings.json.");
 

@@ -10,4 +10,6 @@ public sealed record SecurityFinding(
     string Title,
     string? Package,
     string? FilePath,
-    double? CvssScore = null);
+    double? CvssScore = null,
+    int? FileLine = null,
+    string? CommitSha = null);

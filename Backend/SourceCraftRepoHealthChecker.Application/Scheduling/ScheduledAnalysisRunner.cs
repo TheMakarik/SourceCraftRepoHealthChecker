@@ -33,10 +33,15 @@ public sealed class ScheduledAnalysisRunner(
             return new ScheduledAnalysisSummary(0, 0);
         }
 
-        var refreshed = await refreshRepositoriesUseCase.RefreshAsync(cancellationToken);
-        if (options.MaxRepositoriesPerRun <= 0)
+        var refreshed = await RefreshWithoutBlockingEnqueueAsync(cancellationToken);
+
+        var repositoriesPerWorker = options.MaxRepositoriesPerRun;
+        var batchSize = repositoriesPerWorker <= 0
+            ? 0
+            : repositoriesPerWorker * Math.Max(1, scalingOptions.Value.WorkerConcurrency);
+        if (batchSize <= 0)
         {
-            logger.LogWarning("MaxRepositoriesPerRun is {Maximum}, skipping enqueue", options.MaxRepositoriesPerRun);
+            logger.LogWarning("MaxRepositoriesPerRun is {Maximum}, skipping enqueue", repositoriesPerWorker);
             return new ScheduledAnalysisSummary(refreshed, 0);
         }
 
@@ -45,7 +50,7 @@ public sealed class ScheduledAnalysisRunner(
         var repositoryIds = await dbContext.Repositories
             .Where(repository => repository.AnalyzedAt == null || repository.AnalyzedAt < cutoff)
             .OrderBy(repository => repository.AnalyzedAt)
-            .Take(options.MaxRepositoriesPerRun)
+            .Take(batchSize)
             .Select(repository => repository.SourceCraftId)
             .ToListAsync(cancellationToken);
 
@@ -55,5 +60,22 @@ public sealed class ScheduledAnalysisRunner(
         logger.LogInformation("Scheduled enqueue finished: refreshed {Refreshed}, enqueued {Enqueued}", refreshed, repositoryIds.Count);
 
         return new ScheduledAnalysisSummary(refreshed, repositoryIds.Count);
+    }
+
+    private async Task<int> RefreshWithoutBlockingEnqueueAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await refreshRepositoriesUseCase.RefreshAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Repository catalog refresh failed; enqueueing already-known repositories");
+            return 0;
+        }
     }
 }

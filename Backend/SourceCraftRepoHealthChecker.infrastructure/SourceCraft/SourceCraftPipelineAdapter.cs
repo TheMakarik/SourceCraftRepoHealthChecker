@@ -37,7 +37,9 @@ public sealed class SourceCraftPipelineAdapter(
                     run.Dates?.FinishedAt));
             }
 
-            return new SourceCraftResult<IReadOnlyCollection<PipelineRun>>(DataStatus.Available, pipelineRuns, null);
+            var isPartial = settings.MaxItems > 0 && runs.Count >= settings.MaxItems;
+
+            return new SourceCraftResult<IReadOnlyCollection<PipelineRun>>(DataStatus.Available, pipelineRuns, null, isPartial);
         }
         catch (OperationCanceledException)
         {

@@ -5,4 +5,6 @@ public sealed class CiCdScoringOptions
     public required int PipelineRunsForFullScore { get; init; }
     public required double MinimumSuccessRatio { get; init; }
     public required int MaxPipelineDurationMinutes { get; init; }
+    public int StabilityRunsForTrend { get; init; } = 10;
+    public double StabilityWeight { get; init; } = 1;
 }
