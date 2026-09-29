@@ -68,7 +68,6 @@
 ├── .claude/skills                                         # Симлинк на Skills/ (для Claude Code)
 ├── AGENTS.md
 ├── CLAUDE.md                                              # Redirect на AGENTS.md
-├── FEATURES.md                                            # Статус реализации по ТЗ
 ├── opencode.json
 └── SourceCraftRepoHealthChecker.slnx
 ```

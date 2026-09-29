@@ -1,0 +1,20 @@
+# Владельцы кода. Формат: <шаблон> <владельцы>
+# Подробнее: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @TheMakarik
+
+# Бэкенд (луковичная архитектура)
+/Backend/SourceCraftRepoHealthChecker.Domain/        @TheMakarik
+/Backend/SourceCraftRepoHealthChecker.Application/    @TheMakarik
+/Backend/SourceCraftRepoHealthChecker.infrastructure/ @TheMakarik
+/Backend/SourceCraftRepoHealthChecker.Presenter/      @TheMakarik
+
+# Фронтенд
+/Frontend/                                            @TheMakarik
+
+# CI/CD и инфраструктура
+/.github/                                             @TheMakarik
+/.sourcecraft/                                        @TheMakarik
+/Scripts/                                             @TheMakarik
+/Dev/                                                 @TheMakarik
+/docker-compose.yml                                   @TheMakarik
