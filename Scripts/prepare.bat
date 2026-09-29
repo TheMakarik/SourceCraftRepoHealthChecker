@@ -1,49 +1,50 @@
 @echo off
-rem prepare.bat ‚Äî –∏–Ω—Ç–µ—Ä–∞–∫—Ç–∏–≤–Ω–∞—è –ø–æ–¥–≥–æ—Ç–æ–≤–∫–∞ –∏ –∑–∞–ø—É—Å–∫ –ø—Ä–æ–µ–∫—Ç–∞ (Windows).
+chcp 866 >nul
+rem prepare.bat - ®≠‚•‡†™‚®¢≠†Ô ØÆ§£Æ‚Æ¢™† ® ß†Ø„·™ Ø‡Æ•™‚† (Windows).
 rem
-rem –ß—Ç–æ –¥–µ–ª–∞–µ—Ç:
-rem   1) —Å–ø—Ä–∞—à–∏–≤–∞–µ—Ç –Ω—É–∂–Ω—ã–µ –¥–ª—è –°–¢–ê–†–¢–ê —Ç–æ–∫–µ–Ω—ã –∏ –æ–±—ä—è—Å–Ω—è–µ—Ç, –≥–¥–µ –∏—Ö –≤–∑—è—Ç—å;
-rem   2) –≥–µ–Ω–µ—Ä–∏—Ä—É–µ—Ç –∫–ª—é—á —à–∏—Ñ—Ä–æ–≤–∞–Ω–∏—è –∏ —Å–æ–∑–¥–∞—ë—Ç .env;
-rem   3) –∑–∞–ø—É—Å–∫–∞–µ—Ç –ø—Ä–æ–µ–∫—Ç (Scripts\start.bat ‚Äî –ø–æ—Å—Ç–∞–≤–∏—Ç Docker –ø—Ä–∏ –æ—Ç—Å—É—Ç—Å—Ç–≤–∏–∏).
+rem ó‚Æ §•´†•‚:
+rem   1) ·Ø‡†Ë®¢†•‚ ≠„¶≠Î• §´Ô ëíÄêíÄ ‚Æ™•≠Î ® Æ°ÍÔ·≠Ô•‚, £§• ®Â ¢ßÔ‚Ï;
+rem   2) £•≠•‡®‡„•‚ ™´ÓÁ Ë®‰‡Æ¢†≠®Ô ® ·Æß§†Ò‚ .env;
+rem   3) ß†Ø„·™†•‚ Ø‡Æ•™‚ (Scripts\start.bat - ØÆ·‚†¢®‚ Docker Ø‡® Æ‚·„‚·‚¢®®).
 setlocal enabledelayedexpansion
 
 cd /d "%~dp0.."
 
-echo === SourceCraft Repo Health Checker - –ø–æ–¥–≥–æ—Ç–æ–≤–∫–∞ ===
+echo === SourceCraft Repo Health Checker - ØÆ§£Æ‚Æ¢™† ===
 echo.
-echo –ù—É–∂–Ω—ã —Å–ª–µ–¥—É—é—â–∏–µ –¥–∞–Ω–Ω—ã–µ:
+echo ç„¶≠Î ·´•§„ÓÈ®• §†≠≠Î•:
 echo.
-echo 1) –Ø ID (–æ–±—è–∑–∞—Ç–µ–ª—å–Ω–æ) - –≤—Ö–æ–¥ –ø–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª–µ–π —á–µ—Ä–µ–∑ –Ø–Ω–¥–µ–∫—Å.
-echo    –ì–¥–µ –≤–∑—è—Ç—å: https://oauth.yandex.ru/client/new
-echo      - –ü–ª–∞—Ç—Ñ–æ—Ä–º–∞: –í–µ–±-—Å–µ—Ä–≤–∏—Å—ã
+echo 1) ü ID (Æ°Ôß†‚•´Ï≠Æ) - ¢ÂÆ§ ØÆ´ÏßÆ¢†‚•´•© Á•‡•ß ü≠§•™·.
+echo    É§• ¢ßÔ‚Ï: https://oauth.yandex.ru/client/new
+echo      - è´†‚‰Æ‡¨†: Ç•°-·•‡¢®·Î
 echo      - Redirect URI: http://localhost:8080/auth/callback
-echo      - –î–æ—Å—Ç—É–ø—ã (scope): login:info, login:email
-echo    –ó–∞–±–µ—Ä–∏—Ç–µ ClientID –∏ ClientSecret.
+echo      - ÑÆ·‚„ØÎ (scope): login:info, login:email
+echo    á†°•‡®‚• ClientID ® ClientSecret.
 echo.
-echo 2) SourceCraft PAT (–Ω–µ–æ–±—è–∑–∞—Ç–µ–ª—å–Ω–æ) - —Å–µ—Ä–≤–∏—Å–Ω—ã–π —Ç–æ–∫–µ–Ω –¥–ª—è –ø—É–±–ª–∏—á–Ω–æ–≥–æ —Ä–µ–π—Ç–∏–Ω–≥–∞
-echo    –≤—Å–µ—Ö –æ—Ç–∫—Ä—ã—Ç—ã—Ö —Ä–µ–ø–æ–∑–∏—Ç–æ—Ä–∏–µ–≤.
-echo    –ì–¥–µ –≤–∑—è—Ç—å: https://sourcecraft.dev - –î–æ–º–æ–π - –î–æ—Å—Ç—É–ø - –ü–µ—Ä—Å–æ–Ω–∞–ª—å–Ω—ã–µ —Ç–æ–∫–µ–Ω—ã –¥–æ—Å—Ç—É–ø–∞ - –°–≥–µ–Ω–µ—Ä–∏—Ä–æ–≤–∞—Ç—å.
-echo    –í–ê–ñ–ù–û: —ç—Ç–æ —Å–µ—Ä–≤–∏—Å–Ω—ã–π —Ç–æ–∫–µ–Ω. –°–≤–æ–π PAT –¥–ª—è –ª–∏—á–Ω—ã—Ö/–ø—Ä–∏–≤–∞—Ç–Ω—ã—Ö —Ä–µ–ø–æ–∑–∏—Ç–æ—Ä–∏–µ–≤
-echo    –ø–æ–ª—å–∑–æ–≤–∞—Ç–µ–ª—å –≤–≤–æ–¥–∏—Ç –ø–æ–∑–∂–µ –Ω–∞ —Å–∞–π—Ç–µ –≤ —Ä–∞–∑–¥–µ–ª–µ "–ù–∞—Å—Ç—Ä–æ–π–∫–∏".
+echo 2) SourceCraft PAT (≠•Æ°Ôß†‚•´Ï≠Æ) - ·•‡¢®·≠Î© ‚Æ™•≠ §´Ô Ø„°´®Á≠Æ£Æ ‡•©‚®≠£†
+echo    ¢·•Â Æ‚™‡Î‚ÎÂ ‡•ØÆß®‚Æ‡®•¢.
+echo    É§• ¢ßÔ‚Ï: https://sourcecraft.dev - ÑÆ¨Æ© - ÑÆ·‚„Ø - è•‡·Æ≠†´Ï≠Î• ‚Æ™•≠Î §Æ·‚„Ø† - ë£•≠•‡®‡Æ¢†‚Ï.
+echo    ÇÄÜçé: Ì‚Æ ·•‡¢®·≠Î© ‚Æ™•≠. ë¢Æ© PAT §´Ô ´®Á≠ÎÂ/Ø‡®¢†‚≠ÎÂ ‡•ØÆß®‚Æ‡®•¢
+echo    ØÆ´ÏßÆ¢†‚•´Ï ¢¢Æ§®‚ ØÆß¶• ≠† ·†©‚• ¢ ‡†ß§•´• "ç†·‚‡Æ©™®".
 echo.
 
-set /p YANDEX_CLIENT_ID="–Ø ID ClientID: "
-set /p YANDEX_CLIENT_SECRET="–Ø ID ClientSecret: "
-set /p SOURCECRAFT_PAT="SourceCraft PAT (Enter - –ø—Ä–æ–ø—É—Å—Ç–∏—Ç—å): "
+set /p YANDEX_CLIENT_ID="ü ID ClientID: "
+set /p YANDEX_CLIENT_SECRET="ü ID ClientSecret: "
+set /p SOURCECRAFT_PAT="SourceCraft PAT (Enter - Ø‡ÆØ„·‚®‚Ï): "
 
 if "%YANDEX_CLIENT_ID%"=="" (
-  echo –û—à–∏–±–∫–∞: –Ø ID ClientID/ClientSecret –æ–±—è–∑–∞—Ç–µ–ª—å–Ω—ã –¥–ª—è –≤—Ö–æ–¥–∞.
+  echo éË®°™†: ü ID ClientID/ClientSecret Æ°Ôß†‚•´Ï≠Î §´Ô ¢ÂÆ§†.
   exit /b 1
 )
 if "%YANDEX_CLIENT_SECRET%"=="" (
-  echo –û—à–∏–±–∫–∞: –Ø ID ClientID/ClientSecret –æ–±—è–∑–∞—Ç–µ–ª—å–Ω—ã –¥–ª—è –≤—Ö–æ–¥–∞.
+  echo éË®°™†: ü ID ClientID/ClientSecret Æ°Ôß†‚•´Ï≠Î §´Ô ¢ÂÆ§†.
   exit /b 1
 )
 
 for /f "usebackq delims=" %%K in (`powershell -NoProfile -Command "[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))"`) do set ENCRYPTION_KEY=%%K
 
 (
-  echo # –°–æ–∑–¥–∞–Ω–æ prepare.bat
+  echo # ëÆß§†≠Æ prepare.bat
   echo POSTGRES_PASSWORD=postgres
   echo AI_TOKEN_ENCRYPTION_KEY=%ENCRYPTION_KEY%
   echo SOURCECRAFT_PAT=%SOURCECRAFT_PAT%
@@ -52,7 +53,7 @@ for /f "usebackq delims=" %%K in (`powershell -NoProfile -Command "[Convert]::To
   echo YANDEX_REDIRECT_URI=http://localhost:8080/auth/callback
 ) > .env
 
-echo .env —Å–æ–∑–¥–∞–Ω ^(AI_TOKEN_ENCRYPTION_KEY —Å–≥–µ–Ω–µ—Ä–∏—Ä–æ–≤–∞–Ω^).
-echo –ó–∞–ø—É—Å–∫–∞—é –ø—Ä–æ–µ–∫—Ç: Scripts\start.bat
+echo .env ·Æß§†≠ ^(AI_TOKEN_ENCRYPTION_KEY ·£•≠•‡®‡Æ¢†≠^).
+echo á†Ø„·™†Ó Ø‡Æ•™‚: Scripts\start.bat
 call Scripts\start.bat
 endlocal

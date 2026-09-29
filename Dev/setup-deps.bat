@@ -1,23 +1,24 @@
 @echo off
-rem setup-deps.bat тАФ ╤Г╤Б╤В╨░╨╜╨╛╨▓╨║╨░ ╨╖╨░╨▓╨╕╤Б╨╕╨╝╨╛╤Б╤В╨╡╨╣ ╨┤╨╗╤П ╤А╨░╨╖╤А╨░╨▒╨╛╤В╨║╨╕ ╨╕ ╨╖╨░╨┐╤Г╤Б╨║╨░ ╤В╨╡╤Б╤В╨╛╨▓ ╨▒╤Н╨║╨╡╨╜╨┤╨░ (Windows).
+chcp 866 >nul
+rem setup-deps.bat - установка зависимостей для разработки и запуска тестов бэкенда (Windows).
 rem
-rem ╨з╨в╨Ю ╨Ф╨Х╨Ы╨Р╨Х╨в:h
-rem   ╨б╤В╨░╨▓╨╕╤В .NET SDK 10 (╨┐╨╗╤О╤Б git), ╨╖╨░╤В╨╡╨╝ ╨┐╨╡╤З╨░╤В╨░╨╡╤В ╨▓╨╡╤А╤Б╨╕╨╕ ╨┤╨╗╤П ╨┐╤А╨╛╨▓╨╡╤А╨║╨╕.
-rem   ╨б╨║╤А╨╕╨┐╤В ╨╕╨┤╨╡╨╝╨┐╨╛╤В╨╡╨╜╤В╨╜╤Л╨╣: ╨┐╨╛╨▓╤В╨╛╤А╨╜╤Л╨╣ ╨╖╨░╨┐╤Г╤Б╨║ ╨╜╨╕╤З╨╡╨│╨╛ ╨╜╨╡ ╨╗╨╛╨╝╨░╨╡╤В.
+rem ЧТО ДЕЛАЕТ:h
+rem   Ставит .NET SDK 10 (плюс git), затем печатает версии для проверки.
+rem   Скрипт идемпотентный: повторный запуск ничего не ломает.
 rem
-rem ╨з╨Х╨Ь ╨б╨в╨Р╨Т╨Ш╨в (╨╝╨╡╨╜╨╡╨┤╨╢╨╡╤А╤Л ╨┐╨░╨║╨╡╤В╨╛╨▓):
-rem   * winget тАФ ╨╛╤Б╨╜╨╛╨▓╨╜╨╛╨╣ ╤Б╨┐╨╛╤Б╨╛╨▒ (Windows 10/11);
-rem   * choco  тАФ ╨╡╤Б╨╗╨╕ winget ╨╜╨╡╨┤╨╛╤Б╤В╤Г╨┐╨╡╨╜, ╨╜╨╛ ╤Г╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜ Chocolatey;
-rem   * dotnet-install.ps1 тАФ ╨╛╤Д╨╕╤Ж╨╕╨░╨╗╤М╨╜╤Л╨╣ ╤Г╤Б╤В╨░╨╜╨╛╨▓╤Й╨╕╨║ Microsoft, ╨╡╤Б╨╗╨╕ SDK ╨╜╨╡╤В ╨╜╨╕ ╨▓ winget, ╨╜╨╕ ╨▓ choco.
+rem ЧЕМ СТАВИТ (менеджеры пакетов):
+rem   * winget - основной способ (Windows 10/11);
+rem   * choco  - если winget недоступен, но установлен Chocolatey;
+rem   * dotnet-install.ps1 - официальный установщик Microsoft, если SDK нет ни в winget, ни в choco.
 rem
-rem ╨Ю╨в╨Ъ╨г╨Ф╨Р ╨Ъ╨Р╨з╨Р╨Х╨в:
-rem   * winget: Git.Git, Microsoft.DotNet.SDK.10 (╨╝╨░╨│╨░╨╖╨╕╨╜ winget / ╤А╨╡╨┐╨╛╨╖╨╕╤В╨╛╤А╨╕╨╕ ╨▓╨╡╨╜╨┤╨╛╤А╨╛╨▓);
-rem   * choco:  git, dotnet-sdk (community-╤А╨╡╨┐╨╛╨╖╨╕╤В╨╛╤А╨╕╨╣ chocolatey.org);
-rem   * .NET:  ╨╛╤Д╨╕╤Ж╨╕╨░╨╗╤М╨╜╤Л╨╣ ╤Г╤Б╤В╨░╨╜╨╛╨▓╤Й╨╕╨║ Microsoft https://dot.net/v1/dotnet-install.ps1 (channel 10.0).
+rem ОТКУДА КАЧАЕТ:
+rem   * winget: Git.Git, Microsoft.DotNet.SDK.10 (магазин winget / репозитории вендоров);
+rem   * choco:  git, dotnet-sdk (community-репозиторий chocolatey.org);
+rem   * .NET:  официальный установщик Microsoft https://dot.net/v1/dotnet-install.ps1 (channel 10.0).
 rem
-rem ╨д╨а╨Ю╨Э╨в╨Х╨Э╨Ф:
-rem   ╨б╨║╤А╨╕╨┐╤В ╨┐╨╛╨║╨░ ╨Э╨Х ╤Б╤В╨░╨▓╨╕╤В Node.js ╨╕ ╨┐╨░╨║╨╡╤В╨╜╤Л╨╣ ╨╝╨╡╨╜╨╡╨┤╨╢╨╡╤А ╨┤╨╗╤П ╤Д╤А╨╛╨╜╤В╨╡╨╜╨┤╨░ тАФ ╤Н╤В╨╛ ╨╜╤Г╨╢╨╜╨╛ ╨▒╤Г╨┤╨╡╤В ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М
-rem   ╨┐╨╛╨╖╨╢╨╡ (╤Б╨╝. Skills/frontend-start).
+rem ФРОНТЕНД:
+rem   Скрипт пока НЕ ставит Node.js и пакетный менеджер для фронтенда - это нужно будет добавить
+rem   позже (см. Skills/frontend-start).
 setlocal enabledelayedexpansion
 
 set DOTNET_CHANNEL=10.0
@@ -37,12 +38,12 @@ if %errorlevel%==0 (
   goto verify
 )
 
-echo ==^> winget ╨╕ choco ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜╤Л. ╨б╤В╨░╨▓╨╗╤О .NET ╨╛╤Д╨╕╤Ж╨╕╨░╨╗╤М╨╜╤Л╨╝ ╤Г╤Б╤В╨░╨╜╨╛╨▓╤Й╨╕╨║╨╛╨╝ ╨╛╤В Microsoft.
+echo ==^> winget и choco не найдены. Ставлю .NET официальным установщиком от Microsoft.
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "Invoke-WebRequest -UseBasicParsing https://dot.net/v1/dotnet-install.ps1 -OutFile $env:TEMP\dotnet-install.ps1; & $env:TEMP\dotnet-install.ps1 -Channel %DOTNET_CHANNEL%"
 
 :verify
 echo.
-echo ==^> ╨У╨╛╤В╨╛╨▓╨╛. ╨Т╨╡╤А╤Б╨╕╨╕:
-where dotnet >nul 2>nul && dotnet --version || echo   dotnet: ╨╜╨╡ ╨╜╨░╨╣╨┤╨╡╨╜ (╨┐╨╡╤А╨╡╨╖╨░╨┐╤Г╤Б╤В╨╕╤В╨╡ ╤В╨╡╤А╨╝╨╕╨╜╨░╨╗)
+echo ==^> Готово. Версии:
+where dotnet >nul 2>nul && dotnet --version || echo   dotnet: не найден (перезапустите терминал)
 endlocal
