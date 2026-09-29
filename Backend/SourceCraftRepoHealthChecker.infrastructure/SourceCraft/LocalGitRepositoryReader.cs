@@ -152,7 +152,7 @@ public sealed class LocalGitRepositoryReader(
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (blob.IsBinary || !IsWithinSizeLimit(blob))
+            if (!IsWithinSizeLimit(blob) || blob.IsBinary)
                 continue;
 
             var text = blob.GetContentText();
@@ -306,7 +306,7 @@ public sealed class LocalGitRepositoryReader(
 
     private void AppendContent(Blob blob, StringBuilder builder)
     {
-        if (blob.IsBinary || !IsWithinSizeLimit(blob))
+        if (!IsWithinSizeLimit(blob) || blob.IsBinary)
             return;
 
         builder.Append(blob.GetContentText()).Append('\n');

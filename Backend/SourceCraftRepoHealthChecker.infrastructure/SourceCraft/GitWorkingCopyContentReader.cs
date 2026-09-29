@@ -158,7 +158,7 @@ public static class GitWorkingCopyContentReader
             if (IsTestFile(name, normalizedName))
                 tests = true;
 
-            if (blob.IsBinary || (maxFileBytes > 0 && blob.Size > maxFileBytes))
+            if ((maxFileBytes > 0 && blob.Size > maxFileBytes) || blob.IsBinary)
                 continue;
 
             foreach (var line in blob.GetContentText().Split('\n'))

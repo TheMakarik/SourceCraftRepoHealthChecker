@@ -38,24 +38,49 @@ public sealed class GitWorkingCopyProvider(
         var credentials = await ResolveCredentialsAsync(options, cancellationToken);
         var maximumAttempts = Math.Max(1, options.CloneMaxAttempts);
 
+        if (!HasCapacityForClone(options, cloneDirectory))
+        {
+            TryDelete(cloneDirectory);
+            logger.LogWarning("Not enough local storage for repository {RepositoryId} within the {Megabytes} MB analysis size limit", repositoryId, options.MaxRepositoryMegabytes);
+            return new SourceCraftResult<GitWorkingCopy>(DataStatus.Unavailable, null, "Not enough local storage for repository analysis");
+        }
+
+        // The clone timeout is a single budget for the whole operation, including all retries and the
+        // backoff delays between them, so a dead remote cannot keep the request alive indefinitely.
+        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        if (options.CloneTimeoutSeconds > 0)
+            timeoutSource.CancelAfter(TimeSpan.FromSeconds(options.CloneTimeoutSeconds));
+
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                var sizeExceeded = await CloneAsync(repositoryResult.Data, cloneDirectory, credentials, options, cancellationToken);
+                var sizeExceeded = await CloneAsync(repositoryResult.Data, cloneDirectory, credentials, options, timeoutSource.Token, cancellationToken);
                 if (sizeExceeded)
                 {
                     TryDelete(cloneDirectory);
                     logger.LogWarning("Repository {RepositoryId} exceeded the analysis size limit during clone", repositoryId);
-                    return new SourceCraftResult<GitWorkingCopy>(DataStatus.Unavailable, null, "Repository exceeds analysis size limit");
+                    return SizeLimitExceeded();
                 }
 
                 break;
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 TryDelete(cloneDirectory);
                 throw;
+            }
+            catch (TimeoutException exception)
+            {
+                TryDelete(cloneDirectory);
+                logger.LogWarning(exception, "Clone of repository {RepositoryId} exceeded the configured timeout", repositoryId);
+                return CloneTimedOut();
+            }
+            catch (OperationCanceledException)
+            {
+                TryDelete(cloneDirectory);
+                logger.LogWarning("Clone of repository {RepositoryId} exceeded the configured timeout", repositoryId);
+                return CloneTimedOut();
             }
             catch (Exception exception)
             {
@@ -67,14 +92,28 @@ public sealed class GitWorkingCopyProvider(
                 }
 
                 logger.LogWarning(exception, "Clone attempt {Attempt} for repository {RepositoryId} failed, retrying", attempt, repositoryId);
-                await DelayBeforeRetryAsync(options, attempt, cancellationToken);
+                try
+                {
+                    await DelayBeforeRetryAsync(options, attempt, timeoutSource.Token);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    TryDelete(cloneDirectory);
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    TryDelete(cloneDirectory);
+                    logger.LogWarning("Clone of repository {RepositoryId} exceeded the configured timeout while waiting to retry", repositoryId);
+                    return CloneTimedOut();
+                }
             }
         }
 
         if (options.MaxRepositoryMegabytes > 0 && GetDirectorySize(cloneDirectory) > options.MaxRepositoryMegabytes * 1024 * 1024)
         {
             TryDelete(cloneDirectory);
-            return new SourceCraftResult<GitWorkingCopy>(DataStatus.Unavailable, null, "Repository exceeds analysis size limit");
+            return SizeLimitExceeded();
         }
 
         logger.LogInformation("Cloned repository {RepositoryId} into a working copy", repositoryId);
@@ -89,13 +128,9 @@ public sealed class GitWorkingCopyProvider(
         string cloneDirectory,
         UsernamePasswordCredentials? credentials,
         GitOptions options,
+        CancellationToken cloneToken,
         CancellationToken cancellationToken)
     {
-        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        if (options.CloneTimeoutSeconds > 0)
-            timeoutSource.CancelAfter(TimeSpan.FromSeconds(options.CloneTimeoutSeconds));
-
-        var cloneToken = timeoutSource.Token;
         var sizeExceeded = false;
         var maximumBytes = options.MaxRepositoryMegabytes > 0
             ? options.MaxRepositoryMegabytes * 1024 * 1024
@@ -127,8 +162,6 @@ public sealed class GitWorkingCopyProvider(
         try
         {
             await Task.Run(() => Clone(repository.DefaultBranch, cloneUrl, cloneDirectory, fetchOptions), cloneToken);
-            if (cloneToken.IsCancellationRequested)
-                ThrowCloneCancellation(cancellationToken);
         }
         catch (UserCancelledException) when (sizeExceeded)
         {
@@ -141,6 +174,42 @@ public sealed class GitWorkingCopyProvider(
 
         return false;
     }
+
+    private static bool HasCapacityForClone(GitOptions options, string cloneDirectory)
+    {
+        if (options.MaxRepositoryMegabytes <= 0)
+            return true;
+
+        var maximumBytes = options.MaxRepositoryMegabytes * 1024 * 1024;
+        if (Directory.Exists(cloneDirectory) && GetDirectorySize(cloneDirectory) > maximumBytes)
+            return false;
+
+        // DriveInfo only resolves existing paths, so walk up to the work directory that must exist.
+        var existingDirectory = cloneDirectory;
+        while (!string.IsNullOrEmpty(existingDirectory) && !Directory.Exists(existingDirectory))
+            existingDirectory = Path.GetDirectoryName(existingDirectory);
+
+        if (string.IsNullOrEmpty(existingDirectory))
+            return true;
+
+        try
+        {
+            var drive = new DriveInfo(existingDirectory);
+            return !drive.IsReady || drive.AvailableFreeSpace <= 0 || drive.AvailableFreeSpace >= maximumBytes;
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            // Free-space probing is best-effort: if it cannot be determined, let the clone start and
+            // rely on the transfer-progress cap so a healthy repository is never rejected.
+            return true;
+        }
+    }
+
+    private static SourceCraftResult<GitWorkingCopy> SizeLimitExceeded() =>
+        new(DataStatus.Unavailable, null, "Repository exceeds analysis size limit");
+
+    private static SourceCraftResult<GitWorkingCopy> CloneTimedOut() =>
+        new(DataStatus.Unavailable, null, "Repository clone exceeded the configured timeout");
 
     private static void Clone(string defaultBranch, string cloneUrl, string cloneDirectory, FetchOptions fetchOptions)
     {
