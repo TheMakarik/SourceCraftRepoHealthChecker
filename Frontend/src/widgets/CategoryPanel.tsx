@@ -95,7 +95,8 @@ function SecurityDetails({ analysis }: { analysis: Analysis }) {
       {analysis.findings.length === 0 ? (
         <p className="muted">Находок безопасности нет.</p>
       ) : (
-        <Table size="small" aria-label="Находки безопасности">
+        <div className="table-scroll">
+          <Table size="small" aria-label="Находки безопасности">
           <TableHeader>
             <TableRow>
               <TableHeaderCell>Тип</TableHeaderCell>
@@ -124,7 +125,8 @@ function SecurityDetails({ analysis }: { analysis: Analysis }) {
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       )}
     </div>
   );

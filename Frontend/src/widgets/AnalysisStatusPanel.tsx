@@ -43,7 +43,7 @@ const panelStyles = `
 @media (max-width: 48rem) {
   .srhc-status-dock {
     right: 0.75rem;
-    bottom: 0.75rem;
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0rem));
     left: 0.75rem;
     width: auto;
   }

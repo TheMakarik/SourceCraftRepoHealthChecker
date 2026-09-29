@@ -225,7 +225,7 @@ export function HomePage() {
             {refresh.isPending ? "Обновление…" : "Обновить"}
           </Button>
         </div>
-        <div className="row">
+        <div className="row rating-filters">
           <label className="filter-field">
             <span className="muted">CI/CD</span>
             <Dropdown
@@ -269,7 +269,7 @@ export function HomePage() {
         {leaderboard.isError ? <ErrorView message="Не удалось загрузить рейтинг" /> : null}
 
         {leaderboard.isSuccess ? (
-          <Table aria-label="Рейтинг репозиториев">
+          <Table aria-label="Рейтинг репозиториев" className="rating-table">
             <TableHeader>
               <TableRow>
                 <TableHeaderCell>#</TableHeaderCell>
@@ -288,33 +288,37 @@ export function HomePage() {
               {items.map((item) => (
                 <RepoContextMenu key={item.sourceCraftId} url={item.url} fullName={item.fullName}>
                   <TableRow>
-                    <TableCell>
+                    <TableCell className="rating-cell--place">
                       <div className="row" style={{ gap: "0.35rem", flexWrap: "nowrap" }}>
                         <span>{item.place}</span>
                         <PlaceDelta delta={item.placeDelta} />
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="rating-cell--project">
                       <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="rating-cell--score">
                       <strong style={{ color: item.score === null ? "var(--srhc-muted)" : toneColor(scoreTone(item.score)) }}>
                         {item.score ?? "—"}
                       </strong>
                     </TableCell>
-                    <TableCell>{item.likesCount}</TableCell>
-                    <TableCell>
+                    <TableCell data-label="Лайки">{item.likesCount}</TableCell>
+                    <TableCell data-label="Язык">
                       <span className="lang-cell">{languageDisplayName(item.language)}</span>
                     </TableCell>
-                    <TableCell title={formatDate(item.lastActivityAt)}>{formatDateShort(item.lastActivityAt)}</TableCell>
-                    <TableCell title={formatDate(item.analyzedAt)}>{formatDate(item.analyzedAt)}</TableCell>
-                    <TableCell>
+                    <TableCell data-label="Активность" title={formatDate(item.lastActivityAt)}>
+                      {formatDateShort(item.lastActivityAt)}
+                    </TableCell>
+                    <TableCell data-label="Проанализирован" title={formatDate(item.analyzedAt)}>
+                      {formatDate(item.analyzedAt)}
+                    </TableCell>
+                    <TableCell data-label="Статус анализа">
                       <RepoStatus sourceCraftId={item.sourceCraftId} score={item.score} analyzedAt={item.analyzedAt} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Достоверность">
                       <IntegrityBadge sourceCraftId={item.sourceCraftId} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="rating-cell--actions">
                       <div className="row" style={{ gap: "0.35rem", flexWrap: "nowrap" }}>
                         <Button
                           size="small"

@@ -31,8 +31,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="muted">
             Ваш размер экрана слишком маленький для работы с SourceCraft Repo Health Checker.
             <br />
-            Требуется минимум {appConfig.minSupportedWidthRem}×{appConfig.minSupportedHeightRem} rem (примерно{" "}
-            {appConfig.minSupportedWidthPx}×{appConfig.minSupportedHeightPx} px).
+            Требуется минимум {appConfig.minSupportedWidthRem} rem (примерно {appConfig.minSupportedWidthPx} px)
+            ширины.
           </p>
         </div>
       </div>

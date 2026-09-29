@@ -18,7 +18,8 @@ export function MetricsTable({ metrics }: { metrics: MetricScore[] }) {
     return <span className="muted">Метрики отсутствуют.</span>;
 
   return (
-    <Table size="small" aria-label="Метрики оценки">
+    <div className="table-scroll">
+      <Table size="small" aria-label="Метрики оценки">
       <TableHeader>
         <TableRow>
           <TableHeaderCell>Метрика</TableHeaderCell>
@@ -49,6 +50,7 @@ export function MetricsTable({ metrics }: { metrics: MetricScore[] }) {
           </TableRow>
         ))}
       </TableBody>
-    </Table>
+      </Table>
+    </div>
   );
 }

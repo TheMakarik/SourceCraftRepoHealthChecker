@@ -9,7 +9,7 @@ export function CategoryTabs({ analysis }: { analysis: Analysis }) {
 
   return (
     <div className="card stack">
-      <TabList selectedValue={selected} onTabSelect={(_event, data) => setSelected(data.value as ScoreCategory)}>
+      <TabList className="tabs-scroll" selectedValue={selected} onTabSelect={(_event, data) => setSelected(data.value as ScoreCategory)}>
         {categoryOrder.map((category) => (
           <Tab key={category} value={category}>
             {categoryLabels[category]}

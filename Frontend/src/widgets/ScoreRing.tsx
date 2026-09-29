@@ -19,7 +19,7 @@ export function ScoreRing({
   const caption = grade ?? (score === null ? "Нет данных" : scoreGrade(score));
 
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={score === null ? "Score: нет данных" : `Score ${score}`}>
+    <svg className="score-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={score === null ? "Score: нет данных" : `Score ${score}`}>
       <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--srhc-border)" strokeWidth={thickness} />
       <circle
         cx={size / 2}

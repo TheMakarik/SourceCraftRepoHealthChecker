@@ -217,7 +217,7 @@ export function SettingsPage() {
           показывается.
         </p>
         <form onSubmit={saveAiSettings}>
-          <div className="row" style={{ alignItems: "flex-end" }}>
+          <div className="row settings-form">
             <Field label="Провайдер">
               <Dropdown
                 selectedOptions={[provider]}

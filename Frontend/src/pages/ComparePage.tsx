@@ -236,7 +236,8 @@ export function ComparePage() {
 
           <Card className="card stack">
             <div style={{ fontWeight: 600 }}>Ключевые метрики</div>
-            <Table size="small" aria-label="Сравнение метрик">
+            <div className="table-scroll">
+              <Table size="small" aria-label="Сравнение метрик">
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Метрика</TableHeaderCell>
@@ -262,7 +263,8 @@ export function ComparePage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
             <span className="muted">Формат: «сырое значение (нормализованный балл 0–100)».</span>
           </Card>
 

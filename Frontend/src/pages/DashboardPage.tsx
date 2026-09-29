@@ -210,7 +210,7 @@ export function DashboardPage() {
       <div className="stack">
         <div className="grid-2">
           <Card className="card">
-            <div className="row" style={{ gap: "1.5rem", alignItems: "flex-start" }}>
+            <div className="row dashboard-head">
               <ScoreRing score={hasData ? data.score : null} grade={hasData ? scoreGrade(data.score) : undefined} />
               <div className="stack" style={{ flex: 1, minWidth: 0 }}>
                 <div>
@@ -321,14 +321,7 @@ export function DashboardPage() {
                 </Badge>
                 <Badge appearance="tint">Контрибьюторов: {ownership.data.data.totalContributors}</Badge>
               </div>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(8rem, 2fr) 5rem 5rem minmax(8rem, 3fr)",
-                  gap: "0.35rem 0.75rem",
-                  alignItems: "center"
-                }}
-              >
+              <div className="owners-grid">
                 <span className="muted">Владелец</span>
                 <span className="muted">Коммиты</span>
                 <span className="muted">Файлы</span>
