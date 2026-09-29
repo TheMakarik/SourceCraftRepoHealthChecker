@@ -30,16 +30,19 @@ export function PublicBadgeCard({ repositoryId }: { repositoryId: string }) {
         <span className="muted">Бейдж доступен только для публичных репозиториев.</span>
       ) : (
         <div className="badge-card__preview">
-          <img
-            className="badge-card__image"
-            src={badgeUrl}
-            alt="Repo Health badge"
-            onError={() => setBadgeError(true)}
-          />
+          <a href={badgeUrl} target="_blank" rel="noreferrer" title="Открыть SVG-бейдж">
+            <img
+              className="badge-card__image"
+              src={badgeUrl}
+              alt="Repo Health badge"
+              onError={() => setBadgeError(true)}
+            />
+          </a>
         </div>
       )}
 
       <div className="badge-card__snippet">
+        <span className="muted">Markdown для README:</span>
         <code className="badge-card__code">{badgeMarkdown}</code>
         <Button
           size="small"
@@ -52,8 +55,10 @@ export function PublicBadgeCard({ repositoryId }: { repositoryId: string }) {
       </div>
 
       <div className="badge-card__snippet">
-        <span className="muted">JSON:</span>
-        <code className="badge-card__code">{scoreUrl}</code>
+        <span className="muted">JSON Score:</span>
+        <a className="badge-card__link" href={scoreUrl} target="_blank" rel="noreferrer">
+          {scoreUrl}
+        </a>
         <Button size="small" appearance="subtle" as="a" href={scoreUrl} target="_blank" rel="noreferrer">
           Открыть
         </Button>

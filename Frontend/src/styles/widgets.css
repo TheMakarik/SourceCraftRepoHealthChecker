@@ -816,3 +816,9 @@
     min-width: 30rem;
   }
 }
+
+.badge-card__link {
+  color: inherit;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
