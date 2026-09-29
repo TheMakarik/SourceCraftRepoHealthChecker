@@ -31,7 +31,7 @@ public sealed class AiInsightUseCase(
         try
         {
             var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis, kind), chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
-            return new AiInsightResult(kind, completion.Text, userAi.AiProvider, userAi.AiModel);
+            return new AiInsightResult(kind, AiCompletionText.Best(completion), userAi.AiProvider, userAi.AiModel);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

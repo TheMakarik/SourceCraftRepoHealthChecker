@@ -462,3 +462,25 @@
   75% { content: "..."; }
   100% { content: ""; }
 }
+
+.reasoning {
+  border: 1px solid var(--srhc-border);
+  border-radius: 0.5rem;
+  background: var(--srhc-bg);
+  padding: 0.5rem 0.75rem;
+}
+
+.reasoning > summary {
+  cursor: pointer;
+  color: var(--srhc-muted);
+  font-size: 0.85rem;
+}
+
+.reasoning__text {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  color: var(--srhc-muted);
+  max-height: 18rem;
+  overflow: auto;
+}

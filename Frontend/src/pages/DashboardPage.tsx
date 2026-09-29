@@ -48,6 +48,7 @@ export function DashboardPage() {
   const { statusFor } = useAnalysisStatus();
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiText, setAiText] = useState("");
+  const [aiReasoning, setAiReasoning] = useState("");
   const [aiThinking, setAiThinking] = useState(false);
   const [aiRunning, setAiRunning] = useState(false);
   const [chartReady, setChartReady] = useState(false);
@@ -66,6 +67,7 @@ export function DashboardPage() {
     setStatusOpen(false);
     setAiError(null);
     setAiText("");
+    setAiReasoning("");
     setAiThinking(false);
     resetAnalyze();
   }, [id, resetAnalyze]);
@@ -109,6 +111,7 @@ export function DashboardPage() {
       return;
     setAiError(null);
     setAiText("");
+    setAiReasoning("");
     setAiThinking(true);
     setAiRunning(true);
     const path = kind
@@ -119,6 +122,9 @@ export function DashboardPage() {
         if (event.type === "delta" && event.text) {
           setAiThinking(false);
           setAiText((previous) => previous + event.text);
+        } else if (event.type === "thinking" && event.text) {
+          setAiThinking(true);
+          setAiReasoning((previous) => previous + event.text);
         } else if (event.type === "reasoning") {
           setAiThinking(true);
         } else if (event.type === "error") {
@@ -471,6 +477,12 @@ export function DashboardPage() {
             <span className="thinking">
               Думает<span className="thinking__dots" />
             </span>
+          ) : null}
+          {aiReasoning ? (
+            <details className="reasoning" open={!aiText}>
+              <summary>Размышления модели</summary>
+              <div className="reasoning__text">{aiReasoning}</div>
+            </details>
           ) : null}
           {aiText ? <div className="markdown">{aiText}</div> : null}
         </Card>

@@ -30,7 +30,7 @@ public sealed class AiSummaryUseCase(
         try
         {
             var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis), chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
-            return new AiSummaryResult(completion.Text, userAi.AiProvider, userAi.AiModel);
+            return new AiSummaryResult(AiCompletionText.Best(completion), userAi.AiProvider, userAi.AiModel);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

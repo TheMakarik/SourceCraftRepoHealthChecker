@@ -45,14 +45,20 @@ public sealed class AiStreamUseCase(
 
         await foreach (var update in chatClient.GetStreamingResponseAsync(prompt, chatOptions, cancellationToken))
         {
-            if (!string.IsNullOrEmpty(update.Text))
+            var (text, reasoning) = AiCompletionText.Split(update.Contents);
+            if (text.Length > 0)
+            {
+                emittedText = true;
+                yield return new AiStreamEvent("delta", text);
+            }
+            else if (reasoning.Length > 0)
+            {
+                yield return new AiStreamEvent("thinking", reasoning);
+            }
+            else if (!string.IsNullOrEmpty(update.Text))
             {
                 emittedText = true;
                 yield return new AiStreamEvent("delta", update.Text);
-            }
-            else
-            {
-                yield return new AiStreamEvent("reasoning");
             }
         }
 
@@ -60,10 +66,13 @@ public sealed class AiStreamUseCase(
         {
             // Reasoning-модели (например, deepseek-flash) могут не отдать текст в потоке — добираем обычным запросом.
             var completion = await chatClient.GetResponseAsync(prompt, chatOptions, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(completion.Text))
-                yield return new AiStreamEvent("delta", completion.Text);
+            var (text, reasoning) = AiCompletionText.Split(completion);
+            if (!string.IsNullOrWhiteSpace(text))
+                yield return new AiStreamEvent("delta", text);
+            else if (!string.IsNullOrWhiteSpace(reasoning))
+                yield return new AiStreamEvent("delta", reasoning);
             else
-                yield return new AiStreamEvent("error", "Модель не вернула текст (вероятно, reasoning-модель израсходовала лимит или отдала ответ только в reasoning). Выберите обычную модель, например deepseek-chat, или другой провайдер.");
+                yield return new AiStreamEvent("error", "Модель не вернула текст. Проверьте модель/провайдер и токен.");
         }
 
         yield return new AiStreamEvent("done");

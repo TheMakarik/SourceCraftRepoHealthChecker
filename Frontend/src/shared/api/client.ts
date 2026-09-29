@@ -164,7 +164,7 @@ export const api = {
 export const authLoginUrl = `${baseUrl}/auth/login`;
 
 export interface AiStreamEvent {
-  type: "delta" | "reasoning" | "done" | "error";
+  type: "delta" | "reasoning" | "thinking" | "done" | "error";
   text?: string;
 }
 

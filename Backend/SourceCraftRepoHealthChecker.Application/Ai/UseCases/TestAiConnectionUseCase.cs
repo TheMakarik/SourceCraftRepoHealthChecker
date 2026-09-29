@@ -24,7 +24,8 @@ public sealed class TestAiConnectionUseCase(
         {
             using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
             var completion = await chatClient.GetResponseAsync(options.Value.TestPrompt, chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
-            return new AiTestResult(true, string.IsNullOrWhiteSpace(completion.Text) ? "Модель вернула пустой ответ." : completion.Text.Trim());
+            var answer = AiCompletionText.Best(completion);
+            return new AiTestResult(true, string.IsNullOrWhiteSpace(answer) ? "Модель вернула пустой ответ." : answer.Trim());
         }
         catch (Exception exception)
         {
