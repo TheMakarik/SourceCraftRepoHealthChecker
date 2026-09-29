@@ -48,6 +48,7 @@ public sealed class OpenAiChatClientFactoryTests
         AnthropicBaseUrl = "https://api.anthropic.com/v1/",
         GoogleGeminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta/openai/",
         YandexBaseUrl = "https://llm.api.cloud.yandex.net/v1",
-        DeepSeekBaseUrl = "https://api.deepseek.com/v1"
+        DeepSeekBaseUrl = "https://api.deepseek.com/v1",
+        MaxOutputTokens = 1024
     };
 }
