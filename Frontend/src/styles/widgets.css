@@ -822,3 +822,35 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
+
+.rating-tagline {
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tagline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--srhc-border);
+  border-radius: 999px;
+  background: var(--srhc-card);
+}
+
+.tagline-chip__ink {
+  color: var(--srhc-ink);
+  font-weight: 600;
+}
+
+.tagline-chip__red {
+  color: var(--srhc-bad);
+  font-weight: 600;
+}
+
+.tagline-chip_logo img {
+  display: block;
+  height: 1.5rem;
+  width: auto;
+}

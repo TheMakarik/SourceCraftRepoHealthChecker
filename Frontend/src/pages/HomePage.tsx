@@ -197,6 +197,16 @@ export function HomePage() {
         </div>
       </div>
 
+      <div className="row rating-tagline">
+        <div className="tagline-chip">
+          <span className="tagline-chip__ink">Код есть</span>
+          <span className="tagline-chip__red">А насколько он «живой»?</span>
+        </div>
+        <div className="tagline-chip tagline-chip_logo" title="SourceCraft">
+          <img src="/assets/sourcecraft-icon-96.png" alt="SourceCraft" />
+        </div>
+      </div>
+
       <div className="card stack rating-card">
         <LanguageTabs
           languages={languageOptions}
