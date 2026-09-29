@@ -182,6 +182,20 @@ export function HomePage() {
 
   return (
     <div className="stack">
+      <section className="rating-hero">
+        <div className="rating-hero__text">
+          <div className="rating-hero__eyebrow">SourceCraft · Repository Health</div>
+          <h1 className="rating-hero__title">
+            <span>Код есть.</span>
+            <span className="rating-hero__accent">А как его здоровье?</span>
+          </h1>
+          <p className="rating-hero__lead">
+            От репозитория до понятной оценки: качество кода, безопасность и конкретные шаги для улучшения.
+          </p>
+        </div>
+        <img className="rating-hero__logo" src="/assets/sourcecraft-icon-96.png" alt="SourceCraft" />
+      </section>
+
       <div className="stat-cards">
         <div className="card stat-card">
           <div className="stat-card__value">{leaderboard.data?.totalCount ?? 0}</div>
@@ -194,16 +208,6 @@ export function HomePage() {
         <div className="card stat-card">
           <div className="stat-card__value">{highestScore}</div>
           <div className="stat-card__label">Максимальный Score</div>
-        </div>
-      </div>
-
-      <div className="row rating-tagline">
-        <div className="tagline-chip">
-          <span className="tagline-chip__ink">Код есть</span>
-          <span className="tagline-chip__red">А насколько он «живой»?</span>
-        </div>
-        <div className="tagline-chip tagline-chip_logo" title="SourceCraft">
-          <img src="/assets/sourcecraft-icon-96.png" alt="SourceCraft" />
         </div>
       </div>
 

@@ -186,24 +186,14 @@
   color: var(--srhc-ink);
 }
 
-.lang-tab--active {
-  background: var(--srhc-sidebar-active);
-  color: var(--srhc-ink);
-  border-color: var(--srhc-muted);
-
-}
-
-.lang-tab--pressed {
-  background: var(--srhc-sidebar-active);
-  color: var(--srhc-ink);
-  border-color: var(--srhc-muted);
-
-}
-
+.lang-tab--active,
+.lang-tab--pressed,
 .lang-tab--active:hover,
 .lang-tab--pressed:hover {
-  background: var(--srhc-sidebar-active);
-  color: var(--srhc-ink);
+  background: var(--srhc-ink);
+  color: #ffffff;
+  border-color: var(--srhc-ink);
+  font-weight: 600;
 }
 
 .lang-cell {
@@ -823,34 +813,63 @@
   min-width: 0;
 }
 
-.rating-tagline {
+.rating-hero {
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.5rem 0 0.25rem;
 }
 
-.tagline-chip {
+.rating-hero__eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--srhc-border);
-  border-radius: 999px;
-  background: var(--srhc-card);
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--srhc-muted);
+  margin-bottom: 0.75rem;
 }
 
-.tagline-chip__ink {
+.rating-hero__eyebrow::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--srhc-bad);
+}
+
+.rating-hero__title {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  font-size: clamp(1.9rem, 4.2vw, 3.1rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
   color: var(--srhc-ink);
-  font-weight: 600;
 }
 
-.tagline-chip__red {
+.rating-hero__accent {
   color: var(--srhc-bad);
-  font-weight: 600;
 }
 
-.tagline-chip_logo img {
-  display: block;
-  height: 1.5rem;
-  width: auto;
+.rating-hero__lead {
+  margin: 0.9rem 0 0;
+  max-width: 34rem;
+  color: var(--srhc-muted);
+}
+
+.rating-hero__logo {
+  flex: 0 0 auto;
+  width: clamp(3.5rem, 8vw, 5.5rem);
+  height: auto;
+}
+
+@media (max-width: 40rem) {
+  .rating-hero__logo {
+    display: none;
+  }
 }

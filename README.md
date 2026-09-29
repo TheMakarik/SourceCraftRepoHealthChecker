@@ -112,7 +112,7 @@
 > `Backend/`, `Frontend/`). Скачивать только файл скрипта недостаточно — скачиваем репозиторий, затем запускаем скрипт.
 
 ### Требования
-- **Docker** (скрипт `start.sh` / `start.bat` сам поставит его, если не найден).
+- **Docker** (скрипт `start.sh` / `start.bat` сам поставит его, если не найден; на macOS — через Homebrew: Colima + docker CLI, без Homebrew скрипт даст прямую ссылку на Docker Desktop).
 - Для локальной разработки без Docker: **.NET SDK 10**, **Node.js 22+** (скрипт `Dev/setup-deps.*`).
 
 ### Быстрый старт (интерактивно — рекомендуется)
@@ -158,7 +158,7 @@ Scripts\start.bat              # Windows
 ### Вариант 2 — локальная разработка
 
 ```bash
-bash Dev/setup-deps.sh         # .NET SDK 10 (Node.js для фронтенда ставится отдельно)
+bash Dev/setup-deps.sh         # .NET SDK 10 (Linux: apt/dnf; macOS: Homebrew + Node.js 22)
 # Backend
 #   задать в .env/переменных: ConnectionStrings, AiTokenEncryptionOptions:Key,
 #   DataProtectionStorageOptions:KeyPath, YandexIdOptions, SourceCraftServiceOptions:ServiceToken

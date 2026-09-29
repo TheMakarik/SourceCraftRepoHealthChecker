@@ -8,7 +8,8 @@
 #
 # ЧЕМ СТАВИТ (менеджеры пакетов):
 #   * apt-get — Debian, Ubuntu, Astra Linux (DEB-дистрибутивы);
-#   * dnf     — Fedora, RHEL, Red OS (RPM-дистрибутивы).
+#   * dnf     — Fedora, RHEL, Red OS (RPM-дистрибутивы);
+#   * brew    — macOS (git, Node.js 22, PostgreSQL 16; .NET — официальным установщиком, без sudo).
 #   Базовые утилиты берутся из репозиториев дистрибутива. Если в репозитории нет нужной
 #   версии .NET, автоматически используется официальный установщик (см. ниже).
 #
@@ -31,6 +32,37 @@ DOTNET_CHANNEL="${DOTNET_CHANNEL:-10.0}"
 
 log() { printf '\033[1;34m==>\033[0m %s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# macOS: Homebrew (git, Node.js 22, PostgreSQL 16) + официальный установщик .NET в $HOME/.dotnet (без sudo).
+if [ "$(uname -s)" = "Darwin" ]; then
+  if ! have brew; then
+    echo "Нужен Homebrew: https://brew.sh — установите и повторите скрипт." >&2
+    exit 1
+  fi
+  log "brew: git node@22 postgresql@16"
+  brew install git node@22 postgresql@16
+  NODE_PREFIX="$(brew --prefix node@22)"
+  export PATH="$NODE_PREFIX/bin:$PATH"
+
+  if have dotnet && dotnet --list-sdks | grep -q "^${DOTNET_CHANNEL%%.*}\."; then
+    log "dotnet уже установлен: $(dotnet --version)"
+  else
+    log "Официальный установщик Microsoft: .NET SDK $DOTNET_CHANNEL -> \$HOME/.dotnet"
+    curl -sSL https://dot.net/v1/dotnet-install.sh -o "${TMPDIR:-/tmp}/dotnet-install.sh"
+    bash "${TMPDIR:-/tmp}/dotnet-install.sh" --channel "$DOTNET_CHANNEL" --install-dir "$HOME/.dotnet"
+    export PATH="$HOME/.dotnet:$PATH"
+  fi
+
+  log "Готово. Версии:"
+  echo "  dotnet:   $(have dotnet && dotnet --version || echo 'не найден')"
+  echo "  node:     $(have node && node --version || echo 'не найден')"
+  echo "  postgres: $(have psql && psql --version || echo "$(brew --prefix postgresql@16)/bin/psql")"
+  echo
+  echo "Добавьте в ~/.zshrc:"
+  echo "  export PATH=\"\$HOME/.dotnet:$NODE_PREFIX/bin:\$(brew --prefix postgresql@16)/bin:\$PATH\""
+  echo "Docker для запуска всего проекта ставит Scripts/start.sh (Colima через Homebrew)."
+  exit 0
+fi
 
 SUDO=""
 if [ "$(id -u)" -ne 0 ]; then
