@@ -48,6 +48,9 @@ public sealed class ScheduledAnalysisRunner(
         var now = timeProvider.GetUtcNow();
         var cutoff = now.AddMinutes(-options.AnalysisIntervalMinutes);
         var repositoryIds = await dbContext.Repositories
+            // Only open repositories are re-analyzed on schedule: a private one is re-analyzed by its owner
+            // with their own token, never with the service token in the background.
+            .Where(repository => !repository.IsPrivate)
             .Where(repository => repository.AnalyzedAt == null || repository.AnalyzedAt < cutoff)
             .OrderBy(repository => repository.AnalyzedAt)
             .Take(batchSize)

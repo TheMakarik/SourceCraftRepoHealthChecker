@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using LibGit2Sharp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,22 +22,40 @@ public sealed class GitWorkingCopyProvider(
     private const string OriginRemoteName = "origin";
     private const string HeadReferenceName = "HEAD";
 
-    public Task<SourceCraftResult<GitWorkingCopy>> AcquireAsync(string repositoryId, CancellationToken cancellationToken)
-    {
-        return workingCopyCache.GetOrCreateAsync(
-            repositoryId,
-            (cloneDirectory, cloneToken) => CreateAsync(repositoryId, cloneDirectory, cloneToken),
-            cancellationToken);
-    }
+    private const string PrivateRepositoryRequiresUserToken = "Private repository is available only with the owner's SourceCraft token";
 
-    private async Task<SourceCraftResult<GitWorkingCopy>> CreateAsync(string repositoryId, string cloneDirectory, CancellationToken cancellationToken)
+    // Every acquisition, including a cache hit, first asks SourceCraft for the repository with the caller's
+    // token, so access is re-checked per request. A private repository is never cloned with the service
+    // token, and its cached working copy is keyed by the caller's token, so it cannot leak to other users.
+    public async Task<SourceCraftResult<GitWorkingCopy>> AcquireAsync(string repositoryId, CancellationToken cancellationToken)
     {
         var repositoryResult = await catalog.GetRepositoryAsync(repositoryId, cancellationToken);
         if (repositoryResult.Status != DataStatus.Available || repositoryResult.Data is null)
             return new SourceCraftResult<GitWorkingCopy>(repositoryResult.Status, null, repositoryResult.Reason);
 
+        var repository = repositoryResult.Data;
+        var userToken = accessTokenAccessor.Token;
+        if (repository.IsPrivate && string.IsNullOrWhiteSpace(userToken))
+        {
+            logger.LogWarning("Refused to clone private repository {RepositoryId} without a user token", repositoryId);
+            return new SourceCraftResult<GitWorkingCopy>(DataStatus.Unavailable, null, PrivateRepositoryRequiresUserToken);
+        }
+
+        var cacheKey = repository.IsPrivate ? $"{repositoryId}:{TokenFingerprint(userToken!)}" : repositoryId;
+        return await workingCopyCache.GetOrCreateAsync(
+            cacheKey,
+            (cloneDirectory, cloneToken) => CreateAsync(repository, cloneDirectory, cloneToken),
+            cancellationToken);
+    }
+
+    private static string TokenFingerprint(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)))[..16];
+
+    private async Task<SourceCraftResult<GitWorkingCopy>> CreateAsync(SourceCraftRepository repository, string cloneDirectory, CancellationToken cancellationToken)
+    {
+        var repositoryId = repository.Id;
         var options = gitOptions.Value;
-        var credentials = await ResolveCredentialsAsync(options, cancellationToken);
+        var credentials = await ResolveCredentialsAsync(options, repository.IsPrivate, cancellationToken);
         var maximumAttempts = Math.Max(1, options.CloneMaxAttempts);
 
         if (!HasCapacityForClone(options, cloneDirectory))
@@ -55,7 +75,7 @@ public sealed class GitWorkingCopyProvider(
         {
             try
             {
-                var sizeExceeded = await CloneAsync(repositoryResult.Data, cloneDirectory, credentials, options, timeoutSource.Token, cancellationToken);
+                var sizeExceeded = await CloneAsync(repository, cloneDirectory, credentials, options, timeoutSource.Token, cancellationToken);
                 if (sizeExceeded)
                 {
                     TryDelete(cloneDirectory);
@@ -263,12 +283,13 @@ public sealed class GitWorkingCopyProvider(
         await Task.Delay(TimeSpan.FromMilliseconds(cappedMilliseconds + jitterMilliseconds), cancellationToken);
     }
 
-    private async Task<UsernamePasswordCredentials?> ResolveCredentialsAsync(GitOptions options, CancellationToken cancellationToken)
+    private async Task<UsernamePasswordCredentials?> ResolveCredentialsAsync(GitOptions options, bool isPrivate, CancellationToken cancellationToken)
     {
         var token = accessTokenAccessor.Token;
-        if (string.IsNullOrWhiteSpace(token))
+        // Service tokens must never open a private repository: only the caller's own token may.
+        if (string.IsNullOrWhiteSpace(token) && !isPrivate)
             token = options.ServiceToken;
-        if (string.IsNullOrWhiteSpace(token))
+        if (string.IsNullOrWhiteSpace(token) && !isPrivate)
             token = sourceCraftOptions.Value.InternalToken;
         if (string.IsNullOrWhiteSpace(token))
             return null;
