@@ -1,14 +1,14 @@
 @echo off
-chcp 65001 >nul
-rem start.bat â€” Ð¿Ð¾Ð´Ð½Ð¸Ð¼Ð°ÐµÑ‚ Ð²ÐµÑÑŒ Ð¿Ñ€Ð¾ÐµÐºÑ‚ (PostgreSQL + Ð±ÑÐºÐµÐ½Ð´ + Ñ„Ñ€Ð¾Ð½Ñ‚ÐµÐ½Ð´) Ñ‡ÐµÑ€ÐµÐ· Docker.
-rem Ð•ÑÐ»Ð¸ Docker Ð½Ðµ ÑƒÑÑ‚Ð°Ð½Ð¾Ð²Ð»ÐµÐ½ â€” Ð¿Ñ‹Ñ‚Ð°ÐµÑ‚ÑÑ ÑƒÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Docker Desktop Ñ‡ÐµÑ€ÐµÐ· winget/choco.
+chcp 866 >nul
+rem start.bat - ¯®¤­¨¬ ¥â ¢¥áì ¯à®¥ªâ (PostgreSQL + ¡íª¥­¤ + äà®­â¥­¤) ç¥à¥§ Docker.
+rem …á«¨ Docker ­¥ ãáâ ­®¢«¥­ - ¯ëâ ¥âáï ãáâ ­®¢¨âì Docker Desktop ç¥à¥§ winget/choco.
 setlocal
 
 cd /d "%~dp0.."
 
 where docker >nul 2>nul
 if not %errorlevel%==0 (
-  echo ==^> Docker Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½ â€” ÑƒÑÑ‚Ð°Ð½Ð°Ð²Ð»Ð¸Ð²Ð°ÑŽ Docker Desktop
+  echo ==^> Docker ­¥ ­ ©¤¥­ - ãáâ ­ ¢«¨¢ î Docker Desktop
   where winget >nul 2>nul
   if %errorlevel%==0 (
     winget install --id Docker.DockerDesktop -e --accept-source-agreements --accept-package-agreements
@@ -17,24 +17,24 @@ if not %errorlevel%==0 (
     if %errorlevel%==0 (
       choco install -y docker-desktop
     ) else (
-      echo Ð£ÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚Ðµ Docker Ð²Ñ€ÑƒÑ‡Ð½ÑƒÑŽ: https://docs.docker.com/desktop/install/windows-install/
+      echo “áâ ­®¢¨â¥ Docker ¢àãç­ãî: https://docs.docker.com/desktop/install/windows-install/
       exit /b 1
     )
   )
-  echo ÐŸÐµÑ€ÐµÐ·Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚Ðµ ÑÑ€ÐµÐ´Ñƒ ^(Ð¸Ð»Ð¸ Ð²Ð¾Ð¹Ð´Ð¸Ñ‚Ðµ Ð·Ð°Ð½Ð¾Ð²Ð¾^), Ð·Ð°Ñ‚ÐµÐ¼ Ð·Ð°Ð¿ÑƒÑÑ‚Ð¸Ñ‚Ðµ start.bat ÑÐ½Ð¾Ð²Ð°.
+  echo ¥à¥§ ¯ãáâ¨â¥ áà¥¤ã ^(¨«¨ ¢®©¤¨â¥ § ­®¢®^), § â¥¬ § ¯ãáâ¨â¥ start.bat á­®¢ .
   exit /b 0
 )
 
 if not exist .env (
-  echo ==^> Ð¡Ð¾Ð·Ð´Ð°ÑŽ .env Ð¸Ð· .env.example
+  echo ==^> ‘®§¤ î .env ¨§ .env.example
   copy .env.example .env >nul
   where powershell >nul 2>nul
   if %errorlevel%==0 (
     powershell -NoProfile -Command "$rng=[System.Security.Cryptography.RandomNumberGenerator]::Create(); $b=[byte[]]::new(32); $rng.GetBytes($b); $key=[Convert]::ToBase64String($b); $envPath=Join-Path $PWD '.env'; $content=(Get-Content -Raw $envPath) -replace '(?m)^AI_TOKEN_ENCRYPTION_KEY=.*$', ('AI_TOKEN_ENCRYPTION_KEY=' + $key); [System.IO.File]::WriteAllText($envPath, $content)"
   ) else (
-    echo   Ð’Ð½Ð¸Ð¼Ð°Ð½Ð¸Ðµ: PowerShell Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½ â€” Ð·Ð°Ð´Ð°Ð¹Ñ‚Ðµ AI_TOKEN_ENCRYPTION_KEY Ð² .env Ð²Ñ€ÑƒÑ‡Ð½ÑƒÑŽ.
+    echo   ‚­¨¬ ­¨¥: PowerShell ­¥ ­ ©¤¥­ - § ¤ ©â¥ AI_TOKEN_ENCRYPTION_KEY ¢ .env ¢àãç­ãî.
   )
-  echo   Ð—Ð°Ð¿Ð¾Ð»Ð½Ð¸Ñ‚Ðµ SOURCECRAFT_PAT Ð¸ YANDEX_CLIENT_ID/SECRET Ð² .env
+  echo   ‡ ¯®«­¨â¥ SOURCECRAFT_PAT ¨ YANDEX_CLIENT_ID/SECRET ¢ .env
 )
 
 echo ==^> docker compose up --build -d
@@ -42,7 +42,7 @@ docker compose up --build -d
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo.
-echo ==^> Ð“Ð¾Ñ‚Ð¾Ð²Ð¾:
+echo ==^> ƒ®â®¢®:
 echo   Frontend:      http://localhost:8080
 echo   Backend API:   http://localhost:5172
-endlocal
+endlocal
