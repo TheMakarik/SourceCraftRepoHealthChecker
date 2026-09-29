@@ -40,13 +40,30 @@ public sealed class AiStreamUseCase(
 
         using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
         var prompt = BuildPrompt(analysis, kind);
+        var chatOptions = chatClientFactory.CreateOptions(userAi.AiProvider);
+        var emittedText = false;
 
-        await foreach (var update in chatClient.GetStreamingResponseAsync(prompt, chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken))
+        await foreach (var update in chatClient.GetStreamingResponseAsync(prompt, chatOptions, cancellationToken))
         {
             if (!string.IsNullOrEmpty(update.Text))
+            {
+                emittedText = true;
                 yield return new AiStreamEvent("delta", update.Text);
+            }
             else
+            {
                 yield return new AiStreamEvent("reasoning");
+            }
+        }
+
+        if (!emittedText)
+        {
+            // Reasoning-модели (например, deepseek-flash) могут не отдать текст в потоке — добираем обычным запросом.
+            var completion = await chatClient.GetResponseAsync(prompt, chatOptions, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(completion.Text))
+                yield return new AiStreamEvent("delta", completion.Text);
+            else
+                yield return new AiStreamEvent("error", "Модель не вернула текст (вероятно, reasoning-модель израсходовала лимит или отдала ответ только в reasoning). Выберите обычную модель, например deepseek-chat, или другой провайдер.");
         }
 
         yield return new AiStreamEvent("done");
