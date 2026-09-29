@@ -7,7 +7,6 @@ namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
 public sealed class SourceCraftAuthorizationHandler(
     ISourceCraftAccessTokenAccessor accessTokenAccessor,
-    ISourceCraftSystemCallScope systemCallScope,
     IOptions<SourceCraftServiceOptions> options) : DelegatingHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -15,7 +14,7 @@ public sealed class SourceCraftAuthorizationHandler(
         if (request.Headers.Authorization is null)
         {
             var token = accessTokenAccessor.Token;
-            if (string.IsNullOrEmpty(token) && systemCallScope.IsSystemCall)
+            if (string.IsNullOrEmpty(token))
                 token = options.Value.ServiceToken;
             if (!string.IsNullOrEmpty(token))
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
