@@ -35,6 +35,8 @@ import { CategoryTabs } from "../widgets/CategoryTabs";
 import { AnalysisStatusBadge } from "../widgets/AnalysisStatusBadge";
 import { AnalysisStatusPanel, type AnalysisPanelPhase } from "../widgets/AnalysisStatusPanel";
 import { MetricsTable } from "../widgets/MetricsTable";
+import { ReviewInsightsCard } from "../widgets/ReviewInsightsCard";
+import { PublicBadgeCard } from "../widgets/PublicBadgeCard";
 import { api, ApiError, streamAi } from "../shared/api/client";
 import { insightLabels } from "../shared/api/labels";
 
@@ -345,6 +347,11 @@ export function DashboardPage() {
             <span className="muted">{ownership.data?.reason || "Нет данных о владельцах."}</span>
           )}
         </Card>
+
+        <div className="grid-2">
+          <ReviewInsightsCard repositoryId={data.sourceCraftId} />
+          <PublicBadgeCard repositoryId={data.sourceCraftId} />
+        </div>
 
         <div className="grid-2">
           <Card className="card stack">

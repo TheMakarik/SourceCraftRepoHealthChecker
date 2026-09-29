@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Dropdown,
+  Input,
   Option,
   Spinner,
   Table,
@@ -36,6 +37,23 @@ const integrityColors: Record<IntegrityStatus, "success" | "warning" | "danger">
   check: "warning",
   suspicious: "danger"
 };
+
+function PlaceDelta({ delta }: { delta?: number | null }) {
+  if (delta === null || delta === undefined)
+    return null;
+  if (delta === 0)
+    return <span className="muted" title="Позиция не изменилась">—</span>;
+  const rising = delta > 0;
+  return (
+    <span
+      className={rising ? "tone-good" : "tone-bad"}
+      title={rising ? `Поднялся на ${delta}` : `Опустился на ${Math.abs(delta)}`}
+      style={{ whiteSpace: "nowrap" }}
+    >
+      {rising ? "▲" : "▼"}{Math.abs(delta)}
+    </span>
+  );
+}
 
 function IntegrityBadge({ sourceCraftId }: { sourceCraftId: string }) {
   const integrity = useRepositoryIntegrity(sourceCraftId);
@@ -78,13 +96,32 @@ function RepoStatus({
   return <span className="muted">—</span>;
 }
 
+function parseScoreInput(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (trimmed === "")
+    return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function HomePage() {
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [sort, setSort] = useState<string>("score");
+  const [hasCi, setHasCi] = useState<"all" | "yes" | "no">("all");
+  const [minScore, setMinScore] = useState("");
+  const [maxScore, setMaxScore] = useState("");
   const [page, setPage] = useState(1);
   const query = useMemo(
-    () => ({ languages: selectedLanguages, sort, page, pageSize: appConfig.leaderboardPageSize }),
-    [selectedLanguages, sort, page]
+    () => ({
+      languages: selectedLanguages,
+      sort,
+      page,
+      pageSize: appConfig.leaderboardPageSize,
+      hasCi: hasCi === "all" ? undefined : hasCi === "yes",
+      minScore: parseScoreInput(minScore),
+      maxScore: parseScoreInput(maxScore)
+    }),
+    [selectedLanguages, sort, page, hasCi, minScore, maxScore]
   );
   const leaderboard = useLeaderboard(query);
   const languages = useLanguages();
@@ -117,6 +154,21 @@ export function HomePage() {
 
   const handleLanguagesChange = (next: string[]) => {
     setSelectedLanguages(next);
+    setPage(1);
+  };
+
+  const handleHasCiChange = (value: "all" | "yes" | "no") => {
+    setHasCi(value);
+    setPage(1);
+  };
+
+  const handleMinScoreChange = (value: string) => {
+    setMinScore(value);
+    setPage(1);
+  };
+
+  const handleMaxScoreChange = (value: string) => {
+    setMaxScore(value);
     setPage(1);
   };
 
@@ -173,6 +225,40 @@ export function HomePage() {
             {refresh.isPending ? "Обновление…" : "Обновить"}
           </Button>
         </div>
+        <div className="row">
+          <label className="filter-field">
+            <span className="muted">CI/CD</span>
+            <Dropdown
+              value={hasCi === "all" ? "Все" : hasCi === "yes" ? "Есть" : "Нет"}
+              selectedOptions={[hasCi]}
+              onOptionSelect={(_event, data) => handleHasCiChange(data.optionValue as "all" | "yes" | "no")}
+            >
+              <Option value="all">Все</Option>
+              <Option value="yes">Есть</Option>
+              <Option value="no">Нет</Option>
+            </Dropdown>
+          </label>
+          <label className="filter-field">
+            <span className="muted">Score от</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={minScore}
+              onChange={(_event, data) => handleMinScoreChange(data.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span className="muted">Score до</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={maxScore}
+              onChange={(_event, data) => handleMaxScoreChange(data.value)}
+            />
+          </label>
+        </div>
         {refresh.isSuccess && refresh.data ? (
           <span className="tone-good">Обновлено: {refresh.data.refreshed}</span>
         ) : null}
@@ -202,7 +288,12 @@ export function HomePage() {
               {items.map((item) => (
                 <RepoContextMenu key={item.sourceCraftId} url={item.url} fullName={item.fullName}>
                   <TableRow>
-                    <TableCell>{item.place}</TableCell>
+                    <TableCell>
+                      <div className="row" style={{ gap: "0.35rem", flexWrap: "nowrap" }}>
+                        <span>{item.place}</span>
+                        <PlaceDelta delta={item.placeDelta} />
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
                     </TableCell>

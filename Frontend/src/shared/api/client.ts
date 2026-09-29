@@ -11,10 +11,12 @@ import type {
   FolderReport,
   HistoryPoint,
   LeaderboardPage,
+  PublicRepositoryScore,
   ReportFormat,
   RepositoryComparison,
   RepositoryFile,
   RepositoryOwnership,
+  RepositoryReviewInsights,
   RepositoryTree,
   SourceCraftResult,
   SourceCraftUser,
@@ -82,10 +84,24 @@ async function requestOrNull<T>(path: string, init?: RequestInit): Promise<T | n
   return (await response.json()) as T;
 }
 
+function absoluteUrl(path: string): string {
+  return new URL(`${baseUrl}${path}`, window.location.origin).toString();
+}
+
 export const api = {
   health: () => request<{ status: string }>("/healthz"),
 
-  leaderboard: (options: { languages?: string[]; sort?: string; page?: number; pageSize?: number } = {}) => {
+  leaderboard: (
+    options: {
+      languages?: string[];
+      sort?: string;
+      page?: number;
+      pageSize?: number;
+      hasCi?: boolean;
+      minScore?: number;
+      maxScore?: number;
+    } = {}
+  ) => {
     const query = new URLSearchParams();
     options.languages?.forEach((language) => {
       if (language) query.append("language", language);
@@ -93,6 +109,9 @@ export const api = {
     if (options.sort) query.set("sort", options.sort);
     if (options.page) query.set("page", String(options.page));
     if (options.pageSize) query.set("pageSize", String(options.pageSize));
+    if (options.hasCi !== undefined) query.set("hasCi", String(options.hasCi));
+    if (options.minScore !== undefined) query.set("minScore", String(options.minScore));
+    if (options.maxScore !== undefined) query.set("maxScore", String(options.maxScore));
     const suffix = query.size > 0 ? `?${query.toString()}` : "";
     return request<LeaderboardPage>(`/api/repositories${suffix}`);
   },
@@ -126,6 +145,16 @@ export const api = {
 
   ownership: (id: string) =>
     request<SourceCraftResult<RepositoryOwnership>>(`/api/repositories/${encodeURIComponent(id)}/ownership`),
+
+  reviewInsights: (id: string) =>
+    request<SourceCraftResult<RepositoryReviewInsights>>(`/api/repositories/${encodeURIComponent(id)}/review-insights`),
+
+  publicScore: (id: string) =>
+    request<PublicRepositoryScore>(`/api/public/repositories/${encodeURIComponent(id)}/score`),
+
+  publicScoreUrl: (id: string) => absoluteUrl(`/api/public/repositories/${encodeURIComponent(id)}/score`),
+
+  publicBadgeUrl: (id: string) => absoluteUrl(`/api/public/repositories/${encodeURIComponent(id)}/badge.svg`),
 
   reportUrl: (id: string, format: ReportFormat) =>
     `${baseUrl}/api/repositories/${encodeURIComponent(id)}/report?format=${format}`,

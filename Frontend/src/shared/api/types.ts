@@ -102,6 +102,7 @@ export interface RepositoryComparison {
 
 export interface LeaderboardItem {
   place: number;
+  placeDelta?: number | null;
   sourceCraftId: string;
   name: string;
   fullName: string;
@@ -274,4 +275,39 @@ export type AnalysisSocketMessage = AnalysisSnapshotMessage | AnalysisStatusMess
 export interface AiProviderToken {
   provider: AiProvider;
   tokenPrefix: string | null;
+}
+
+export interface AuthorReviewLoad {
+  authorLogin: string;
+  mergeRequestCount: number;
+  reviewedMergeRequestCount: number;
+  unreviewedMergeRequestCount: number;
+  averageTimeToFirstReviewDays: number | null;
+}
+
+export interface RepositoryReviewInsights {
+  totalMergeRequests: number;
+  evaluatedMergeRequests: number;
+  reviewedMergeRequests: number;
+  mergeRequestsWithoutReview: number;
+  averageTimeToFirstReviewDays: number | null;
+  medianTimeToFirstReviewDays: number | null;
+  shareOfCommentedMergeRequests: number;
+  reviewerLoad: AuthorReviewLoad[];
+}
+
+export interface PublicRepositoryScoreCategory {
+  category: ScoreCategory;
+  score: number;
+  dataStatus: DataStatus;
+}
+
+export interface PublicRepositoryScore {
+  sourceCraftId: string;
+  fullName: string;
+  score: number | null;
+  grade: string | null;
+  analyzedAt: string | null;
+  methodologyVersion: string;
+  categories: PublicRepositoryScoreCategory[];
 }

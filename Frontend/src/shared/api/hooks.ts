@@ -18,6 +18,9 @@ export interface LeaderboardQuery {
   sort?: string;
   page?: number;
   pageSize?: number;
+  hasCi?: boolean;
+  minScore?: number;
+  maxScore?: number;
 }
 
 export const useLeaderboard = (query: LeaderboardQuery) =>
@@ -98,6 +101,24 @@ export const useRepositoryIntegrity = (id: string | undefined) =>
   useQuery({
     queryKey: ["integrity", id],
     queryFn: () => fetchIntegrity(id as string),
+    enabled: Boolean(id),
+    retry: false,
+    staleTime: 5 * 60_000
+  });
+
+export const useReviewInsights = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["review-insights", id],
+    queryFn: () => api.reviewInsights(id as string),
+    enabled: Boolean(id),
+    retry: false,
+    staleTime: 5 * 60_000
+  });
+
+export const usePublicScore = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["public-score", id],
+    queryFn: () => api.publicScore(id as string),
     enabled: Boolean(id),
     retry: false,
     staleTime: 5 * 60_000
