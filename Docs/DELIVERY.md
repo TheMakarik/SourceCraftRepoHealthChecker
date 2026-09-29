@@ -28,8 +28,8 @@
 Скрипты — [`Scripts/start.sh`](../Scripts/start.sh) (Linux/macOS) и
 [`Scripts/start.bat`](../Scripts/start.bat) (Windows): создают `.env` из `.env.example` (включая
 генерацию `AI_TOKEN_ENCRYPTION_KEY`), собирают и поднимают PostgreSQL + бэкенд + фронтенд через
-Docker Compose. Интерактивная подготовка секретов — [`prepare.sh`](../prepare.sh) /
-[`prepare.bat`](../prepare.bat).
+Docker Compose. Интерактивная подготовка секретов — [`Scripts/prepare.sh`](../Scripts/prepare.sh) /
+[`Scripts/prepare.bat`](../Scripts/prepare.bat).
 
 ```bash
 cp .env.example .env      # заполните SOURCECRAFT_PAT и YANDEX_CLIENT_ID/SECRET

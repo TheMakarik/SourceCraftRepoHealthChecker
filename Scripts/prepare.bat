@@ -7,7 +7,7 @@ rem   2) генерирует ключ шифрования и создаёт .e
 rem   3) запускает проект (Scripts\start.bat — поставит Docker при отсутствии).
 setlocal enabledelayedexpansion
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo === SourceCraft Repo Health Checker - подготовка ===
 echo.

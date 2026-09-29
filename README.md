@@ -125,11 +125,11 @@ git clone https://git.sourcecraft.dev/themakarik/repo-health-checker.git        
 cd SourceCraftRepoHealthChecker   # или repo-health-checker
 
 # 2. Интерактивная подготовка и запуск
-bash prepare.sh     # Linux/macOS
-prepare.bat         # Windows
+bash Scripts/prepare.sh     # Linux/macOS
+Scripts\prepare.bat         # Windows
 ```
 
-`prepare.sh` / `prepare.bat` спросят нужные токены, **объяснят, где их взять** (Я ID ClientID/Secret,
+`Scripts/prepare.sh` / `Scripts/prepare.bat` спросят нужные токены, **объяснят, где их взять** (Я ID ClientID/Secret,
 опционально сервисный SourceCraft PAT), сгенерируют ключ шифрования, создадут `.env` и запустят проект.
 
 ### Вариант 1 — Docker (вручную)

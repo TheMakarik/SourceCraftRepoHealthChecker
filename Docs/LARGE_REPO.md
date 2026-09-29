@@ -15,20 +15,16 @@
 
 ## 2. Генератор синтетического репозитория
 
-Скрипты создают воспроизводимый git-репозиторий с нужными характеристиками:
+Для воспроизводимой проверки критерия используется фикстурный генератор интеграционного теста:
 
-- `Scripts/create-large-repository.sh` — Linux/macOS;
-- `Scripts/create-large-repository.ps1` — Windows / PowerShell.
+- `Tests/SourceCraftRepoHealthChecker.IntegrationTests/Scripts/create-large-repository.ps1`
 
-Параметры: `--path` (каталог), `--files` (по умолчанию 10 000), `--commits` (по умолчанию 20),
-`--authors` (по умолчанию 5). В файлах намеренно оставлены `TODO`/`FIXME`, добавлены README,
-LICENSE и два релизных тега, чтобы Code health, Documentation и Activity-метрики были непустыми.
+При запуске теста **без** `SRHC_LARGE_REPO_PATH` он автоматически создаёт синтетический репозиторий
+с нужными характеристиками (по умолчанию 10 000 файлов, 20 коммитов, 5 авторов). В файлах намеренно
+оставлены `TODO`/`FIXME`, добавлены README, LICENSE и два релизных тега, чтобы Code health,
+Documentation и Activity-метрики были непустыми.
 
-```bash
-./Scripts/create-large-repository.sh --path /tmp/srhc-large-repository
-# либо явно под другой критерий:
-./Scripts/create-large-repository.sh --path /tmp/srhc-large-repository --commits 20000
-```
+Если нужно указать реальный крупный репозиторий — задайте `SRHC_LARGE_REPO_PATH` (тест его не генерирует).
 
 ## 3. Интеграционный тест
 
