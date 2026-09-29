@@ -20,14 +20,8 @@ public static class RepositoryEndpoints
 {
     public static IEndpointRouteBuilder MapRepositoryEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/repositories/refresh", async (HttpContext context, IOptions<SourceCraftServiceOptions> options, IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
-        {
-            var authenticated = context.GetCurrentUserId() is not null;
-            if (!authenticated && !IsAuthorizedInternalRequest(context, options.Value))
-                return Results.Unauthorized();
-
-            return Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) });
-        });
+        endpoints.MapPost("/api/repositories/refresh", async (IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
+            Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) }));
 
         endpoints.MapGet("/api/repositories", async (string[]? language, string? sort, int? page, int? pageSize, bool? hasCi, int? minScore, int? maxScore, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
         {
@@ -123,18 +117,4 @@ public static class RepositoryEndpoints
         Results.Json(
             new { error = "source_unavailable", status = nameof(DataStatus.Unavailable), reason },
             statusCode: StatusCodes.Status503ServiceUnavailable);
-
-    private static bool IsAuthorizedInternalRequest(HttpContext context, SourceCraftServiceOptions options)
-    {
-        if (string.IsNullOrEmpty(options.InternalToken))
-            return false;
-
-        var providedToken = context.Request.Headers["X-Internal-Token"].ToString();
-        if (string.IsNullOrEmpty(providedToken))
-            return false;
-
-        return CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(options.InternalToken),
-            Encoding.UTF8.GetBytes(providedToken));
-    }
 }

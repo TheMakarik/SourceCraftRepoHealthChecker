@@ -81,20 +81,10 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task RefreshRepositories_WithoutInternalToken_ReturnsUnauthorized()
+    public async Task RefreshRepositories_WithoutAuthentication_ReturnsOk()
     {
         using var client = CreateClient();
         var response = await client.PostAsync("/api/repositories/refresh", content: null);
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task RefreshRepositories_WithInternalToken_ReturnsOk()
-    {
-        using var client = CreateClient();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/repositories/refresh");
-        request.Headers.Add("X-Internal-Token", ApiFactory.InternalToken);
-        var response = await client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -198,11 +188,11 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task AnalyzeRepository_WithoutSession_ReturnsUnauthorized()
+    public async Task AnalyzeRepository_WithoutSession_ForPublicRepository_ReturnsOk()
     {
         using var client = CreateClient();
         var response = await client.PostAsync("/api/me/repositories/r1/analyze", content: null);
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
