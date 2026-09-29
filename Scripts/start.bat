@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem start.bat — поднимает весь проект (PostgreSQL + бэкенд + фронтенд) через Docker.
 rem Если Docker не установлен — пытается установить Docker Desktop через winget/choco.
 setlocal
@@ -20,7 +21,7 @@ if not %errorlevel%==0 (
       exit /b 1
     )
   )
-  echo Перезапустите среду (или войдите заново), затем запустите start.bat снова.
+  echo Перезапустите среду ^(или войдите заново^), затем запустите start.bat снова.
   exit /b 0
 )
 

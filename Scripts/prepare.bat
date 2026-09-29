@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 rem prepare.bat — интерактивная подготовка и запуск проекта (Windows).
 rem
 rem Что делает:
