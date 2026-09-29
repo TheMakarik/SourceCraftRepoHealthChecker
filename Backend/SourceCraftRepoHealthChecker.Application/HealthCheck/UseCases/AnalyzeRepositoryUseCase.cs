@@ -113,11 +113,21 @@ public sealed class AnalyzeRepositoryUseCase(
         }
         catch (Exception exception)
         {
-            analysisRun.Status = AnalysisStatus.Failed;
-            analysisRun.DataStatus = DataStatus.NoData;
-            analysisRun.CompletedAt = timeProvider.GetUtcNow();
-            analysisRun.ErrorMessage = exception.Message;
-            await dbContext.SaveChangesAsync(CancellationToken.None);
+            logger.LogError(exception, "Analysis of repository {RepositoryId} failed (run {AnalysisRunId}); entries: {Entries}", request.RepositoryId, analysisRun.Id, DescribeEntries(exception));
+
+            try
+            {
+                analysisRun.Status = AnalysisStatus.Failed;
+                analysisRun.DataStatus = DataStatus.NoData;
+                analysisRun.CompletedAt = timeProvider.GetUtcNow();
+                analysisRun.ErrorMessage = Truncate(exception.Message, recommendationOptions.Value.MaxProblemLength);
+                await dbContext.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception updateException)
+            {
+                logger.LogError(updateException, "Failed to mark analysis run {AnalysisRunId} as failed", analysisRun.Id);
+            }
+
             throw;
         }
     }
@@ -142,9 +152,14 @@ public sealed class AnalyzeRepositoryUseCase(
         analysisRun.DataStatus = healthCheck.DataStatus;
         analysisRun.CompletedAt = timeProvider.GetUtcNow();
 
+        var categoryScores = new List<CategoryScore>();
+        var metricScores = new List<DomainMetricScore>();
+        var recommendations = new List<Recommendation>();
+        var analysisFindings = new List<AnalysisFinding>();
+
         foreach (var category in healthCheck.Categories)
         {
-            analysisRun.CategoryScores.Add(new CategoryScore
+            categoryScores.Add(new CategoryScore
             {
                 Id = Guid.NewGuid(),
                 AnalysisRunId = analysisRun.Id,
@@ -155,7 +170,7 @@ public sealed class AnalyzeRepositoryUseCase(
 
             foreach (var metric in category.Metrics)
             {
-                analysisRun.Metrics.Add(new DomainMetricScore
+                metricScores.Add(new DomainMetricScore
                 {
                     Id = Guid.NewGuid(),
                     AnalysisRunId = analysisRun.Id,
@@ -170,7 +185,7 @@ public sealed class AnalyzeRepositoryUseCase(
 
         foreach (var recommendation in healthCheck.Recommendations)
         {
-            analysisRun.Recommendations.Add(new Recommendation
+            recommendations.Add(new Recommendation
             {
                 Id = Guid.NewGuid(),
                 AnalysisRunId = analysisRun.Id,
@@ -187,7 +202,7 @@ public sealed class AnalyzeRepositoryUseCase(
 
         foreach (var anomaly in anomalies)
         {
-            analysisRun.Recommendations.Add(new Recommendation
+            recommendations.Add(new Recommendation
             {
                 Id = Guid.NewGuid(),
                 AnalysisRunId = analysisRun.Id,
@@ -205,7 +220,7 @@ public sealed class AnalyzeRepositoryUseCase(
         var findingOptions = securityFindingOptions.Value;
         foreach (var finding in findings)
         {
-            analysisRun.Findings.Add(new AnalysisFinding
+            analysisFindings.Add(new AnalysisFinding
             {
                 Id = Guid.NewGuid(),
                 AnalysisRunId = analysisRun.Id,
@@ -216,11 +231,31 @@ public sealed class AnalyzeRepositoryUseCase(
                 Package = finding.Package is null ? null : Truncate(finding.Package, findingOptions.MaxPackageLength),
                 FilePath = finding.FilePath is null ? null : Truncate(finding.FilePath, findingOptions.MaxFilePathLength),
                 CvssScore = finding.CvssScore,
-                ExternalId = finding.Id,
+                ExternalId = Truncate(finding.Id, findingOptions.MaxExternalIdLength),
                 FileLine = finding.FileLine,
-                CommitSha = finding.CommitSha
+                CommitSha = finding.CommitSha is null ? null : Truncate(finding.CommitSha, findingOptions.MaxCommitShaLength)
             });
         }
+
+        dbContext.CategoryScores.AddRange(categoryScores);
+        dbContext.MetricScores.AddRange(metricScores);
+        dbContext.Recommendations.AddRange(recommendations);
+        dbContext.AnalysisFindings.AddRange(analysisFindings);
+    }
+
+    private static string DescribeEntries(Exception exception)
+    {
+        if (exception is not DbUpdateException dbUpdateException)
+            return string.Empty;
+
+        var parts = new List<string>();
+        foreach (var entry in dbUpdateException.Entries)
+        {
+            var key = string.Join(", ", entry.Properties.Where(x => x.Metadata.IsPrimaryKey()).Select(x => $"{x.Metadata.Name}={x.CurrentValue}"));
+            parts.Add($"{entry.Entity.GetType().Name}[{entry.State}]{{{key}}}");
+        }
+
+        return string.Join("; ", parts);
     }
 
     private Repository UpsertRepository(SourceCraftRepository source, Repository? repository, DateTimeOffset now)

@@ -1,6 +1,7 @@
 using FakeItEasy;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
@@ -154,6 +155,32 @@ public sealed class AnalyzeRepositoryUseCaseTests : IDisposable
         _capturedFacts.Should().NotBeNull();
         _capturedFacts!.IssuesPartial.Should().BeTrue();
         _capturedFacts.MergeRequestsPartial.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_WhenHealthCheckReturnsCategoriesAndFindings_PersistsChildEntities()
+    {
+        // Arrange
+        var source = CreatePublicRepository();
+        ArrangeCatalog(source);
+        var finding = new SecurityFinding("ext-1", SecurityFindingKind.Sast, SecuritySeverity.High, SecurityFindingStatus.Open, "SQL injection", "pkg", "src/file.cs", 7.5, 10, "sha-1");
+        A.CallTo(() => _securitySource.GetFindingsAsync(A<string>._, A<CancellationToken>._))
+            .Returns(new SourceCraftResult<IReadOnlyCollection<SecurityFinding>>(DataStatus.Available, [finding], null));
+        var metric = new SourceCraftRepoHealthChecker.Application.HealthCheck.Models.MetricScore(MetricCode.SecurityHighFindings, 1, 50, 1, DataStatus.Available);
+        var category = new CategoryScoreResult(ScoreCategory.Security, 50, 0.2, DataStatus.Available, [metric]);
+        var recommendation = new RecommendationDraft(RecommendationPriority.High, "Исправить уязвимость", "Риск эксплуатации", "SAST: 1 High", "Обновите зависимость", 5, "Security:1");
+        A.CallTo(() => _healthCheckEngine.CheckAsync(A<RepositoryFacts>._, A<CancellationToken>._))
+            .Returns(new HealthCheckResult(50, DataStatus.Available, [category], [recommendation], [], [], "test", Now));
+        var systemUnderTests = CreateSystemUnderTests();
+
+        // Act
+        await systemUnderTests.AnalyzeAsync(new AnalyzeRepositoryRequest(source.Id, null), CancellationToken.None);
+
+        // Assert
+        (await _context.CategoryScores.CountAsync()).Should().Be(1);
+        (await _context.MetricScores.CountAsync()).Should().Be(1);
+        (await _context.Recommendations.CountAsync()).Should().Be(1);
+        (await _context.AnalysisFindings.CountAsync()).Should().Be(1);
     }
 
     private AnalyzeRepositoryUseCase CreateSystemUnderTests() => new(
