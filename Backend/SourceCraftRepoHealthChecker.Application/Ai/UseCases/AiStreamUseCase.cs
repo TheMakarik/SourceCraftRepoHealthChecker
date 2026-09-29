@@ -14,8 +14,7 @@ namespace SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 public sealed class AiStreamUseCase(
     IGetRepositoryAnalysisUseCase getRepositoryAnalysisUseCase,
     IChatClientFactory chatClientFactory,
-    IRepoHealthCheckerDbContext dbContext,
-    ISecretProtector secretProtector,
+    IAiRuntimeSettingsProvider settingsProvider,
     IOptions<AiOptions> options) : IAiStreamUseCase
 {
     public async IAsyncEnumerable<AiStreamEvent> StreamAsync(
@@ -24,8 +23,8 @@ public sealed class AiStreamUseCase(
         AiInsightKind? kind,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var userAi = (await dbContext.UserAis.Where(item => item.UserId == userId).ToListAsync(cancellationToken)).FirstOrDefault();
-        if (userAi is null || string.IsNullOrWhiteSpace(userAi.AiToken))
+        var settings = await settingsProvider.GetAsync(userId, cancellationToken);
+        if (settings is null)
         {
             yield return new AiStreamEvent("error", "AI-провайдер не настроен: выберите провайдера и модель и сохраните токен.");
             yield break;
@@ -38,9 +37,9 @@ public sealed class AiStreamUseCase(
             yield break;
         }
 
-        using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
+        using var chatClient = chatClientFactory.Create(settings.Provider, settings.BaseUrl, settings.Model, settings.Token);
         var prompt = BuildPrompt(analysis, kind);
-        var chatOptions = chatClientFactory.CreateOptions(userAi.AiProvider);
+        var chatOptions = chatClientFactory.CreateOptions(settings.Provider);
         var emittedText = false;
 
         await foreach (var update in chatClient.GetStreamingResponseAsync(prompt, chatOptions, cancellationToken))

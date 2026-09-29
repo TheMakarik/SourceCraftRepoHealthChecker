@@ -14,28 +14,27 @@ namespace SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 public sealed class AiInsightUseCase(
     IGetRepositoryAnalysisUseCase getRepositoryAnalysisUseCase,
     IChatClientFactory chatClientFactory,
-    IRepoHealthCheckerDbContext dbContext,
-    ISecretProtector secretProtector,
+    IAiRuntimeSettingsProvider settingsProvider,
     IOptions<AiOptions> options) : IAiInsightUseCase
 {
     public async Task<AiInsightResult> GenerateAsync(string sourceCraftId, Guid userId, AiInsightKind kind, CancellationToken cancellationToken)
     {
-        var userAi = (await dbContext.UserAis.Where(item => item.UserId == userId).ToListAsync(cancellationToken)).FirstOrDefault()
+        var settings = await settingsProvider.GetAsync(userId, cancellationToken)
             ?? throw new SourceCraftOperationException("AI provider is not configured for the current user");
 
         var analysis = await getRepositoryAnalysisUseCase.GetAsync(sourceCraftId, cancellationToken)
             ?? throw new RepositoryNotFoundException($"Repository '{sourceCraftId}' has no completed analysis");
 
-        using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
+        using var chatClient = chatClientFactory.Create(settings.Provider, settings.BaseUrl, settings.Model, settings.Token);
 
         try
         {
-            var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis, kind), chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
-            return new AiInsightResult(kind, AiCompletionText.Best(completion), userAi.AiProvider, userAi.AiModel);
+            var completion = await chatClient.GetResponseAsync(BuildPrompt(analysis, kind), chatClientFactory.CreateOptions(settings.Provider), cancellationToken);
+            return new AiInsightResult(kind, AiCompletionText.Best(completion), settings.Provider, settings.Model);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            throw new AiProviderException($"AI-провайдер {userAi.AiProvider} вернул ошибку: {exception.Message}", exception);
+            throw new AiProviderException($"AI-провайдер {settings.Provider} вернул ошибку: {exception.Message}", exception);
         }
     }
 

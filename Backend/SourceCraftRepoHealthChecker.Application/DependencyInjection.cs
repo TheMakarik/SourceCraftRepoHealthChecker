@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SourceCraftRepoHealthChecker.Application.Ai;
 using SourceCraftRepoHealthChecker.Application.Ai.Options;
 using SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 using SourceCraftRepoHealthChecker.Application.Authentication.UseCases;
@@ -58,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<IAiSummaryUseCase, AiSummaryUseCase>();
         services.AddScoped<IAiInsightUseCase, AiInsightUseCase>();
         services.AddScoped<IAiStreamUseCase, AiStreamUseCase>();
+        services.AddScoped<IAiRuntimeSettingsProvider, AiRuntimeSettingsProvider>();
+        services.AddScoped<IGetAiTokenOverviewUseCase, GetAiTokenOverviewUseCase>();
         services.AddScoped<IStoreAiSettingsUseCase, StoreAiSettingsUseCase>();
         services.AddScoped<IGetAiSettingsUseCase, GetAiSettingsUseCase>();
         services.AddSingleton<IGetAiModelsUseCase, GetAiModelsUseCase>();

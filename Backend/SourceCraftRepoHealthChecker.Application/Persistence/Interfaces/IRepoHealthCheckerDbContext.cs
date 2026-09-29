@@ -7,6 +7,8 @@ public interface IRepoHealthCheckerDbContext
 {
     public DbSet<User> Users { get; }
     public DbSet<UserAi> UserAis { get; }
+
+    public DbSet<UserAiToken> UserAiTokens { get; }
     public DbSet<Repository> Repositories { get; }
     public DbSet<AnalysisRun> AnalysisRuns { get; }
     public DbSet<CategoryScore> CategoryScores { get; }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SourceCraftRepoHealthChecker.infrastructure.Persistence;
 namespace SourceCraftRepoHealthChecker.infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(RepoHealthCheckerDbContext))]
-    partial class RepoHealthCheckerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929142727_AddUserAiTokens")]
+    partial class AddUserAiTokens
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

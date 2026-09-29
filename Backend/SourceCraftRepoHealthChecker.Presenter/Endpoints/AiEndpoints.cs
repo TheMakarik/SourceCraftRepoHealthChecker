@@ -32,6 +32,15 @@ public static class AiEndpoints
 
         endpoints.MapGet("/api/me/ai/models", (IGetAiModelsUseCase useCase) => Results.Ok(useCase.Get()));
 
+        endpoints.MapGet("/api/me/ai/tokens", async (HttpContext context, IGetAiTokenOverviewUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            var userId = context.GetCurrentUserId();
+            if (userId is null)
+                return Results.Unauthorized();
+
+            return Results.Ok(await useCase.GetAsync(userId.Value, cancellationToken));
+        });
+
         endpoints.MapPost("/api/me/ai/test", async (HttpContext context, ITestAiConnectionUseCase useCase, CancellationToken cancellationToken) =>
         {
             var userId = context.GetCurrentUserId();

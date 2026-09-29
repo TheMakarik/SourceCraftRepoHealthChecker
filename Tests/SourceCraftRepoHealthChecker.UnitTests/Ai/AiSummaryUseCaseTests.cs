@@ -1,17 +1,12 @@
 using FakeItEasy;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.Ai;
 using SourceCraftRepoHealthChecker.Application.Ai.Options;
 using SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
-using SourceCraftRepoHealthChecker.Application.Persistence.Interfaces;
-using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
-using SourceCraftRepoHealthChecker.Domain.Entities;
 using SourceCraftRepoHealthChecker.Domain.Enums;
-using SourceCraftRepoHealthChecker.UnitTests.Scheduling.TestDoubles;
 
 namespace SourceCraftRepoHealthChecker.UnitTests.Ai;
 
@@ -19,7 +14,7 @@ public sealed class AiSummaryUseCaseTests
 {
     private readonly IGetRepositoryAnalysisUseCase _getRepositoryAnalysisUseCase = A.Fake<IGetRepositoryAnalysisUseCase>();
     private readonly IChatClientFactory _chatClientFactory = A.Fake<IChatClientFactory>();
-    private readonly ISecretProtector _secretProtector = A.Fake<ISecretProtector>();
+    private readonly IAiRuntimeSettingsProvider _settingsProvider = A.Fake<IAiRuntimeSettingsProvider>();
 
     [Fact]
     public async Task SummarizeAsync_WhenConfigured_ReturnsModelSummary()
@@ -30,9 +25,10 @@ public sealed class AiSummaryUseCaseTests
         A.CallTo(() => chatClient.GetResponseAsync(A<IEnumerable<ChatMessage>>._, A<ChatOptions?>._, A<CancellationToken>._))
             .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, "AI SUMMARY")));
         A.CallTo(() => _chatClientFactory.Create(AiProviders.Yandex, null, "yandexgpt", "api-key")).Returns(chatClient);
-        A.CallTo(() => _secretProtector.Unprotect("encrypted")).Returns("api-key");
+        A.CallTo(() => _settingsProvider.GetAsync(userId, A<CancellationToken>._))
+            .Returns(new AiRuntimeSettings(AiProviders.Yandex, null, "yandexgpt", "api-key"));
         A.CallTo(() => _getRepositoryAnalysisUseCase.GetAsync("sc-1", A<CancellationToken>._)).Returns(CreateAnalysis());
-        var systemUnderTests = new AiSummaryUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, CreateDbContext(userId), _secretProtector, Options.Create(CreateOptions()));
+        var systemUnderTests = new AiSummaryUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, _settingsProvider, Options.Create(CreateOptions()));
 
         // Act
         var actual = await systemUnderTests.SummarizeAsync("sc-1", userId, CancellationToken.None);
@@ -47,7 +43,7 @@ public sealed class AiSummaryUseCaseTests
     public async Task SummarizeAsync_WhenUserHasNoAiSettings_Throws()
     {
         // Arrange
-        var systemUnderTests = new AiSummaryUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, CreateDbContext(userId: null), _secretProtector, Options.Create(CreateOptions()));
+        var systemUnderTests = new AiSummaryUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, _settingsProvider, Options.Create(CreateOptions()));
 
         // Act
         var act = () => systemUnderTests.SummarizeAsync("sc-1", Guid.NewGuid(), CancellationToken.None);
@@ -64,28 +60,6 @@ public sealed class AiSummaryUseCaseTests
             [],
             [],
             []);
-
-    private static IRepoHealthCheckerDbContext CreateDbContext(Guid? userId)
-    {
-        var userAis = userId is null
-            ? new List<UserAi>()
-            : [new UserAi { Id = Guid.NewGuid(), UserId = userId.Value, AiProvider = AiProviders.Yandex, AiModel = "yandexgpt", AiToken = "encrypted" }];
-
-        var dbContext = A.Fake<IRepoHealthCheckerDbContext>();
-        A.CallTo(() => dbContext.UserAis).Returns(CreateDbSet(userAis));
-        return dbContext;
-    }
-
-    private static DbSet<UserAi> CreateDbSet(IReadOnlyList<UserAi> items)
-    {
-        var queryable = (IQueryable<UserAi>)new TestAsyncEnumerable<UserAi>(items);
-        var dbSet = A.Fake<DbSet<UserAi>>(options => options.Implements(typeof(IQueryable<UserAi>)));
-        A.CallTo(() => ((IQueryable<UserAi>)dbSet).Provider).Returns(queryable.Provider);
-        A.CallTo(() => ((IQueryable<UserAi>)dbSet).Expression).Returns(queryable.Expression);
-        A.CallTo(() => ((IQueryable<UserAi>)dbSet).ElementType).Returns(queryable.ElementType);
-        A.CallTo(() => ((IQueryable<UserAi>)dbSet).GetEnumerator()).ReturnsLazily(() => queryable.GetEnumerator());
-        return dbSet;
-    }
 
     private static AiOptions CreateOptions() => new()
     {

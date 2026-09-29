@@ -270,3 +270,8 @@ export interface AnalysisStatusMessage extends AnalysisStatus {
 }
 
 export type AnalysisSocketMessage = AnalysisSnapshotMessage | AnalysisStatusMessage;
+
+export interface AiProviderToken {
+  provider: AiProvider;
+  tokenPrefix: string | null;
+}

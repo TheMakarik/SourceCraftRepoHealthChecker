@@ -3,6 +3,7 @@ import type {
   AiInsightResult,
   AiProvider,
   AiProviderModels,
+  AiProviderToken,
   AiSettings,
   AiSummaryResult,
   AiTestResult,
@@ -138,6 +139,8 @@ export const api = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
 
   getMeAi: () => requestOrNull<AiSettings>("/api/me/ai"),
+
+  getAiTokens: () => request<AiProviderToken[]>("/api/me/ai/tokens"),
 
   getAiModels: () => request<AiProviderModels[]>("/api/me/ai/models"),
 

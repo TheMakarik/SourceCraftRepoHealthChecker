@@ -9,21 +9,20 @@ using SourceCraftRepoHealthChecker.Application.Security.Interfaces;
 namespace SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 
 public sealed class TestAiConnectionUseCase(
-    IRepoHealthCheckerDbContext dbContext,
+    IAiRuntimeSettingsProvider settingsProvider,
     IChatClientFactory chatClientFactory,
-    ISecretProtector secretProtector,
     IOptions<AiOptions> options) : ITestAiConnectionUseCase
 {
     public async Task<AiTestResult> TestAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var userAi = (await dbContext.UserAis.Where(item => item.UserId == userId).ToListAsync(cancellationToken)).FirstOrDefault();
-        if (userAi is null || string.IsNullOrWhiteSpace(userAi.AiToken))
+        var settings = await settingsProvider.GetAsync(userId, cancellationToken);
+        if (settings is null)
             return new AiTestResult(false, "AI-провайдер не настроен: выберите провайдера и модель, затем сохраните токен.");
 
         try
         {
-            using var chatClient = chatClientFactory.Create(userAi.AiProvider, userAi.AiBaseUrl, userAi.AiModel, secretProtector.Unprotect(userAi.AiToken));
-            var completion = await chatClient.GetResponseAsync(options.Value.TestPrompt, chatClientFactory.CreateOptions(userAi.AiProvider), cancellationToken);
+            using var chatClient = chatClientFactory.Create(settings.Provider, settings.BaseUrl, settings.Model, settings.Token);
+            var completion = await chatClient.GetResponseAsync(options.Value.TestPrompt, chatClientFactory.CreateOptions(settings.Provider), cancellationToken);
             var answer = AiCompletionText.Best(completion);
             return new AiTestResult(true, string.IsNullOrWhiteSpace(answer) ? "Модель вернула пустой ответ." : answer.Trim());
         }

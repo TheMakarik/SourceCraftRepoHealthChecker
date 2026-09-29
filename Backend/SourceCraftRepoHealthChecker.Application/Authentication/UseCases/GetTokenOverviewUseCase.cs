@@ -18,9 +18,18 @@ public sealed class GetTokenOverviewUseCase(
         var user = await dbContext.Users.FirstOrDefaultAsync(item => item.Id == userId, cancellationToken);
         var userAi = await dbContext.UserAis.FirstOrDefaultAsync(item => item.UserId == userId, cancellationToken);
 
+        string? aiProtected = null;
+        if (userAi is not null)
+        {
+            var tokenRow = await dbContext.UserAiTokens.FirstOrDefaultAsync(
+                item => item.UserId == userId && item.Provider == userAi.AiProvider,
+                cancellationToken);
+            aiProtected = tokenRow?.Token ?? userAi.AiToken;
+        }
+
         return new TokenOverview(
             Mask(Unprotect(user?.SourceCraftToken)),
-            Mask(Unprotect(userAi?.AiToken)));
+            Mask(Unprotect(aiProtected)));
     }
 
     private string? Unprotect(string? protectedSecret)

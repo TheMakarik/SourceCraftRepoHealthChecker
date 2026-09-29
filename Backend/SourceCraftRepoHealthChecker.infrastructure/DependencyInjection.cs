@@ -128,15 +128,6 @@ public static class DependencyInjection
                 .Build();
         });
         services.AddSingleton<S3XmlRepository>();
-        services.AddSingleton<IXmlRepository>(provider =>
-        {
-            var storage = provider.GetRequiredService<IOptions<DataProtectionStorageOptions>>().Value;
-            if (!string.IsNullOrWhiteSpace(storage.Bucket))
-                return provider.GetRequiredService<S3XmlRepository>();
-
-            var directory = storage.KeyPath ?? Path.Join(Path.GetTempPath(), "srhc-dataprotection");
-            return new LocalFileXmlRepository(directory);
-        });
         services.AddSingleton<IChatClientFactory, OpenAiChatClientFactory>();
         services.AddHostedService<DatabaseMigrationHostedService>();
         services.AddSingleton<ISecretProtector>(provider => provider.GetRequiredService<AiTokenProtector>());

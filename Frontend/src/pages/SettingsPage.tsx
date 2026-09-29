@@ -21,7 +21,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAiModels, useMe, useMeAi, useMeTokens, useStoreAi, useStoreSourceCraftToken, useTestAi } from "../shared/api/hooks";
+import { useAiModels, useMe, useMeAi, useMeAiTokens, useMeTokens, useStoreAi, useStoreSourceCraftToken, useTestAi } from "../shared/api/hooks";
 import { Key24Regular, Play24Regular, Save24Regular, Sparkle24Regular } from "@fluentui/react-icons";
 import type { AiProvider } from "../shared/api/types";
 import { providerLabels } from "../shared/api/labels";
@@ -143,6 +143,10 @@ export function SettingsPage() {
 
   const patPrefix = tokens.data?.sourceCraftTokenPrefix;
   const aiPrefix = tokens.data?.aiTokenPrefix;
+  const aiTokens = useMeAiTokens(isAuthenticated);
+  const selectedAiPrefix =
+    aiTokens.data?.find((item) => item.provider === provider)?.tokenPrefix ??
+    (provider === meAi.data?.provider ? aiPrefix : null);
   const selectedModels = modelsByProvider[provider] ?? [];
   const selectedModel = aiForm.watch("model");
 
@@ -245,13 +249,13 @@ export function SettingsPage() {
             </Field>
             <Field label="Токен провайдера">
               <div className="row" style={{ alignItems: "center", gap: "0.5rem" }}>
-                <code>{aiPrefix ?? "не задан"}</code>
+                <code>{selectedAiPrefix ?? "не задан"}</code>
                 <Button
                   type="button"
-                  appearance={aiPrefix ? "secondary" : "primary"}
+                  appearance={selectedAiPrefix ? "secondary" : "primary"}
                   onClick={openAiTokenDialog}
                 >
-                  {aiPrefix ? "Заменить" : "Добавить токен"}
+                  {selectedAiPrefix ? "Заменить" : "Добавить токен"}
                 </Button>
               </div>
             </Field>

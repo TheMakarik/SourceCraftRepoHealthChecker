@@ -121,6 +121,9 @@ export const useMeTokens = (enabled: boolean) =>
 export const useMeAi = (enabled: boolean) =>
   useQuery({ queryKey: ["me-ai"], queryFn: api.getMeAi, enabled, retry: false, staleTime: 30_000 });
 
+export const useMeAiTokens = (enabled: boolean) =>
+  useQuery({ queryKey: ["me-ai-tokens"], queryFn: api.getAiTokens, enabled, retry: false, staleTime: 15_000 });
+
 export const useAiModels = () =>
   useQuery({ queryKey: ["ai-models"], queryFn: api.getAiModels, retry: false, staleTime: 60 * 60_000 });
 

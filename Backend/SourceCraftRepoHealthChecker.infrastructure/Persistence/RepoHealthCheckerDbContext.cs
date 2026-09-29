@@ -26,6 +26,8 @@ public sealed class RepoHealthCheckerDbContext(
 
     public DbSet<UserAi> UserAis => Set<UserAi>();
 
+    public DbSet<UserAiToken> UserAiTokens => Set<UserAiToken>();
+
     public DbSet<Repository> Repositories => Set<Repository>();
 
     public DbSet<AnalysisRun> AnalysisRuns => Set<AnalysisRun>();
@@ -72,6 +74,12 @@ public sealed class RepoHealthCheckerDbContext(
             .HasOne(x => x.Ai)
             .WithOne()
             .HasForeignKey<UserAi>(x => x.UserId);
+
+        modelBuilder.Entity<UserAiToken>(entity =>
+        {
+            entity.Property(x => x.Token).HasMaxLength(_userAiOptions.MaxTokenLength);
+            entity.HasIndex(x => new { x.UserId, x.Provider }).IsUnique();
+        });
         #endregion
 
         #region Repository

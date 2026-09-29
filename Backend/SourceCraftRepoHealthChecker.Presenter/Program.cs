@@ -12,6 +12,7 @@ using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure;
 using SourceCraftRepoHealthChecker.infrastructure.Analysis;
 using SourceCraftRepoHealthChecker.infrastructure.Configuration;
+using SourceCraftRepoHealthChecker.infrastructure.DataProtection;
 using SourceCraftRepoHealthChecker.infrastructure.Options;
 using SourceCraftRepoHealthChecker.Presenter.Authentication;
 using SourceCraftRepoHealthChecker.Presenter.Endpoints;
@@ -31,12 +32,12 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}",
         theme: AnsiConsoleTheme.Code)));
 
+builder.Services.AddRepoHealthDataProtection(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IAnalysisStatusHub, AnalysisStatusHub>();
 builder.Services.ConfigureHttpJsonOptions(json => json.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddDataProtection();
 builder.Services.AddSingleton<UserTicketProtector>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
