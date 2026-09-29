@@ -163,12 +163,7 @@ public sealed class LargeRepositoryTests : IDisposable
     private string CreateLargeRepository(int files, int commits, int authors)
     {
         var repositoryPath = Path.Join(_tempFileSystem.Path, "large repository with spaces");
-        TestRepositoryFactory.Create(
-            repositoryPath,
-            "create-large-repository.ps1",
-            "-Files", files.ToString(),
-            "-Commits", commits.ToString(),
-            "-Authors", authors.ToString());
+        LargeRepositoryGenerator.Create(repositoryPath, files, commits, authors);
 
         return repositoryPath;
     }

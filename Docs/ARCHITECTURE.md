@@ -31,6 +31,12 @@
 Go-микросервиса нет. Конфигурация читается из `appsettings.json`, переменных окружения и `.env`
 (через порт `IEnvironmentFileLoader`, реализованный `DotEnvEnvironmentFileLoader`).
 
+Слой персистентности — **EF Core + PostgreSQL** (`RepoHealthCheckerDbContext`): репозитории, прогоны
+анализа, их дочерние сущности, пользователи и токены. Дочерние сущности прогона (`CategoryScores`,
+`MetricScores`, `Recommendations`, `AnalysisFindings`) сохраняются через `DbSet.AddRange` с явно
+проставленным `AnalysisRunId`: добавление через навигацию заставляло EF помечать их `Modified` и
+генерировать `UPDATE` для ещё не вставленных строк (`DbUpdateConcurrencyException`).
+
 ## 2. Инструкция сборки и запуска
 
 ### Зависимости
@@ -54,12 +60,23 @@ npm run build    # production-сборка (tsc -b && vite build)
 
 ### Запуск через Docker Compose
 ```bash
+Scripts/prepare.sh        # интерактивно спросит Я ID и PAT, создаст .env и запустит проект
+# Windows: Scripts\prepare.bat
+```
+`prepare` генерирует `AI_TOKEN_ENCRYPTION_KEY`, создаёт `.env` и вызывает `Scripts/start.sh` /
+`Scripts/start.bat`, которые поднимают проект. Оба скрипта лежат в `Scripts/`, а не в корне
+репозитория. Запуск вручную:
+```bash
 cp .env.example .env      # заполнить AI_TOKEN_ENCRYPTION_KEY, SOURCECRAFT_PAT, ключи Я ID
 docker compose up --build -d
-# либо Scripts/start.sh (Linux) / Scripts/start.bat (Windows)
 ```
 `docker compose` поднимает **PostgreSQL + backend + frontend** (MinIO в compose нет).
 Адреса: фронтенд `http://localhost:8080`, backend `http://localhost:5172`.
+
+### Проверки состояния
+- `GET /healthz` — процесс жив (liveness).
+- `GET /readyz` — готовность: проверяет доступность PostgreSQL; при недоступности отвечает `503`
+  (`{"status":"degraded","reason":"database_unavailable"}`).
 
 ### Ключевые настройки
 - `HealthCheckOptions` — веса категорий, штрафы, пороги, шкала (см. `Presenter/appsettings.json`).
@@ -203,9 +220,10 @@ Documentation 15%, CI/CD 15%, Issues 15%. Методика версиониру�
 - **Локальный кэш git-копий**: `GitWorkingCopyCache` держит клоны на диске с TTL
   (`GitCacheOptions.TtlMinutes`) и лимитом `MaxCachedRepositories`, освобождая место в фоне.
   Кэш локальный для инстанса.
-- **Ключи DataProtection**: по умолчанию — локальный файл; при нескольких инстансах
-  рекомендуется S3-совместимое хранилище (`DataProtectionStorageOptions.Bucket`), чтобы куки
-  переживали рестарт и работали между репликами.
+- **Ключи DataProtection**: по умолчанию — локальный файл (в Docker — том `/keys`,
+  `DataProtectionStorageOptions.KeyPath`); при нескольких инстансах рекомендуется S3-совместимое
+  хранилище (`DataProtectionStorageOptions.Bucket`), чтобы куки переживали рестарт и работали
+  между репликами.
 - **Направление роста**: для честного горизонтального масштабирования воркеров нужна внешняя
   durable-очередь (брокер) вместо in-memory канала; сейчас её нет.
 
@@ -216,7 +234,7 @@ Documentation 15%, CI/CD 15%, Issues 15%. Методика версиониру�
 | Направление | Статус | Где реализовано |
 |---|---|---|
 | Расширенный рейтинг, история и сравнение | Реализовано | `GET /api/repositories/{id}/history`, `GET /api/repositories/compare` (2–4 id), рейтинг `GET /api/repositories` |
-| Углублённая аналитика (review, issues, bus factor, карта владельцев) | Реализовано | `GET /api/repositories/{id}/ownership` (`BusFactor`, `OwnerStat`), `GET /api/repositories/{id}/structure`, метрики Issues и Activity (MR/review) |
+| Углублённая аналитика (review, issues, bus factor, карта владельцев) | Реализовано | `GET /api/repositories/{id}/ownership` (`BusFactor`, `OwnerStat`), `GET /api/repositories/{id}/structure`, `GET /api/repositories/{id}/review-insights`, метрики Issues и Activity (MR/review) |
 | Публичный API и quality badges | Реализовано | `GET /api/public/repositories/{id}/score`, `GET /api/public/repositories/{id}/badge.svg` (SVG-бейдж Score, кэш 5 мин) |
 | AI-summary и AI-рекомендации | Реализовано | `POST /api/repositories/{id}/ai-summary`, `POST /api/repositories/{id}/ai-insights/{kind}` (+ SSE-стриминг `/stream`) |
 | Защита публичного рейтинга от накрутки | Реализовано | `GET /api/repositories/{id}/integrity` (`RepositoryIntegrityCalculator`, `IAnomalyDetector`), индекс достоверности и флаг в рейтинге |
@@ -229,7 +247,8 @@ Documentation 15%, CI/CD 15%, Issues 15%. Методика версиониру�
 - **Углублённая аналитика.** Bus factor и карта владельцев считаются по git-истории
   (`GitOwnershipReader`, `OwnershipOptions.CoverageThresholdPercent`); Issues — открытые/закрытые/
   зависшие и время реакции; review-активность — через merge requests (`ActivityMergeRequests`,
-  `ActivityMergeRequestResponse`, `MergeRequestInfo.ReviewCommentsCount`); папки — `structure`/`folders`.
+  `ActivityMergeRequestResponse`, `MergeRequestInfo.ReviewCommentsCount`), а разбор ревью и
+  bottlenecks отдаёт `GET /api/repositories/{id}/review-insights`; папки — `structure`/`folders`.
 - **Публичный API и badge.** Кроме публичного JSON-рейтинга и анализа, есть отдельные публичные
   read-only эндпоинты score и SVG-бейджа: `badge.svg` рендерит `RepositoryBadgeSvgRenderer` по
   текущему Score, приватные репозитории отдают 404, ответ кэшируется (`Cache-Control: max-age=300`).
@@ -255,7 +274,10 @@ Documentation 15%, CI/CD 15%, Issues 15%. Методика версиониру�
 - **S3-совместимое хранилище (Minio SDK)** — опциональное persistence ключей DataProtection.
 - **ИИ**: единая фабрика `IChatClientFactory` (`OpenAiChatClientFactory`) поверх OpenAI-совместимого
   ChatClient. Поддерживаются провайдеры **OpenAI, Anthropic, Google Gemini, Yandex, DeepSeek**
-  (базовые URL в `AiOptions`). Провайдер, модель и токен выбирает пользователь; токен шифруется
-  (`AiTokenProtector` / `AiTokenEncryptionOptions:Key`). Модель получает **только факты и метрики**
-  анализа, а промпты (резюме, рекомендации, объяснение, план, триаж, прогноз) задаются в `AiOptions`
-  и требуют опоры на данные без выдумок.
+  (перечисление `AiProviders`, базовые URL в `AiOptions`). Токен выбирает и хранит пользователь —
+  отдельная строка `UserAiToken` на каждого провайдера, токен шифруется (`AiTokenProtector` /
+  `AiTokenEncryptionOptions:Key`). Модель получает **только факты и метрики** анализа, а промпты
+  (резюме, рекомендации, объяснение, план, триаж, прогноз) задаются в `AiOptions` и требуют опоры
+  на данные без выдумок. Ответ можно получить потоково по **SSE** (`/api/repositories/{id}/ai-summary/stream`,
+  `/api/repositories/{id}/ai-insights/{kind}/stream`, `text/event-stream`), при этом reasoning-модели
+  отдают «размышления» отдельным событием (`thinking`), а не в основном тексте.
