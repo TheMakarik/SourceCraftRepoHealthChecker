@@ -1,3 +1,5 @@
+using System.Text.Json;
+using SourceCraftRepoHealthChecker.Application.Ai.Models;
 using SourceCraftRepoHealthChecker.Application.Ai.UseCases;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 using SourceCraftRepoHealthChecker.Presenter.Authentication;
@@ -60,6 +62,49 @@ public static class AiEndpoints
             return Results.Ok(await useCase.GenerateAsync(id, userId.Value, insightKind, cancellationToken));
         });
 
+        endpoints.MapPost("/api/repositories/{id}/ai-summary/stream", (string id, HttpContext context, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
+            StreamAiAsync(context, useCase, id, null, cancellationToken));
+
+        endpoints.MapPost("/api/repositories/{id}/ai-insights/{kind}/stream", (string id, string kind, HttpContext context, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            if (!Enum.TryParse<AiInsightKind>(kind.Replace("-", string.Empty), ignoreCase: true, out var insightKind))
+                return Task.FromResult(Results.BadRequest(new { error = "unknown_insight_kind", available = Enum.GetNames<AiInsightKind>() }));
+
+            return StreamAiAsync(context, useCase, id, insightKind, cancellationToken);
+        });
+
         return endpoints;
+    }
+
+    private static Task<IResult> StreamAiAsync(HttpContext context, IAiStreamUseCase useCase, string id, AiInsightKind? kind, CancellationToken cancellationToken)
+    {
+        var userId = context.GetCurrentUserId();
+        if (userId is null)
+            return Task.FromResult(Results.Unauthorized());
+
+        IResult result = Results.Stream(async stream =>
+        {
+            var writer = new StreamWriter(stream) { AutoFlush = true };
+            try
+            {
+                await foreach (var streamEvent in useCase.StreamAsync(id, userId.Value, kind, cancellationToken))
+                    await WriteEventAsync(writer, streamEvent, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception exception)
+            {
+                await WriteEventAsync(writer, new AiStreamEvent("error", exception.Message), CancellationToken.None);
+            }
+        }, "text/event-stream");
+
+        return Task.FromResult(result);
+    }
+
+    private static async Task WriteEventAsync(StreamWriter writer, AiStreamEvent streamEvent, CancellationToken cancellationToken)
+    {
+        await writer.WriteAsync($"data: {JsonSerializer.Serialize(streamEvent)}\n\n");
+        await writer.FlushAsync(cancellationToken);
     }
 }

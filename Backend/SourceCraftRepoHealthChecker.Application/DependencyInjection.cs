@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddSingleton<IAnalysisQueue, ChannelAnalysisQueue>();
         services.AddScoped<IAiSummaryUseCase, AiSummaryUseCase>();
         services.AddScoped<IAiInsightUseCase, AiInsightUseCase>();
+        services.AddScoped<IAiStreamUseCase, AiStreamUseCase>();
         services.AddScoped<IStoreAiSettingsUseCase, StoreAiSettingsUseCase>();
         services.AddScoped<IGetAiSettingsUseCase, GetAiSettingsUseCase>();
         services.AddSingleton<IGetAiModelsUseCase, GetAiModelsUseCase>();

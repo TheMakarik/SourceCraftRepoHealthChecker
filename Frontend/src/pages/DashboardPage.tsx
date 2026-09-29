@@ -12,7 +12,7 @@ import {
 } from "@fluentui/react-components";
 import { ArrowDownload24Regular, ArrowSync24Regular, Sparkle24Regular } from "@fluentui/react-icons";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useAiInsight, useAiSummary, useAnalysis, useAnalyze, useHistory, useOwnership, useStructure } from "../shared/api/hooks";
+import { useAnalysis, useAnalyze, useHistory, useOwnership, useStructure } from "../shared/api/hooks";
 import { useAnalysisStatus } from "../shared/api/useAnalysisStatus";
 import type { AiInsightKind } from "../shared/api/types";
 import {
@@ -32,7 +32,7 @@ import { CategoryTabs } from "../widgets/CategoryTabs";
 import { AnalysisStatusBadge } from "../widgets/AnalysisStatusBadge";
 import { AnalysisStatusPanel, type AnalysisPanelPhase } from "../widgets/AnalysisStatusPanel";
 import { MetricsTable } from "../widgets/MetricsTable";
-import { api, ApiError } from "../shared/api/client";
+import { api, ApiError, streamAi } from "../shared/api/client";
 import { insightLabels } from "../shared/api/labels";
 
 const insightKinds: AiInsightKind[] = ["Recommendations", "Explanation", "ActionPlan", "SecurityTriage", "RiskForecast"];
@@ -44,16 +44,15 @@ export function DashboardPage() {
   const ownership = useOwnership(id);
   const history = useHistory(id);
   const analyze = useAnalyze();
-  const summary = useAiSummary();
-  const insight = useAiInsight();
   const { statusFor } = useAnalysisStatus();
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiText, setAiText] = useState("");
+  const [aiThinking, setAiThinking] = useState(false);
+  const [aiRunning, setAiRunning] = useState(false);
   const [chartReady, setChartReady] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
 
   const resetAnalyze = analyze.reset;
-  const resetSummary = summary.reset;
-  const resetInsight = insight.reset;
   const liveStatus = statusFor(id);
 
   useEffect(() => {
@@ -65,10 +64,10 @@ export function DashboardPage() {
   useEffect(() => {
     setStatusOpen(false);
     setAiError(null);
+    setAiText("");
+    setAiThinking(false);
     resetAnalyze();
-    resetSummary();
-    resetInsight();
-  }, [id, resetAnalyze, resetSummary, resetInsight]);
+  }, [id, resetAnalyze]);
 
   useEffect(() => {
     if (liveStatus?.status === "queued" || liveStatus?.status === "running")
@@ -104,19 +103,33 @@ export function DashboardPage() {
   const aiErrorMessage = (error: unknown, fallback: string) =>
     error instanceof ApiError && error.message ? error.message : fallback;
 
-  const runAi = (kind?: AiInsightKind) => {
-    setAiError(null);
+  const runAi = async (kind?: AiInsightKind) => {
     if (!id)
       return;
-    if (kind)
-      insight.mutate(
-        { id, kind },
-        { onError: (error) => setAiError(aiErrorMessage(error, "Не удалось получить AI-разбор. Войдите и настройте провайдера в личном кабинете.")) }
-      );
-    else
-      summary.mutate(id, {
-        onError: (error) => setAiError(aiErrorMessage(error, "Не удалось получить AI-резюме. Войдите и настройте провайдера в личном кабинете."))
+    setAiError(null);
+    setAiText("");
+    setAiThinking(true);
+    setAiRunning(true);
+    const path = kind
+      ? `/api/repositories/${encodeURIComponent(id)}/ai-insights/${kind}/stream`
+      : `/api/repositories/${encodeURIComponent(id)}/ai-summary/stream`;
+    try {
+      await streamAi(path, (event) => {
+        if (event.type === "delta" && event.text) {
+          setAiThinking(false);
+          setAiText((previous) => previous + event.text);
+        } else if (event.type === "reasoning") {
+          setAiThinking(true);
+        } else if (event.type === "error") {
+          setAiError(event.text ?? "Ошибка AI-провайдера.");
+        }
       });
+    } catch (error) {
+      setAiError(aiErrorMessage(error, "Не удалось получить ответ. Войдите и настройте AI в настройках."));
+    } finally {
+      setAiRunning(false);
+      setAiThinking(false);
+    }
   };
 
   const statusPanel = id ? (
@@ -178,7 +191,6 @@ export function DashboardPage() {
 
     const data = analysis.data;
     const historyPoints = history.data ?? [];
-    const aiContent = summary.data?.summary ?? insight.data?.content;
 
     return (
       <div className="stack">
@@ -216,8 +228,8 @@ export function DashboardPage() {
                   </Button>
                   <Button
                     appearance="primary"
-                    icon={summary.isPending ? <Spinner size="tiny" /> : <Sparkle24Regular />}
-                    disabled={summary.isPending || insight.isPending}
+                    icon={aiRunning ? <Spinner size="tiny" /> : <Sparkle24Regular />}
+                    disabled={aiRunning}
                     onClick={() => runAi()}
                   >
                     AI-резюме
@@ -443,7 +455,7 @@ export function DashboardPage() {
               <Button
                 key={kind}
                 appearance="subtle"
-                disabled={summary.isPending || insight.isPending}
+                disabled={aiRunning}
                 onClick={() => runAi(kind)}
               >
                 {insightLabels[kind]}
@@ -451,7 +463,12 @@ export function DashboardPage() {
             ))}
           </div>
           {aiError ? <span className="tone-warn">{aiError}</span> : null}
-          {aiContent ? <div className="markdown">{aiContent}</div> : null}
+          {aiThinking ? (
+            <span className="thinking">
+              Думает<span className="thinking__dots" />
+            </span>
+          ) : null}
+          {aiText ? <div className="markdown">{aiText}</div> : null}
         </Card>
 
         <span className="muted">

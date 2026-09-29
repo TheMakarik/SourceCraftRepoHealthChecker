@@ -162,3 +162,37 @@ export const api = {
 };
 
 export const authLoginUrl = `${baseUrl}/auth/login`;
+
+export interface AiStreamEvent {
+  type: "delta" | "reasoning" | "done" | "error";
+  text?: string;
+}
+
+export async function streamAi(path: string, onEvent: (event: AiStreamEvent) => void): Promise<void> {
+  const response = await fetch(`${baseUrl}${path}`, { method: "POST", credentials: "include" });
+  if (!response.ok || !response.body)
+    throw new ApiError(response.status, `HTTP ${response.status}`);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done)
+      break;
+    buffer += decoder.decode(value, { stream: true });
+    let index: number;
+    while ((index = buffer.indexOf("\n\n")) >= 0) {
+      const chunk = buffer.slice(0, index);
+      buffer = buffer.slice(index + 2);
+      const line = chunk.split("\n").find((item) => item.startsWith("data:"));
+      if (!line)
+        continue;
+      try {
+        onEvent(JSON.parse(line.slice(5).trim()) as AiStreamEvent);
+      } catch {
+        // игнорируем неполный/битый чанк
+      }
+    }
+  }
+}

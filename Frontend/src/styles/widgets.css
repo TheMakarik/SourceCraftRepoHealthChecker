@@ -441,3 +441,24 @@
   gap: 0.4rem;
   color: var(--srhc-muted);
 }
+
+.thinking {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  color: var(--srhc-muted);
+  font-size: 0.9rem;
+}
+
+.thinking__dots::after {
+  content: "";
+  animation: srhc-thinking-dots 1.6s steps(1, end) infinite;
+}
+
+@keyframes srhc-thinking-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+  100% { content: ""; }
+}
