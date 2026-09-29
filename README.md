@@ -115,7 +115,24 @@
 - **Docker** (скрипт `start.sh` / `start.bat` сам поставит его, если не найден).
 - Для локальной разработки без Docker: **.NET SDK 10**, **Node.js 22+** (скрипт `Dev/setup-deps.*`).
 
-### Вариант 1 — Docker (рекомендуется)
+### Быстрый старт (интерактивно — рекомендуется)
+
+```bash
+# 1. Скачать репозиторий (любой из двух)
+git clone https://github.com/TheMakarik/SourceCraftRepoHealthChecker.git          # GitHub
+git clone https://git.sourcecraft.dev/themakarik/repo-health-checker.git          # SourceCraft
+
+cd SourceCraftRepoHealthChecker   # или repo-health-checker
+
+# 2. Интерактивная подготовка и запуск
+bash prepare.sh     # Linux/macOS
+prepare.bat         # Windows
+```
+
+`prepare.sh` / `prepare.bat` спросят нужные токены, **объяснят, где их взять** (Я ID ClientID/Secret,
+опционально сервисный SourceCraft PAT), сгенерируют ключ шифрования, создадут `.env` и запустят проект.
+
+### Вариант 1 — Docker (вручную)
 
 ```bash
 # 1. Скачать репозиторий (любой из двух)

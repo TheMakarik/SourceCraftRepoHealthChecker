@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Badge,
   Button,
@@ -13,8 +13,8 @@ import {
   TableHeaderCell,
   TableRow
 } from "@fluentui/react-components";
-import { ArrowLeft24Regular, ArrowRight24Regular, ArrowSync24Regular } from "@fluentui/react-icons";
-import { useLanguages, useLeaderboard, useRefresh, useRepositoryIntegrity } from "../shared/api/hooks";
+import { ArrowLeft24Regular, ArrowRight24Regular, ArrowSync24Regular, Play24Regular } from "@fluentui/react-icons";
+import { useAnalyze, useLanguages, useLeaderboard, useRefresh, useRepositoryIntegrity } from "../shared/api/hooks";
 import { formatDate, formatDateShort, languageDisplayName, scoreTone, toneColor } from "../shared/api/labels";
 import { ApiError } from "../shared/api/client";
 import { useAnalysisStatus } from "../shared/api/useAnalysisStatus";
@@ -89,6 +89,26 @@ export function HomePage() {
   const leaderboard = useLeaderboard(query);
   const languages = useLanguages();
   const refresh = useRefresh();
+  const analyze = useAnalyze();
+  const navigate = useNavigate();
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
+  const runAnalyze = (sourceCraftId: string) => {
+    setAnalyzeError(null);
+    analyze.mutate(sourceCraftId, {
+      onSuccess: () => navigate(`/repositories/${sourceCraftId}`),
+      onError: (error) => {
+        const status = error instanceof ApiError ? error.status : undefined;
+        setAnalyzeError(
+          status === 401
+            ? "Нужен вход и PAT — настройте в личном кабинете."
+            : status === 403
+              ? "Нет доступа к этому репозиторию (нужен PAT владельца)."
+              : "Не удалось запустить анализ. Попробуйте позже."
+        );
+      }
+    });
+  };
 
   const languageOptions = languages.data ?? [];
   const items = leaderboard.data?.items ?? [];
@@ -157,6 +177,7 @@ export function HomePage() {
           <span className="tone-good">Обновлено: {refresh.data.refreshed}</span>
         ) : null}
         {refreshErrorMessage ? <span className="tone-bad">{refreshErrorMessage}</span> : null}
+        {analyzeError ? <span className="tone-bad">{analyzeError}</span> : null}
 
         {leaderboard.isPending ? <LoadingView /> : null}
         {leaderboard.isError ? <ErrorView message="Не удалось загрузить рейтинг" /> : null}
@@ -203,7 +224,18 @@ export function HomePage() {
                       <IntegrityBadge sourceCraftId={item.sourceCraftId} />
                     </TableCell>
                     <TableCell>
-                      <RepoActionsButton url={item.url} fullName={item.fullName} />
+                      <div className="row" style={{ gap: "0.35rem", flexWrap: "nowrap" }}>
+                        <Button
+                          size="small"
+                          appearance="primary"
+                          icon={analyze.isPending && analyze.variables === item.sourceCraftId ? <Spinner size="tiny" /> : <Play24Regular />}
+                          disabled={analyze.isPending}
+                          onClick={() => runAnalyze(item.sourceCraftId)}
+                        >
+                          Анализировать
+                        </Button>
+                        <RepoActionsButton url={item.url} fullName={item.fullName} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 </RepoContextMenu>
