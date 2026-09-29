@@ -78,37 +78,50 @@ public sealed class CategoryScoreCalculator(
 
     private CategoryScoreResult CalculateActivity(RepositoryFacts facts)
     {
-        if (facts.ActivityAvailability != DataStatus.Available)
-            return NoData(ScoreCategory.Activity);
-
         var settings = _options.Activity;
         var now = timeProvider.GetUtcNow();
+        var minimum = _options.ScoreScale.MinimumScore;
+        var metrics = new List<MetricScore>();
 
-        var lastActivity = facts.Commits?.LastCommitAt ?? facts.Repository.LastActivityAt;
-        var daysSinceLastActivity = Math.Max(0, (now - lastActivity).TotalDays);
-        var lastActivityScore = normalizer.Normalize(daysSinceLastActivity, settings.StaleAfterDays, settings.ActiveWithinDays);
-
-        var windowStart = DateOnly.FromDateTime(now.UtcDateTime.AddDays(-settings.ActiveWithinDays));
-        var commitsInWindow = facts.Commits is null
-            ? 0
-            : facts.Commits.CommitsByDay.Where(x => x.Key >= windowStart).Sum(x => x.Value);
-        var commitScore = normalizer.Normalize(commitsInWindow, 0, settings.CommitFrequencyForFullScore);
-
-        var contributors = facts.Contributors.Count(x => !x.IsBot);
-        var contributorScore = normalizer.Normalize(contributors, 0, settings.ContributorsForFullScore);
-
-        var releases = facts.Releases.Count;
-        var releaseScore = normalizer.Normalize(releases, 0, settings.ReleasesForFullScore);
-
-        var metrics = new List<MetricScore>
+        if (facts.CommitAvailability == DataStatus.Available)
         {
-            Metric(MetricCode.ActivityLastActivity, Math.Round(daysSinceLastActivity, 2), lastActivityScore, 1, DataStatus.Available),
-            Metric(MetricCode.ActivityCommitFrequency, commitsInWindow, commitScore, 1, DataStatus.Available),
-            Metric(MetricCode.ActivityContributors, contributors, contributorScore, 1, DataStatus.Available),
-            Metric(MetricCode.ActivityReleases, releases, releaseScore, 1, DataStatus.Available)
-        };
+            var lastActivity = facts.Commits?.LastCommitAt ?? facts.Repository.LastActivityAt;
+            var daysSinceLastActivity = Math.Max(0, (now - lastActivity).TotalDays);
+            var lastActivityScore = normalizer.Normalize(daysSinceLastActivity, settings.StaleAfterDays, settings.ActiveWithinDays);
+            metrics.Add(Metric(MetricCode.ActivityLastActivity, Math.Round(daysSinceLastActivity, 2), lastActivityScore, 1, DataStatus.Available));
 
-        if (facts.CollaborationAvailability == DataStatus.Available)
+            var windowStart = DateOnly.FromDateTime(now.UtcDateTime.AddDays(-settings.ActiveWithinDays));
+            var commitsInWindow = facts.Commits is null
+                ? 0
+                : facts.Commits.CommitsByDay.Where(x => x.Key >= windowStart).Sum(x => x.Value);
+            var commitScore = normalizer.Normalize(commitsInWindow, 0, settings.CommitFrequencyForFullScore);
+            metrics.Add(Metric(MetricCode.ActivityCommitFrequency, commitsInWindow, commitScore, 1, DataStatus.Available));
+        }
+        else
+        {
+            metrics.Add(Metric(MetricCode.ActivityLastActivity, 0, minimum, 1, facts.CommitAvailability));
+            metrics.Add(Metric(MetricCode.ActivityCommitFrequency, 0, minimum, 1, facts.CommitAvailability));
+        }
+
+        if (facts.ContributorAvailability == DataStatus.Available)
+        {
+            var contributors = facts.Contributors.Count(x => !x.IsBot);
+            var contributorScore = normalizer.Normalize(contributors, 0, settings.ContributorsForFullScore);
+            metrics.Add(Metric(MetricCode.ActivityContributors, contributors, contributorScore, 1, DataStatus.Available));
+        }
+        else
+            metrics.Add(Metric(MetricCode.ActivityContributors, 0, minimum, 1, facts.ContributorAvailability));
+
+        if (facts.ReleaseAvailability == DataStatus.Available)
+        {
+            var releases = facts.Releases.Count;
+            var releaseScore = normalizer.Normalize(releases, 0, settings.ReleasesForFullScore);
+            metrics.Add(Metric(MetricCode.ActivityReleases, releases, releaseScore, 1, DataStatus.Available));
+        }
+        else
+            metrics.Add(Metric(MetricCode.ActivityReleases, 0, minimum, 1, facts.ReleaseAvailability));
+
+        if (facts.MergeRequestAvailability == DataStatus.Available)
         {
             var mergeRequests = facts.MergeRequests.Count;
             var mergeRequestScore = normalizer.Normalize(mergeRequests, 0, settings.MergeRequestsForFullScore);

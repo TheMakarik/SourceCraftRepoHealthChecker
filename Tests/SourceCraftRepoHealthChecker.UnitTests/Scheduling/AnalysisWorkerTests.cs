@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Scheduling.Options;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.infrastructure.Scheduling;
 
 namespace SourceCraftRepoHealthChecker.UnitTests.Scheduling;
@@ -74,6 +75,9 @@ public sealed class AnalysisWorkerTests
             QueueCapacity = 10
         });
 
-        return new AnalysisWorker(_analyzeRepositoryUseCase, options, _logger);
+        var systemCallScope = A.Fake<ISourceCraftSystemCallScope>();
+        A.CallTo(() => systemCallScope.Begin()).Returns(A.Dummy<IDisposable>());
+
+        return new AnalysisWorker(_analyzeRepositoryUseCase, systemCallScope, options, _logger);
     }
 }

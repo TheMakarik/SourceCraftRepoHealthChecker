@@ -142,6 +142,7 @@ public static class DependencyInjection
         services.AddSingleton<ISecretProtector>(provider => provider.GetRequiredService<AiTokenProtector>());
         services.AddSingleton<IReportPdfRenderer, QuestPdfReportRenderer>();
         services.AddSingleton<ISourceCraftAccessTokenAccessor, SourceCraftAccessTokenAccessor>();
+        services.AddSingleton<ISourceCraftSystemCallScope, SourceCraftSystemCallScope>();
         services.AddHostedService<ScheduledAnalysisBackgroundService>();
         services.AddSingleton<ISchedulerLease, PostgresSchedulerLease>();
         services.AddScoped<AnalysisWorker>();
@@ -149,6 +150,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IGitRepositoryReader, LocalGitRepositoryReader>();
         services.AddSingleton<GitWorkingCopyCache>();
+        services.AddHostedService(provider => provider.GetRequiredService<GitWorkingCopyCache>());
         services.AddScoped<GitWorkingCopyProvider>();
 
         services.Scan(scan => scan

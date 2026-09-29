@@ -83,6 +83,11 @@ public sealed class RepoHealthCheckerDbContext(
             entity.Property(x => x.Url).HasMaxLength(_repositoryOptions.MaxUrlLength);
             entity.Property(x => x.Language).HasMaxLength(_repositoryOptions.MaxLanguageLength);
             entity.HasIndex(x => x.SourceCraftId).IsUnique();
+            entity.HasIndex(x => x.OwnerId);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(x => x.OwnerId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
         #endregion
 

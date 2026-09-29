@@ -36,7 +36,8 @@ public sealed class HealthCheckEngine(
             .ToArray();
 
         var result = new HealthCheckResult(
-            score,
+            score.Score,
+            score.Status,
             categories,
             recommendations,
             strengths,

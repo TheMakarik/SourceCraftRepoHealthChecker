@@ -106,9 +106,14 @@ public static class AuthenticationEndpoints
             CancellationToken cancellationToken) =>
         {
             var userId = context.GetCurrentUserId();
+            if (userId is null)
+                return Results.Unauthorized();
+
             var token = await ResolveTokenAsync(context, tokenUseCase, cancellationToken);
-            if (!string.IsNullOrEmpty(token))
-                accessTokenAccessor.Token = token;
+            if (string.IsNullOrEmpty(token))
+                return Results.Unauthorized();
+
+            accessTokenAccessor.Token = token;
 
             statusHub.Publish(id, AnalysisStatuses.Running, null);
             try

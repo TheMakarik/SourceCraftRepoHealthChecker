@@ -99,7 +99,7 @@ public static class GitWorkingCopyContentReader
         return new RepositoryFileContent(normalizedPath, content, language, truncated, false);
     }
 
-    public static IReadOnlyList<RepositoryFolderAnalysis> ReadFolders(string repositoryPath, CancellationToken cancellationToken)
+    public static IReadOnlyList<RepositoryFolderAnalysis> ReadFolders(string repositoryPath, long maxFileBytes, CancellationToken cancellationToken)
     {
         using var repository = new Repository(repositoryPath);
         if (repository.Head.Tip is null)
@@ -127,7 +127,7 @@ public static class GitWorkingCopyContentReader
         foreach (var (folder, files) in filesByFolder)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            folders.Add(AnalyzeFolder(folder, files, cancellationToken));
+            folders.Add(AnalyzeFolder(folder, files, maxFileBytes, cancellationToken));
         }
 
         folders.Sort((left, right) => string.CompareOrdinal(left.Path, right.Path));
@@ -137,6 +137,7 @@ public static class GitWorkingCopyContentReader
     private static RepositoryFolderAnalysis AnalyzeFolder(
         string folder,
         IReadOnlyList<(string Name, Blob Blob)> files,
+        long maxFileBytes,
         CancellationToken cancellationToken)
     {
         var todoCount = 0;
@@ -157,7 +158,7 @@ public static class GitWorkingCopyContentReader
             if (IsTestFile(name, normalizedName))
                 tests = true;
 
-            if (blob.IsBinary)
+            if (blob.IsBinary || (maxFileBytes > 0 && blob.Size > maxFileBytes))
                 continue;
 
             foreach (var line in blob.GetContentText().Split('\n'))

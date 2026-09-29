@@ -5,12 +5,15 @@ namespace SourceCraftRepoHealthChecker.Application.HealthCheck.Models;
 
 public sealed record RepositoryFacts(
     SourceCraftRepository Repository,
-    DataStatus ActivityAvailability,
+    DataStatus CommitAvailability,
     CommitActivity? Commits,
+    DataStatus ContributorAvailability,
     IReadOnlyCollection<Contributor> Contributors,
+    DataStatus ReleaseAvailability,
     IReadOnlyCollection<ReleaseInfo> Releases,
-    DataStatus CollaborationAvailability,
+    DataStatus IssuesAvailability,
     IReadOnlyCollection<IssueInfo> Issues,
+    DataStatus MergeRequestAvailability,
     IReadOnlyCollection<MergeRequestInfo> MergeRequests,
     DataStatus SecurityAvailability,
     IReadOnlyCollection<SecurityFinding> Findings,

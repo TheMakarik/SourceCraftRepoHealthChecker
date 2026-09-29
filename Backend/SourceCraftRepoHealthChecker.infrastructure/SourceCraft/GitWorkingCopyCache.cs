@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
@@ -7,8 +8,10 @@ using SourceCraftRepoHealthChecker.infrastructure.Options;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
-public sealed class GitWorkingCopyCache : IDisposable
+public sealed class GitWorkingCopyCache : IHostedService, IDisposable
 {
+    private const string WorkingCopyDirectoryPattern = "srhc-*.git";
+
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _repositoryLocks = new(StringComparer.Ordinal);
     private readonly Dictionary<string, GitCacheEntry> _entries = new(StringComparer.Ordinal);
     private readonly GitCacheOptions _cacheOptions;
@@ -28,6 +31,14 @@ public sealed class GitWorkingCopyCache : IDisposable
         _logger = logger;
         _cleanupTimer = new Timer(_ => CleanupExpired(), null, CleanupInterval, CleanupInterval);
     }
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        SweepOrphanedDirectories();
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     public async Task<SourceCraftResult<GitWorkingCopy>> GetOrCreateAsync(
         string repositoryId,
@@ -70,6 +81,25 @@ public sealed class GitWorkingCopyCache : IDisposable
         {
             repositoryLock.Release();
         }
+    }
+
+    private void SweepOrphanedDirectories()
+    {
+        var workDirectory = ResolveWorkDirectory();
+        foreach (var directory in Directory.EnumerateDirectories(workDirectory, WorkingCopyDirectoryPattern))
+        {
+            if (IsTracked(directory))
+                continue;
+
+            _logger.LogInformation("Removing orphaned working copy {Directory}", directory);
+            TryDelete(directory);
+        }
+    }
+
+    private bool IsTracked(string directory)
+    {
+        lock (_gate)
+            return _entries.Values.Any(entry => string.Equals(entry.Path, directory, StringComparison.Ordinal));
     }
 
     private string? TryGetFreshPath(string repositoryId)

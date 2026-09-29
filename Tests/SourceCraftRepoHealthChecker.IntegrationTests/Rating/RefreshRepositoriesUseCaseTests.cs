@@ -5,10 +5,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.Options;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 using SourceCraftRepoHealthChecker.IntegrationTests.Infrastructure;
 using SourceCraftRepoHealthChecker.IntegrationTests.TestDoubles;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
+using SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
 namespace SourceCraftRepoHealthChecker.IntegrationTests.Rating;
 
@@ -58,6 +60,7 @@ public sealed class RefreshRepositoriesUseCaseTests : IDisposable
     private RefreshRepositoriesUseCase CreateUseCase(StubRepositoryCatalog catalog) => new(
         _context,
         catalog,
+        new SourceCraftSystemCallScope(),
         Options.Create(new RepositoryOptions
         {
             MaxSourceCraftIdLength = 128,

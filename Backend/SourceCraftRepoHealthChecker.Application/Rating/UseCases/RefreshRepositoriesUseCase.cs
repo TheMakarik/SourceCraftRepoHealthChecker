@@ -13,13 +13,16 @@ namespace SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 public sealed class RefreshRepositoriesUseCase(
     IRepoHealthCheckerDbContext dbContext,
     ISourceCraftRepositoryCatalog catalog,
+    ISourceCraftSystemCallScope systemCallScope,
     IOptions<RepositoryOptions> repositoryOptions,
     TimeProvider timeProvider,
     ILogger<RefreshRepositoriesUseCase> logger) : IRefreshRepositoriesUseCase
 {
     public async Task<int> RefreshAsync(CancellationToken cancellationToken)
     {
-        var result = await catalog.GetOpenRepositoriesAsync(cancellationToken);
+        SourceCraftResult<IReadOnlyCollection<SourceCraftRepository>> result;
+        using (systemCallScope.Begin())
+            result = await catalog.GetOpenRepositoriesAsync(cancellationToken);
         if (result.Data is null)
             throw new SourceCraftOperationException($"Repository catalog is not available: {result.Status}");
 
@@ -42,6 +45,8 @@ public sealed class RefreshRepositoriesUseCase(
             repository.Url = Truncate(source.Url, options.MaxUrlLength);
             repository.Language = Truncate(source.Language, options.MaxLanguageLength);
             repository.IsPrivate = source.IsPrivate;
+            if (source.OwnerUserId is not null)
+                repository.OwnerId = source.OwnerUserId;
             repository.LikesCount = source.LikesCount;
             repository.LastActivityAt = source.LastActivityAt;
             updated++;

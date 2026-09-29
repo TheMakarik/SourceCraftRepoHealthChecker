@@ -3,16 +3,19 @@ using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Scheduling;
 using SourceCraftRepoHealthChecker.Application.Scheduling.Options;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.Scheduling;
 
 public sealed class AnalysisWorker(
     IAnalyzeRepositoryUseCase analyzeRepositoryUseCase,
+    ISourceCraftSystemCallScope systemCallScope,
     IOptions<ScalingOptions> scalingOptions,
     ILogger<AnalysisWorker> logger)
 {
     public async Task<bool> ProcessAsync(AnalysisJob job, CancellationToken cancellationToken)
     {
+        using var systemScope = systemCallScope.Begin();
         var options = scalingOptions.Value;
         var maxAttempts = Math.Max(1, options.WorkerMaxAttempts);
         var delay = TimeSpan.FromMilliseconds(Math.Max(0, options.WorkerRetryDelayMilliseconds));

@@ -1,15 +1,21 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using LibGit2Sharp;
+using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
+using SourceCraftRepoHealthChecker.Application.SourceCraft.Options;
 
 namespace SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 
-public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRepositoryReader
+public sealed class LocalGitRepositoryReader(
+    TimeProvider timeProvider,
+    IOptions<RepositoryBrowsingOptions>? browsingOptions = null) : IGitRepositoryReader
 {
     private const string TodoMarker = "TODO";
     private const string FixmeMarker = "FIXME";
+
+    private readonly long _maxFileBytes = browsingOptions?.Value.MaxFileBytes ?? 0;
 
     private static readonly Regex RunInstructionsPattern = new(
         @"\b(run|getting started|quick start|usage)\b|запуск",
@@ -146,7 +152,7 @@ public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRe
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (blob.IsBinary)
+            if (blob.IsBinary || !IsWithinSizeLimit(blob))
                 continue;
 
             var text = blob.GetContentText();
@@ -167,7 +173,7 @@ public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRe
         return new CodeHealthReport(todoCount, fixmeCount, todoCount + fixmeCount, oldestAge);
     }
 
-    private static DocumentationReport ReadDocumentation(string repositoryPath, CancellationToken cancellationToken)
+    private DocumentationReport ReadDocumentation(string repositoryPath, CancellationToken cancellationToken)
     {
         using var repository = new Repository(repositoryPath);
 
@@ -189,7 +195,7 @@ public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRe
             if (name.StartsWith("readme", StringComparison.Ordinal))
             {
                 hasReadme = true;
-                instructions.Append(blob.GetContentText()).Append('\n');
+                AppendContent(blob, instructions);
             }
             else if (name.StartsWith("license", StringComparison.Ordinal) || name.StartsWith("licence", StringComparison.Ordinal) || name == "copying")
             {
@@ -198,7 +204,7 @@ public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRe
             else if (name.StartsWith("contributing", StringComparison.Ordinal))
             {
                 hasContributing = true;
-                instructions.Append(blob.GetContentText()).Append('\n');
+                AppendContent(blob, instructions);
             }
             else if (name == "codeowners")
             {
@@ -297,6 +303,16 @@ public sealed class LocalGitRepositoryReader(TimeProvider timeProvider) : IGitRe
             || normalizedName.Contains("dependabot", StringComparison.Ordinal)
             || normalizedName.Contains("renovate", StringComparison.Ordinal);
     }
+
+    private void AppendContent(Blob blob, StringBuilder builder)
+    {
+        if (blob.IsBinary || !IsWithinSizeLimit(blob))
+            return;
+
+        builder.Append(blob.GetContentText()).Append('\n');
+    }
+
+    private bool IsWithinSizeLimit(Blob blob) => _maxFileBytes <= 0 || blob.Size <= _maxFileBytes;
 
     private static TimeSpan ClampNonNegative(TimeSpan value) => value < TimeSpan.Zero ? TimeSpan.Zero : value;
 }

@@ -4,5 +4,5 @@ namespace SourceCraftRepoHealthChecker.Application.HealthCheck.Abstractions;
 
 public interface IHealthScoreCalculator
 {
-    public int Calculate(IReadOnlyCollection<CategoryScoreResult> categories);
+    public HealthScoreResult Calculate(IReadOnlyCollection<CategoryScoreResult> categories);
 }

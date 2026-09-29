@@ -58,7 +58,7 @@
 ├── Frontend/                                              # SPA: React + TypeScript + Fluent UI + Vite
 ├── Tests/                                                 # Модульные и интеграционные тесты
 ├── Skills/                                                # Скиллы opencode/Claude
-├── Docs/                                                  # Документация (API.md)
+├── Docs/                                                  # Документация (API.md, ARCHITECTURE.md)
 ├── Scripts/                                               # PowerShell-скрипты сборки/тестов + start.sh/.bat (Docker)
 ├── Dev/                                                   # Скрипты установки зависимостей (setup-deps.sh/.bat)
 ├── docker-compose.yml                                     # PostgreSQL + MinIO + backend + frontend

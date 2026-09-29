@@ -41,20 +41,24 @@ public static class AiEndpoints
             return Results.Ok(await useCase.TestAsync(userId.Value, cancellationToken));
         });
 
-        endpoints.MapPost("/api/repositories/{id}/ai-summary", async (string id, HttpContext context, IAiSummaryUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapPost("/api/repositories/{id}/ai-summary", async (string id, HttpContext context, RepositoryAccessGuard guard, IAiSummaryUseCase useCase, CancellationToken cancellationToken) =>
         {
             var userId = context.GetCurrentUserId();
             if (userId is null)
                 return Results.Unauthorized();
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
 
             return Results.Ok(await useCase.SummarizeAsync(id, userId.Value, cancellationToken));
         });
 
-        endpoints.MapPost("/api/repositories/{id}/ai-insights/{kind}", async (string id, string kind, HttpContext context, IAiInsightUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapPost("/api/repositories/{id}/ai-insights/{kind}", async (string id, string kind, HttpContext context, RepositoryAccessGuard guard, IAiInsightUseCase useCase, CancellationToken cancellationToken) =>
         {
             var userId = context.GetCurrentUserId();
             if (userId is null)
                 return Results.Unauthorized();
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
 
             if (!Enum.TryParse<AiInsightKind>(kind.Replace("-", string.Empty), ignoreCase: true, out var insightKind))
                 return Results.BadRequest(new { error = "unknown_insight_kind", available = Enum.GetNames<AiInsightKind>() });
@@ -62,29 +66,31 @@ public static class AiEndpoints
             return Results.Ok(await useCase.GenerateAsync(id, userId.Value, insightKind, cancellationToken));
         });
 
-        endpoints.MapPost("/api/repositories/{id}/ai-summary/stream", (string id, HttpContext context, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
-            StreamAiAsync(context, useCase, id, null, cancellationToken));
+        endpoints.MapPost("/api/repositories/{id}/ai-summary/stream", async (string id, HttpContext context, RepositoryAccessGuard guard, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
+            await StreamAiAsync(context, guard, useCase, id, null, cancellationToken));
 
-        endpoints.MapPost("/api/repositories/{id}/ai-insights/{kind}/stream", (string id, string kind, HttpContext context, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapPost("/api/repositories/{id}/ai-insights/{kind}/stream", async (string id, string kind, HttpContext context, RepositoryAccessGuard guard, IAiStreamUseCase useCase, CancellationToken cancellationToken) =>
         {
             if (!Enum.TryParse<AiInsightKind>(kind.Replace("-", string.Empty), ignoreCase: true, out var insightKind))
-                return Task.FromResult(Results.BadRequest(new { error = "unknown_insight_kind", available = Enum.GetNames<AiInsightKind>() }));
+                return Results.BadRequest(new { error = "unknown_insight_kind", available = Enum.GetNames<AiInsightKind>() });
 
-            return StreamAiAsync(context, useCase, id, insightKind, cancellationToken);
+            return await StreamAiAsync(context, guard, useCase, id, insightKind, cancellationToken);
         });
 
         return endpoints;
     }
 
-    private static Task<IResult> StreamAiAsync(HttpContext context, IAiStreamUseCase useCase, string id, AiInsightKind? kind, CancellationToken cancellationToken)
+    private static async Task<IResult> StreamAiAsync(HttpContext context, RepositoryAccessGuard guard, IAiStreamUseCase useCase, string id, AiInsightKind? kind, CancellationToken cancellationToken)
     {
         var userId = context.GetCurrentUserId();
         if (userId is null)
-            return Task.FromResult(Results.Unauthorized());
+            return Results.Unauthorized();
+        if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+            return Results.NotFound();
 
-        IResult result = Results.Stream(async stream =>
+        return Results.Stream(async stream =>
         {
-            var writer = new StreamWriter(stream) { AutoFlush = true };
+            var writer = new StreamWriter(stream) { AutoFlush = false };
             try
             {
                 await foreach (var streamEvent in useCase.StreamAsync(id, userId.Value, kind, cancellationToken))
@@ -98,8 +104,6 @@ public static class AiEndpoints
                 await WriteEventAsync(writer, new AiStreamEvent("error", exception.Message), CancellationToken.None);
             }
         }, "text/event-stream");
-
-        return Task.FromResult(result);
     }
 
     private static async Task WriteEventAsync(StreamWriter writer, AiStreamEvent streamEvent, CancellationToken cancellationToken)

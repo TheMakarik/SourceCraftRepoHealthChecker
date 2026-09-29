@@ -44,8 +44,9 @@ public sealed class RepositoryContentAdapter(
 
         using (workingCopy)
         {
+            var maxFileBytes = options.Value.MaxFileBytes;
             var folders = await Task.Run(
-                () => GitWorkingCopyContentReader.ReadFolders(workingCopy.Path, cancellationToken),
+                () => GitWorkingCopyContentReader.ReadFolders(workingCopy.Path, maxFileBytes, cancellationToken),
                 cancellationToken);
             return new SourceCraftResult<IReadOnlyList<RepositoryFolderAnalysis>>(DataStatus.Available, folders, null);
         }

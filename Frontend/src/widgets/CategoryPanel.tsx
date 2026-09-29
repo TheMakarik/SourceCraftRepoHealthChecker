@@ -1,3 +1,4 @@
+import { PlugDisconnected16Regular, QuestionCircle16Regular } from "@fluentui/react-icons";
 import {
   Badge,
   Table,
@@ -8,7 +9,7 @@ import {
   TableHeaderCell,
   TableRow
 } from "@fluentui/react-components";
-import type { Analysis, ScoreCategory } from "../shared/api/types";
+import type { Analysis, DataStatus, ScoreCategory } from "../shared/api/types";
 import { dataStatusLabel, scoreGrade, scoreTone, severityTone, toneColor } from "../shared/api/labels";
 import { metricLabel } from "../shared/api/metrics";
 import { ScoreRing } from "./ScoreRing";
@@ -30,15 +31,27 @@ export function CategoryPanel({ analysis, category }: { analysis: Analysis; cate
     (metric) => metric.code.startsWith(prefixes[category]) && metric.dataStatus === "Available"
   );
 
-  if (!categoryScore || categoryScore.dataStatus !== "Available")
+  if (!categoryScore || categoryScore.dataStatus !== "Available") {
+    const status: DataStatus = categoryScore?.dataStatus ?? "NoData";
+    const isUnavailable = status === "Unavailable";
+
     return (
       <div className="category-panel">
-        <Badge appearance="tint" color="warning">
-          {categoryScore ? dataStatusLabel(categoryScore.dataStatus) : "Нет данных"}
+        <Badge
+          appearance="tint"
+          color={isUnavailable ? "danger" : "warning"}
+          icon={isUnavailable ? <PlugDisconnected16Regular /> : <QuestionCircle16Regular />}
+        >
+          {dataStatusLabel(status)}
         </Badge>
-        <p className="muted">Для этой категории недостаточно данных — оценка не штрафуется.</p>
+        <p className="muted">
+          {isUnavailable
+            ? "Источник данных недоступен — категория не штрафуется."
+            : "Для этой категории недостаточно данных — оценка не штрафуется."}
+        </p>
       </div>
     );
+  }
 
   const tone = scoreTone(categoryScore.score);
 
@@ -71,7 +84,7 @@ export function CategoryPanel({ analysis, category }: { analysis: Analysis; cate
 
 function SecurityDetails({ analysis }: { analysis: Analysis }) {
   const open = analysis.findings.filter((finding) => finding.status.toLowerCase() === "open");
-  const fixed = analysis.findings.length - open.length;
+  const fixed = analysis.findings.filter((finding) => finding.status.toLowerCase() === "fixed").length;
 
   return (
     <div className="stack">

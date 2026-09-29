@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
-import { appConfig } from "../config";
-
-const { minSupportedWidthPx: minWidth, minSupportedHeightPx: minHeight } = appConfig;
+import { compactScreenMediaQuery } from "../config";
 
 export function useMinScreen(): boolean {
-  const [tooSmall, setTooSmall] = useState(() => window.innerWidth < minWidth || window.innerHeight < minHeight);
+  const [tooSmall, setTooSmall] = useState(() => window.matchMedia(compactScreenMediaQuery).matches);
 
   useEffect(() => {
-    const onResize = () => setTooSmall(window.innerWidth < minWidth || window.innerHeight < minHeight);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const mediaQuery = window.matchMedia(compactScreenMediaQuery);
+    const update = () => setTooSmall(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
   }, []);
 
   return tooSmall;

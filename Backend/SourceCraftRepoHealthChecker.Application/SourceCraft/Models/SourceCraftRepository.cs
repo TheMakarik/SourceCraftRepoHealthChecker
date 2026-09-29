@@ -10,4 +10,5 @@ public sealed record SourceCraftRepository(
     DateTimeOffset LastActivityAt,
     bool IsPrivate,
     string DefaultBranch,
-    string? CloneUrl = null);
+    string? CloneUrl = null,
+    Guid? OwnerUserId = null);

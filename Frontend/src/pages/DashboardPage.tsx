@@ -17,6 +17,7 @@ import { useAnalysisStatus } from "../shared/api/useAnalysisStatus";
 import type { AiInsightKind } from "../shared/api/types";
 import {
   categoryLabels,
+  hasAvailableCategories,
   priorityLabels,
   priorityTone,
   formatDate,
@@ -132,12 +133,14 @@ export function DashboardPage() {
     }
   };
 
+  const analysisHasData = analysis.data ? hasAvailableCategories(analysis.data.categories) : false;
+
   const statusPanel = id ? (
     <AnalysisStatusPanel
       repositoryId={id}
       status={liveStatus}
       phase={phase}
-      score={liveStatus?.score ?? analysis.data?.score ?? null}
+      score={liveStatus?.score ?? (analysisHasData ? analysis.data?.score ?? null : null)}
       errorMessage={analyzeErrorMessage}
       onRetry={runAnalyze}
       onClose={() => setStatusOpen(false)}
@@ -191,18 +194,19 @@ export function DashboardPage() {
 
     const data = analysis.data;
     const historyPoints = history.data ?? [];
+    const hasData = hasAvailableCategories(data.categories);
 
     return (
       <div className="stack">
         <div className="grid-2">
           <Card className="card">
             <div className="row" style={{ gap: "1.5rem", alignItems: "flex-start" }}>
-              <ScoreRing score={data.score} grade={scoreGrade(data.score)} />
+              <ScoreRing score={hasData ? data.score : null} grade={hasData ? scoreGrade(data.score) : undefined} />
               <div className="stack" style={{ flex: 1, minWidth: 0 }}>
                 <div>
                   <div className="row" style={{ justifyContent: "space-between", gap: "0.75rem" }}>
                     <div style={{ fontSize: "1.1rem", fontWeight: 600 }}>{data.fullName}</div>
-                    <AnalysisStatusBadge status={liveStatus} score={data.score} />
+                    <AnalysisStatusBadge status={liveStatus} score={hasData ? data.score : null} />
                   </div>
                   <a className="muted" href={data.url} target="_blank" rel="noreferrer">
                     {data.url}

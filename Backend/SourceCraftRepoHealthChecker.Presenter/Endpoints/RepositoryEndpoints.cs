@@ -1,13 +1,16 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Options;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 using SourceCraftRepoHealthChecker.Application.Rating.Models;
 using SourceCraftRepoHealthChecker.Application.Rating.UseCases;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.UseCases;
-using SourceCraftRepoHealthChecker.Presenter.Authentication;
+using SourceCraftRepoHealthChecker.infrastructure.Options;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
 
@@ -15,8 +18,13 @@ public static class RepositoryEndpoints
 {
     public static IEndpointRouteBuilder MapRepositoryEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/repositories/refresh", async (IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
-            Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) }));
+        endpoints.MapPost("/api/repositories/refresh", async (HttpContext context, IOptions<SourceCraftServiceOptions> options, IRefreshRepositoriesUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            if (!IsAuthorizedInternalRequest(context, options.Value))
+                return Results.Unauthorized();
+
+            return Results.Ok(new { refreshed = await useCase.RefreshAsync(cancellationToken) });
+        });
 
         endpoints.MapGet("/api/repositories", async (string[]? language, string? sort, int? page, int? pageSize, IGetRepositoryLeaderboardUseCase useCase, CancellationToken cancellationToken) =>
         {
@@ -27,37 +35,54 @@ public static class RepositoryEndpoints
         endpoints.MapGet("/api/repositories/languages", async (IGetRepositoryLanguagesUseCase useCase, CancellationToken cancellationToken) =>
             Results.Ok(await useCase.GetAsync(cancellationToken)));
 
-        endpoints.MapGet("/api/repositories/{id}/analysis", async (string id, HttpContext context, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/analysis", async (string id, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryAnalysisUseCase useCase, CancellationToken cancellationToken) =>
         {
-            var analysis = await useCase.GetAsync(id, cancellationToken);
-            if (analysis is null)
-                return Results.NotFound();
-            if (analysis.IsPrivate && analysis.OwnerUserId != context.GetCurrentUserId())
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
                 return Results.NotFound();
 
-            return Results.Ok(analysis);
+            var analysis = await useCase.GetAsync(id, cancellationToken);
+            return analysis is null ? Results.NotFound() : Results.Ok(analysis);
         });
 
-        endpoints.MapGet("/api/repositories/{id}/history", async (string id, IGetRepositoryHistoryUseCase useCase, CancellationToken cancellationToken) =>
-            Results.Ok(await useCase.GetAsync(id, cancellationToken)));
-
-        endpoints.MapGet("/api/repositories/{id}/structure", async (string id, ISourceCraftStructureSource source, CancellationToken cancellationToken) =>
-            Results.Ok(await source.GetStructureAsync(id, cancellationToken)));
-
-        endpoints.MapGet("/api/repositories/{id}/tree", async (string id, string? path, bool? recursive, IGetRepositoryTreeUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/history", async (string id, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryHistoryUseCase useCase, CancellationToken cancellationToken) =>
         {
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
+
+            return Results.Ok(await useCase.GetAsync(id, cancellationToken));
+        });
+
+        endpoints.MapGet("/api/repositories/{id}/structure", async (string id, HttpContext context, RepositoryAccessGuard guard, ISourceCraftStructureSource source, CancellationToken cancellationToken) =>
+        {
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
+
+            return Results.Ok(await source.GetStructureAsync(id, cancellationToken));
+        });
+
+        endpoints.MapGet("/api/repositories/{id}/tree", async (string id, string? path, bool? recursive, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryTreeUseCase useCase, CancellationToken cancellationToken) =>
+        {
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
+
             var result = await useCase.GetAsync(id, path ?? string.Empty, recursive ?? false, cancellationToken);
             return Results.Ok(result.Data ?? new RepositoryTree([], false));
         });
 
-        endpoints.MapGet("/api/repositories/{id}/file", async (string id, string path, IGetRepositoryFileUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/file", async (string id, string path, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryFileUseCase useCase, CancellationToken cancellationToken) =>
         {
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
+
             var result = await useCase.GetAsync(id, path, cancellationToken);
             return result.Data is null ? Results.NotFound() : Results.Ok(result.Data);
         });
 
-        endpoints.MapGet("/api/repositories/{id}/folders", async (string id, IGetRepositoryFoldersUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/folders", async (string id, HttpContext context, RepositoryAccessGuard guard, IGetRepositoryFoldersUseCase useCase, CancellationToken cancellationToken) =>
         {
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
+                return Results.NotFound();
+
             var result = await useCase.GetAsync(id, cancellationToken);
             return Results.Ok(result.Data ?? []);
         });
@@ -78,4 +103,18 @@ public static class RepositoryEndpoints
         RepositoryLeaderboardSort.Activity => "activity",
         _ => "score"
     };
+
+    private static bool IsAuthorizedInternalRequest(HttpContext context, SourceCraftServiceOptions options)
+    {
+        if (string.IsNullOrEmpty(options.InternalToken))
+            return false;
+
+        var providedToken = context.Request.Headers["X-Internal-Token"].ToString();
+        if (string.IsNullOrEmpty(providedToken))
+            return false;
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(options.InternalToken),
+            Encoding.UTF8.GetBytes(providedToken));
+    }
 }

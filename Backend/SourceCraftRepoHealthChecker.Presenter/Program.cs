@@ -40,6 +40,7 @@ builder.Services.AddDataProtection();
 builder.Services.AddSingleton<UserTicketProtector>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddScoped<RepositoryAccessGuard>();
 
 var corsAllowedOrigins = builder.Configuration.GetSection("Cors").Get<CorsOptions>()?.AllowedOrigins ?? [];
 const string corsPolicyName = "FrontendCors";
@@ -91,10 +92,20 @@ app.MapGet("/ws/analysis", async (HttpContext context, IAnalysisStatusHub status
         ? await context.WebSockets.AcceptWebSocketAsync(requestedProtocols[0])
         : await context.WebSockets.AcceptWebSocketAsync();
 
-    await SendMessageAsync(socket, new { type = "snapshot", items = statusHub.GetSnapshot() }, serializerOptions, cancellationToken);
+    var guard = context.RequestServices.GetRequiredService<RepositoryAccessGuard>();
+    var accessibleRepositoryIds = await guard.GetAccessibleRepositoryIdsAsync(context, cancellationToken);
+
+    var snapshot = statusHub.GetSnapshot().Where(statusEvent => accessibleRepositoryIds.Contains(statusEvent.RepositoryId));
+    await SendMessageAsync(socket, new { type = "snapshot", items = snapshot }, serializerOptions, cancellationToken);
 
     var channel = Channel.CreateUnbounded<AnalysisStatusEvent>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = false });
-    using var subscription = statusHub.Subscribe(statusEvent => channel.Writer.TryWrite(statusEvent));
+    using var subscription = statusHub.Subscribe(statusEvent =>
+    {
+        if (!accessibleRepositoryIds.Contains(statusEvent.RepositoryId))
+            return true;
+
+        return channel.Writer.TryWrite(statusEvent);
+    });
 
     var sendTask = SendStatusEventsAsync(socket, channel.Reader, serializerOptions, cancellationToken);
 

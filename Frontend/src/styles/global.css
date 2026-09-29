@@ -20,8 +20,6 @@
   --srhc-shadow: 0 0.25rem 0.75rem rgba(16, 24, 40, 0.06);
 
   --srhc-sidebar-width: 4.5rem;
-  --srhc-min-width: 22.5rem;
-  --srhc-min-height: 30rem;
 }
 
 * {
@@ -335,21 +333,11 @@ a.fui-Button {
 }
 
 .small-screen {
-  display: none;
+  display: grid;
   place-items: center;
   min-height: 100vh;
   padding: 2rem;
   text-align: center;
-}
-
-@media (max-width: 40rem) {
-  .app {
-    display: none;
-  }
-
-  .small-screen {
-    display: grid;
-  }
 }
 
 @media (max-width: 60rem) {

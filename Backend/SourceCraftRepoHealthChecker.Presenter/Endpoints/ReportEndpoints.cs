@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
-using SourceCraftRepoHealthChecker.Presenter.Authentication;
 
 namespace SourceCraftRepoHealthChecker.Presenter.Endpoints;
 
@@ -12,9 +11,9 @@ public static class ReportEndpoints
 
     public static IEndpointRouteBuilder MapReportEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/repositories/{id}/report", async (string id, string? format, HttpContext context, IGetRepositoryAnalysisUseCase analysisUseCase, IExportRepositoryReportUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/report", async (string id, string? format, HttpContext context, RepositoryAccessGuard guard, IExportRepositoryReportUseCase useCase, CancellationToken cancellationToken) =>
         {
-            if (!await CanAccessAsync(id, context, analysisUseCase, cancellationToken))
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
                 return Results.NotFound();
 
             var reportFormat = ParseFormat(format);
@@ -22,9 +21,9 @@ public static class ReportEndpoints
             return report is null ? Results.NotFound() : Results.File(report.Content, report.ContentType, BuildFileName(id, reportFormat));
         });
 
-        endpoints.MapGet("/api/repositories/{id}/report.md", async (string id, HttpContext context, IGetRepositoryAnalysisUseCase analysisUseCase, IExportRepositoryReportUseCase useCase, CancellationToken cancellationToken) =>
+        endpoints.MapGet("/api/repositories/{id}/report.md", async (string id, HttpContext context, RepositoryAccessGuard guard, IExportRepositoryReportUseCase useCase, CancellationToken cancellationToken) =>
         {
-            if (!await CanAccessAsync(id, context, analysisUseCase, cancellationToken))
+            if (await guard.EvaluateAsync(id, context, cancellationToken) == RepositoryAccessDecision.Forbidden)
                 return Results.NotFound();
 
             var report = await useCase.GetAsync(id, ReportFormat.Markdown, cancellationToken);
@@ -32,12 +31,6 @@ public static class ReportEndpoints
         });
 
         return endpoints;
-    }
-
-    private static async Task<bool> CanAccessAsync(string id, HttpContext context, IGetRepositoryAnalysisUseCase analysisUseCase, CancellationToken cancellationToken)
-    {
-        var analysis = await analysisUseCase.GetAsync(id, cancellationToken);
-        return analysis is not null && (!analysis.IsPrivate || analysis.OwnerUserId == context.GetCurrentUserId());
     }
 
     public static ReportFormat ParseFormat(string? value) => value?.ToLowerInvariant() switch

@@ -1,4 +1,4 @@
-import type { AiInsightKind, AiProvider, Priority, ScoreCategory } from "./types";
+import type { AiInsightKind, AiProvider, CategoryScore, DataStatus, Priority, ScoreCategory } from "./types";
 
 export const categoryLabels: Record<ScoreCategory, string> = {
   Security: "Security",
@@ -114,13 +114,19 @@ export function formatDateShort(value?: string | null): string {
   return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function dataStatusLabel(status: string): string {
+export function dataStatusLabel(status: DataStatus): string {
   switch (status) {
     case "Available":
       return "Данные есть";
     case "NoData":
       return "Нет данных";
+    case "Unavailable":
+      return "Источник недоступен";
     default:
-      return "Недоступно";
+      return "Нет данных";
   }
+}
+
+export function hasAvailableCategories(categories: CategoryScore[]): boolean {
+  return categories.some((category) => category.dataStatus === "Available");
 }

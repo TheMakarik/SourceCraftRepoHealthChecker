@@ -29,6 +29,7 @@ import {
   categoryLabels,
   categoryOrder,
   formatDate,
+  hasAvailableCategories,
   languageDisplayName,
   scoreTone,
   toneColor
@@ -44,18 +45,23 @@ function formatMetricValue(raw: number): string {
 }
 
 function renderCategoryChips(categories: CategoryScore[]) {
-  if (categories.length === 0)
+  const available = categories.filter((category) => category.dataStatus === "Available");
+  if (available.length === 0)
     return <span className="muted">—</span>;
 
   return (
     <div className="row">
-      {categories.map((category) => (
+      {available.map((category) => (
         <span className={`pill pill--${scoreTone(category.score)}`} key={category.category}>
           {categoryLabels[category.category]} {category.score}
         </span>
       ))}
     </div>
   );
+}
+
+function scoreOrNull(score: number | null, categories: CategoryScore[]): number | null {
+  return score !== null && hasAvailableCategories(categories) ? score : null;
 }
 
 export function ComparePage() {
@@ -92,11 +98,11 @@ export function ComparePage() {
   const chartData = useMemo(
     () =>
       categoryOrder.map((category) => {
-        const row: Record<string, string | number> = { category: categoryLabels[category] };
+        const row: Record<string, string | number | null> = { category: categoryLabels[category] };
         for (const item of comparison.data?.items ?? []) {
           const categoryScore = item.categories.find((entry) => entry.category === category);
           row[item.sourceCraftId] =
-            categoryScore && categoryScore.dataStatus === "Available" ? categoryScore.score : 0;
+            categoryScore && categoryScore.dataStatus === "Available" ? categoryScore.score : null;
         }
         return row;
       }),
@@ -112,30 +118,33 @@ export function ComparePage() {
     return codes;
   }, [items]);
 
-  const renderSummaryCard = (item: RepositoryComparisonItem) => (
-    <Card className="card stack" key={item.sourceCraftId}>
-      <div className="row" style={{ justifyContent: "space-between" }}>
-        <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
-        <strong style={{ color: item.score === null ? "var(--srhc-muted)" : toneColor(scoreTone(item.score)) }}>
-          {item.score ?? "—"}
-        </strong>
-      </div>
-      <div className="repo-meta muted">
-        <span className="lang-cell">{languageDisplayName(item.language)}</span>
-        <span>Лайки: {item.likesCount}</span>
-        <span>Активность: {formatDate(item.lastActivityAt)}</span>
-        <span>Проанализирован: {formatDate(item.analyzedAt)}</span>
-      </div>
-      <div className="stack" style={{ gap: "0.35rem" }}>
-        <span className="muted">Сильные стороны</span>
-        {renderCategoryChips(item.strengths)}
-      </div>
-      <div className="stack" style={{ gap: "0.35rem" }}>
-        <span className="muted">Слабые стороны</span>
-        {renderCategoryChips(item.weaknesses)}
-      </div>
-    </Card>
-  );
+  const renderSummaryCard = (item: RepositoryComparisonItem) => {
+    const displayScore = scoreOrNull(item.score, item.categories);
+    return (
+      <Card className="card stack" key={item.sourceCraftId}>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
+          <strong style={{ color: displayScore === null ? "var(--srhc-muted)" : toneColor(scoreTone(displayScore)) }}>
+            {displayScore ?? "—"}
+          </strong>
+        </div>
+        <div className="repo-meta muted">
+          <span className="lang-cell">{languageDisplayName(item.language)}</span>
+          <span>Лайки: {item.likesCount}</span>
+          <span>Активность: {formatDate(item.lastActivityAt)}</span>
+          <span>Проанализирован: {formatDate(item.analyzedAt)}</span>
+        </div>
+        <div className="stack" style={{ gap: "0.35rem" }}>
+          <span className="muted">Сильные стороны</span>
+          {renderCategoryChips(item.strengths)}
+        </div>
+        <div className="stack" style={{ gap: "0.35rem" }}>
+          <span className="muted">Слабые стороны</span>
+          {renderCategoryChips(item.weaknesses)}
+        </div>
+      </Card>
+    );
+  };
 
   return (
     <div className="stack">
@@ -260,14 +269,20 @@ export function ComparePage() {
           <Card className="card stack">
             <div style={{ fontWeight: 600 }}>Итоговые баллы</div>
             <div className="stack">
-              {items.map((item) => (
-                <div className="metric-row" key={item.sourceCraftId}>
-                  <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
-                  <Badge appearance="tint" color={item.score === null ? "informative" : scoreTone(item.score) === "good" ? "success" : scoreTone(item.score) === "warn" ? "warning" : "danger"}>
-                    {item.score ?? "Нет данных"}
-                  </Badge>
-                </div>
-              ))}
+              {items.map((item) => {
+                const displayScore = scoreOrNull(item.score, item.categories);
+                const color = displayScore === null
+                  ? "informative"
+                  : scoreTone(displayScore) === "good" ? "success" : scoreTone(displayScore) === "warn" ? "warning" : "danger";
+                return (
+                  <div className="metric-row" key={item.sourceCraftId}>
+                    <Link to={`/repositories/${item.sourceCraftId}`}>{item.fullName}</Link>
+                    <Badge appearance="tint" color={color}>
+                      {displayScore ?? "Нет данных"}
+                    </Badge>
+                  </div>
+                );
+              })}
             </div>
           </Card>
         </>
