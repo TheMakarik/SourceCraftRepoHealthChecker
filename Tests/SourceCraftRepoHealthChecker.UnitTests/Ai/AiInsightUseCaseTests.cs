@@ -68,6 +68,7 @@ public sealed class AiInsightUseCaseTests
     public async Task GenerateAsync_WhenUserHasNoAiSettings_Throws()
     {
         // Arrange
+        A.CallTo(() => _settingsProvider.GetAsync(A<Guid>._, A<CancellationToken>._)).Returns((AiRuntimeSettings?)null);
         var systemUnderTests = new AiInsightUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, _settingsProvider, Options.Create(CreateOptions()));
 
         // Act

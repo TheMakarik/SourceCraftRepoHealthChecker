@@ -43,6 +43,7 @@ public sealed class AiSummaryUseCaseTests
     public async Task SummarizeAsync_WhenUserHasNoAiSettings_Throws()
     {
         // Arrange
+        A.CallTo(() => _settingsProvider.GetAsync(A<Guid>._, A<CancellationToken>._)).Returns((AiRuntimeSettings?)null);
         var systemUnderTests = new AiSummaryUseCase(_getRepositoryAnalysisUseCase, _chatClientFactory, _settingsProvider, Options.Create(CreateOptions()));
 
         // Act
