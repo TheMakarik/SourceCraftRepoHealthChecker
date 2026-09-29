@@ -114,7 +114,7 @@
   flex: 0 0 auto;
   border: 1px solid var(--srhc-border);
   border-bottom: 0;
-  background: var(--srhc-bg);
+  background: var(--srhc-card);
   border-radius: 0.5rem 0.5rem 0 0;
   padding: 0.45rem 0.9rem;
   cursor: pointer;
@@ -131,7 +131,8 @@
 }
 
 .lang-tab:hover {
-  background: var(--srhc-sidebar-hover);
+  background: var(--srhc-sidebar-active);
+  color: var(--srhc-ink);
 }
 
 .lang-tab--active {

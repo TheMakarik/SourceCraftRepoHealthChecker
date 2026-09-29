@@ -85,12 +85,15 @@ export function LanguageTabs({ languages, selected, onSelectionChange }: Languag
       return;
     }
 
-    if (additive)
+    if (additive) {
       enableMultiSelect();
-    if (additive || multiSelectRef.current)
       toggleLanguage(language);
-    else
-      onSelectionChange([language]);
+      return;
+    }
+
+    // Клик без Ctrl/Cmd — мультивыбор завершён: остаётся только выбранный язык.
+    resetMultiSelect();
+    onSelectionChange([language]);
   };
 
   const pressHandlers = (language: string | null) => ({
