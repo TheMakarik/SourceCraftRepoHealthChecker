@@ -1,3 +1,5 @@
+using SourceCraftRepoHealthChecker.Domain.Enums;
+
 namespace SourceCraftRepoHealthChecker.Application.HealthCheck.UseCases;
 
 public sealed record RepositoryAnalysis(
@@ -9,7 +11,8 @@ public sealed record RepositoryAnalysis(
     bool IsPrivate,
     Guid? OwnerUserId,
     int LikesCount,
-    int Score,
+    int? Score,
+    DataStatus DataStatus,
     DateTimeOffset? AnalyzedAt,
     IReadOnlyCollection<RepositoryAnalysisCategory> Categories,
     IReadOnlyCollection<RepositoryAnalysisMetric> Metrics,

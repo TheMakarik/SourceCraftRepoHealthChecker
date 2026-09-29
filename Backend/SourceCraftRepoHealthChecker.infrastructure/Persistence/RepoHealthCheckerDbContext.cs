@@ -120,7 +120,6 @@ public sealed class RepoHealthCheckerDbContext(
             entity.Property(x => x.WhyImportant).HasMaxLength(_recommendationOptions.MaxWhyImportantLength);
             entity.Property(x => x.Evidence).HasMaxLength(_recommendationOptions.MaxEvidenceLength);
             entity.Property(x => x.Action).HasMaxLength(_recommendationOptions.MaxActionLength);
-            entity.Property(x => x.ExpectedImpact).HasMaxLength(_recommendationOptions.MaxExpectedImpactLength);
             entity.Property(x => x.SourceReference).HasMaxLength(_recommendationOptions.MaxSourceReferenceLength);
         });
         #endregion

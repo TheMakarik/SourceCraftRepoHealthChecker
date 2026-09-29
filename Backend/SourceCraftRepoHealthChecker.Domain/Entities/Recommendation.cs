@@ -12,6 +12,6 @@ public sealed class Recommendation
     public string WhyImportant { get; set; } = string.Empty;
     public string Evidence { get; set; } = string.Empty;
     public string Action { get; set; } = string.Empty;
-    public string ExpectedImpact { get; set; } = string.Empty;
+    public int? ExpectedImpact { get; set; }
     public string? SourceReference { get; set; }
 }

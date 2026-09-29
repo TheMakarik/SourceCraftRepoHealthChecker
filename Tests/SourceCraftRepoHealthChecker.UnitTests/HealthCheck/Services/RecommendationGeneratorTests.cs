@@ -265,7 +265,7 @@ public sealed class RecommendationGeneratorTests
 
         // Assert
         var recommendation = actual.Single();
-        recommendation.ExpectedImpact.Should().Contain("70");
+        recommendation.ExpectedImpact.Should().Be(60);
         recommendation.SourceReference.Should().NotBeNullOrWhiteSpace();
     }
 

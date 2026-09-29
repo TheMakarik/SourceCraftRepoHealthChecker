@@ -51,10 +51,20 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task RefreshRepositories_ReturnsOk()
+    public async Task RefreshRepositories_WithoutInternalToken_ReturnsUnauthorized()
     {
         using var client = CreateClient();
         var response = await client.PostAsync("/api/repositories/refresh", content: null);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task RefreshRepositories_WithInternalToken_ReturnsOk()
+    {
+        using var client = CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/repositories/refresh");
+        request.Headers.Add("X-Internal-Token", ApiFactory.InternalToken);
+        var response = await client.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -79,6 +89,51 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
         using var client = CreateClient();
         var response = await client.GetAsync("/api/repositories/r1/structure");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Structure_ForPublicRepositoryAnonymous_ReturnsOk()
+    {
+        _factory.SeedRepository("public-repo", isPrivate: false, ownerId: null);
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/public-repo/structure");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Structure_ForPrivateRepositoryAnonymous_ReturnsNotFound()
+    {
+        _factory.SeedRepository("private-repo", isPrivate: true, ownerId: Guid.NewGuid());
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/private-repo/structure");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Structure_ForPrivateRepositoryWithoutOwnerAnonymous_ReturnsNotFound()
+    {
+        _factory.SeedRepository("orphan-private", isPrivate: true, ownerId: null);
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/orphan-private/structure");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Analysis_ForPrivateRepositoryAnonymous_ReturnsNotFound()
+    {
+        _factory.SeedRepository("private-repo", isPrivate: true, ownerId: Guid.NewGuid());
+        using var client = CreateClient();
+        var response = await client.GetAsync("/api/repositories/private-repo/analysis");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AnalysisPage_ForPrivateRepositoryAnonymous_ReturnsNotFound()
+    {
+        _factory.SeedRepository("private-repo", isPrivate: true, ownerId: Guid.NewGuid());
+        using var client = CreateClient();
+        var response = await client.GetAsync("/repositories/private-repo");
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -113,11 +168,11 @@ public sealed class ApiEndpointTests : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task AnalyzeRepository_RunsFullPipeline()
+    public async Task AnalyzeRepository_WithoutSession_ReturnsUnauthorized()
     {
         using var client = CreateClient();
         var response = await client.PostAsync("/api/me/repositories/r1/analyze", content: null);
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

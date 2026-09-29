@@ -103,7 +103,7 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(99);
+        actual.Score.Should().Be(97);
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthFixme).NormalizedScore.Should().Be(94);
     }
 
@@ -125,17 +125,17 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
     }
 
     [Fact]
-    public void Calculate_WhenOldestCommentBeyondStaleAge_AppliesStalePenalty()
+    public void Calculate_WhenOldestCommentBeyondStaleAge_ScalesPenaltyByAge()
     {
         // Arrange
-        var report = new CodeHealthReport(0, 0, 0, TimeSpan.FromDays(61));
+        var report = new CodeHealthReport(0, 0, 0, TimeSpan.FromDays(120));
         var facts = RepositoryFactsBuilder.Build(codeHealth: report);
 
         // Act
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(97);
+        actual.Score.Should().Be(99);
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthStaleComments).NormalizedScore.Should().Be(95);
     }
 
@@ -150,7 +150,7 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(63);
+        actual.Score.Should().Be(25);
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthTodo).NormalizedScore.Should().Be(0);
         actual.Metrics.Single(x => x.Code == MetricCode.CodeHealthFixme).NormalizedScore.Should().Be(0);
     }
@@ -159,14 +159,14 @@ public sealed class CodeHealthCategoryScoreCalculatorTests
     public void Calculate_WhenStaleAndRiskyCommentsPresent_CombinesPenalties()
     {
         // Arrange
-        var report = new CodeHealthReport(2, 1, 0, TimeSpan.FromDays(61));
+        var report = new CodeHealthReport(2, 1, 0, TimeSpan.FromDays(120));
         var facts = RepositoryFactsBuilder.Build(codeHealth: report);
 
         // Act
         var actual = systemUnderTests.Calculate(ScoreCategory.CodeHealth, facts);
 
         // Assert
-        actual.Score.Should().Be(96);
+        actual.Score.Should().Be(97);
     }
 
     [Fact]

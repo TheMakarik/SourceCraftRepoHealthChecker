@@ -16,7 +16,7 @@ public sealed class HealthScoreCalculatorTests
     }
 
     [Fact]
-    public void Calculate_WhenCategoriesEmpty_ReturnsMinimumScore()
+    public void Calculate_WhenCategoriesEmpty_ReturnsNoDataWithoutScore()
     {
         // Arrange
         var categories = Array.Empty<CategoryScoreResult>();
@@ -25,11 +25,12 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().BeNull();
+        actual.Status.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
-    public void Calculate_WhenAllCategoriesNoData_ReturnsMinimumScore()
+    public void Calculate_WhenAllCategoriesNoData_ReturnsNoDataWithoutScore()
     {
         // Arrange
         var categories = new CategoryScoreResult[]
@@ -42,11 +43,12 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().BeNull();
+        actual.Status.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
-    public void Calculate_WhenAllCategoriesUnavailable_ReturnsMinimumScore()
+    public void Calculate_WhenAllCategoriesUnavailable_ReturnsNoDataWithoutScore()
     {
         // Arrange
         var categories = new CategoryScoreResult[]
@@ -59,7 +61,8 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().BeNull();
+        actual.Status.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
@@ -76,11 +79,12 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(80);
+        actual.Score.Should().Be(80);
+        actual.Status.Should().Be(DataStatus.Available);
     }
 
     [Fact]
-    public void Calculate_WhenAvailableWeightIsZero_ReturnsMinimumScore()
+    public void Calculate_WhenAvailableWeightIsZero_ReturnsNoDataWithoutScore()
     {
         // Arrange
         var categories = new CategoryScoreResult[]
@@ -92,11 +96,12 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().BeNull();
+        actual.Status.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
-    public void Calculate_WhenTotalAvailableWeightIsNegative_ReturnsMinimumScore()
+    public void Calculate_WhenTotalAvailableWeightIsNegative_ReturnsNoDataWithoutScore()
     {
         // Arrange
         var categories = new CategoryScoreResult[]
@@ -108,7 +113,8 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().BeNull();
+        actual.Status.Should().Be(DataStatus.NoData);
     }
 
     [Fact]
@@ -125,7 +131,7 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(63);
+        actual.Score.Should().Be(63);
     }
 
     [Fact]
@@ -142,7 +148,7 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(50);
+        actual.Score.Should().Be(50);
     }
 
     [Fact]
@@ -159,7 +165,7 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(100);
+        actual.Score.Should().Be(100);
     }
 
     [Fact]
@@ -175,7 +181,7 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Score.Should().Be(0);
     }
 
     [Fact]
@@ -191,7 +197,7 @@ public sealed class HealthScoreCalculatorTests
         var actual = systemUnderTests.Calculate(categories);
 
         // Assert
-        actual.Should().Be(77);
+        actual.Score.Should().Be(77);
     }
 
     private static CategoryScoreResult Category(ScoreCategory category, int score, double weight, DataStatus status) =>

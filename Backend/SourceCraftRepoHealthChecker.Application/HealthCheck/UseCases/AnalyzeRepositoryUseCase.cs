@@ -51,12 +51,15 @@ public sealed class AnalyzeRepositoryUseCase(
 
         var facts = new RepositoryFacts(
             repositoryResult.Data,
-            Combine(commits.Status, contributors.Status, releases.Status),
+            commits.Status,
             commits.Data,
+            contributors.Status,
             contributors.Data ?? [],
+            releases.Status,
             releases.Data ?? [],
-            Combine(issues.Status, mergeRequests.Status),
+            issues.Status,
             issues.Data ?? [],
+            mergeRequests.Status,
             mergeRequests.Data ?? [],
             findings.Status,
             findings.Data ?? [],
@@ -92,7 +95,7 @@ public sealed class AnalyzeRepositoryUseCase(
             UserId = request.UserId,
             Score = healthCheck.Score,
             Status = AnalysisStatus.Completed,
-            DataStatus = healthCheck.Categories.Any(x => x.DataStatus == DataStatus.Available) ? DataStatus.Available : DataStatus.NoData,
+            DataStatus = healthCheck.DataStatus,
             StartedAt = now,
             CompletedAt = now
         };
@@ -135,7 +138,7 @@ public sealed class AnalyzeRepositoryUseCase(
                 WhyImportant = Truncate(recommendation.WhyImportant, options.MaxWhyImportantLength),
                 Evidence = Truncate(recommendation.Evidence, options.MaxEvidenceLength),
                 Action = Truncate(recommendation.Action, options.MaxActionLength),
-                ExpectedImpact = Truncate(recommendation.ExpectedImpact, options.MaxExpectedImpactLength),
+                ExpectedImpact = recommendation.ExpectedImpact,
                 SourceReference = Truncate(recommendation.SourceReference, options.MaxSourceReferenceLength)
             });
         }
@@ -152,7 +155,7 @@ public sealed class AnalyzeRepositoryUseCase(
                 WhyImportant = Truncate("Возможная накрутка активности или подозрительная активность.", options.MaxWhyImportantLength),
                 Evidence = Truncate(anomaly.Description, options.MaxEvidenceLength),
                 Action = Truncate($"Проверьте активность автора {anomaly.AuthorLogin}.", options.MaxActionLength),
-                ExpectedImpact = Truncate("Снижает риск искусственного завышения активности.", options.MaxExpectedImpactLength),
+                ExpectedImpact = null,
                 SourceReference = Truncate("Activity:anomaly", options.MaxSourceReferenceLength)
             });
         }
@@ -199,16 +202,6 @@ public sealed class AnalyzeRepositoryUseCase(
         repository.AnalyzedAt = now;
 
         return repository;
-    }
-
-    private static DataStatus Combine(params DataStatus[] statuses)
-    {
-        if (statuses.Any(x => x == DataStatus.Unavailable))
-            return DataStatus.Unavailable;
-        if (statuses.All(x => x == DataStatus.NoData))
-            return DataStatus.NoData;
-
-        return DataStatus.Available;
     }
 
     private static string Truncate(string value, int maxLength) => value.Length <= maxLength ? value : value[..maxLength];

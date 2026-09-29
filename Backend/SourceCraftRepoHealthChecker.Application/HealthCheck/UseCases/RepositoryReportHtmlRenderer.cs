@@ -16,7 +16,7 @@ public static class RepositoryReportHtmlRenderer
         builder.Append("th,td{border:1px solid #ccc;padding:.4rem .6rem;text-align:left}th{background:#f4f4f4}");
         builder.Append("h2{margin-top:1.6rem}.score{font-size:1.2rem}</style></head><body>");
         builder.Append($"<h1>{WebUtility.HtmlEncode(analysis.FullName)}</h1>");
-        builder.Append($"<p class=\"score\">Repo Health Score: <b>{analysis.Score}/100</b>");
+        builder.Append($"<p class=\"score\">Repo Health Score: <b>{ScoreText(analysis.Score)}</b>");
         builder.Append($" · <a href=\"{WebUtility.HtmlEncode(analysis.Url)}\">репозиторий</a>");
         builder.Append($" · язык {WebUtility.HtmlEncode(analysis.Language)} · лайки {analysis.LikesCount}</p>");
         builder.Append(analysis.AnalyzedAt is null
@@ -72,7 +72,7 @@ public static class RepositoryReportHtmlRenderer
                 builder.Append($"<br>Почему важно: {WebUtility.HtmlEncode(recommendation.WhyImportant)}");
                 builder.Append($"<br>Подтверждающие факты: {WebUtility.HtmlEncode(recommendation.Evidence)}");
                 builder.Append($"<br>Действие: {WebUtility.HtmlEncode(recommendation.Action)}");
-                builder.Append($"<br>Ожидаемый эффект: {WebUtility.HtmlEncode(recommendation.ExpectedImpact)}");
+                builder.Append($"<br>Ожидаемый эффект: {WebUtility.HtmlEncode(recommendation.ExpectedImpact?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")}");
                 builder.Append($"<br>Источник: {WebUtility.HtmlEncode(recommendation.SourceReference)}</li>");
             }
             builder.Append("</ul>");
@@ -103,4 +103,10 @@ public static class RepositoryReportHtmlRenderer
         DataStatus.NoData => "Нет данных",
         _ => "Источник недоступен"
     };
+
+    private static string ScoreText(int? score) =>
+        score is null ? "нет данных" : $"{score}/100";
+
+    private static string ImpactText(int? impact) =>
+        impact is null ? "—" : $"+{impact} балл(ов) к итоговому Repo Health Score";
 }

@@ -107,7 +107,7 @@ public sealed class RepoHealthCheckerDbContextTests : IDisposable
             Title = "Add tests",
             Problem = "No automated tests found.",
             Action = "Add a test project and a CI step.",
-            ExpectedImpact = "+10 code health",
+            ExpectedImpact = 10,
             SourceReference = "tests/"
         });
         repository.AnalysisRuns.Add(analysisRun);

@@ -46,7 +46,7 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         "Без результата AppSec SourceCraft категория Security остаётся со статусом «Нет данных» и не участвует в итоговом Score.",
         "Источник AppSec SourceCraft не подключён: нет данных SAST, SCA и secret scanning.",
         "Подключите AppSec SourceCraft.",
-        "Появится оценка security-категории; статус «Нет данных» не штрафует итоговый Score.",
+        null,
         "AppSec SourceCraft; метрика Security:DataStatus");
 
     private static RecommendationPriority PriorityFor(int score, RecommendationScoringOptions settings) =>
@@ -185,13 +185,12 @@ public sealed class RecommendationGenerator(IOptions<HealthCheckOptions> options
         return $"Issues требуют внимания: {string.Join(", ", parts)}.";
     }
 
-    private static string ExpectedImpactFor(CategoryScoreResult category, int minimumAcceptableScore, double availableWeight)
+    private static int? ExpectedImpactFor(CategoryScoreResult category, int minimumAcceptableScore, double availableWeight)
     {
-        var gain = availableWeight <= 0
-            ? 0
-            : (int)Math.Round((minimumAcceptableScore - category.Score) * (category.Weight / availableWeight), MidpointRounding.AwayFromZero);
+        if (availableWeight <= 0)
+            return null;
 
-        return $"+{gain} балл(ов) к итоговому Repo Health Score при доведении категории до {minimumAcceptableScore}/100.";
+        return (int)Math.Round((minimumAcceptableScore - category.Score) * (category.Weight / availableWeight), MidpointRounding.AwayFromZero);
     }
 
     private static string SourceReferenceFor(CategoryScoreResult category)

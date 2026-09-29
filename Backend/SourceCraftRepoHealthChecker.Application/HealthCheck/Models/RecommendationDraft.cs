@@ -8,5 +8,5 @@ public sealed record RecommendationDraft(
     string WhyImportant,
     string Evidence,
     string Action,
-    string ExpectedImpact,
+    int? ExpectedImpact,
     string SourceReference);

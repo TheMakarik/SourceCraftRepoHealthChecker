@@ -9,5 +9,5 @@ public sealed record RepositoryAnalysisRecommendation(
     string WhyImportant,
     string Evidence,
     string Action,
-    string ExpectedImpact,
+    int? ExpectedImpact,
     string SourceReference);

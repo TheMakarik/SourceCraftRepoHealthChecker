@@ -57,7 +57,7 @@ public sealed class AiSummaryUseCaseTests
     }
 
     private static RepositoryAnalysis CreateAnalysis() =>
-        new("sc-1", "demo", "owner/demo", "https://sourcecraft.dev/owner/demo", "C#", false, null, 5, 80, DateTimeOffset.UtcNow,
+        new("sc-1", "demo", "owner/demo", "https://sourcecraft.dev/owner/demo", "C#", false, null, 5, 80, DataStatus.Available, DateTimeOffset.UtcNow,
             [new RepositoryAnalysisCategory(ScoreCategory.Security, 90, DataStatus.Available)],
             [],
             [],

@@ -51,7 +51,7 @@ public sealed class MethodologyControlScenariosTests
         var degraded = await ScoreAsync(degradedFacts);
 
         // Assert
-        degraded.Should().BeLessThan(healthy);
+        degraded.Should().BeLessThan(healthy!.Value);
         (healthy - degraded).Should().BeGreaterThanOrEqualTo(5);
     }
 
@@ -67,7 +67,7 @@ public sealed class MethodologyControlScenariosTests
         var degraded = await ScoreAsync(debtFacts);
 
         // Assert
-        degraded.Should().BeLessThan(healthy);
+        degraded.Should().BeLessThan(healthy!.Value);
         (healthy - degraded).Should().BeGreaterThanOrEqualTo(5);
     }
 
@@ -76,7 +76,7 @@ public sealed class MethodologyControlScenariosTests
     {
         // Arrange
         int[] todoCounts = [0, 10, 50, 100];
-        var scores = new List<int>();
+        var scores = new List<int?>();
 
         // Act
         foreach (var todo in todoCounts)
@@ -101,11 +101,11 @@ public sealed class MethodologyControlScenariosTests
         var unavailable = await ScoreAsync(unavailableFacts);
 
         // Assert
-        unavailable.Should().BeGreaterThanOrEqualTo(poor);
+        unavailable.Should().BeGreaterThanOrEqualTo(poor!.Value);
     }
 
     [Fact]
-    public async Task Score_WhenAllSourcesUnavailable_IsMinimum()
+    public async Task Score_WhenAllSourcesUnavailable_IsNoData()
     {
         // Arrange
         var facts = RepositoryFactsBuilder.Build(
@@ -120,7 +120,7 @@ public sealed class MethodologyControlScenariosTests
         var actual = await ScoreAsync(facts);
 
         // Assert
-        actual.Should().Be(0);
+        actual.Should().BeNull();
     }
 
     [Fact]
@@ -206,7 +206,7 @@ public sealed class MethodologyControlScenariosTests
         actual.Recommendations.Should().Contain(recommendation => recommendation.Action.Contains("AppSec"));
     }
 
-    private async Task<int> ScoreAsync(RepositoryFacts facts) =>
+    private async Task<int?> ScoreAsync(RepositoryFacts facts) =>
         (await systemUnderTests.CheckAsync(facts, CancellationToken.None)).Score;
 
     private static RepositoryFacts HealthyFacts(

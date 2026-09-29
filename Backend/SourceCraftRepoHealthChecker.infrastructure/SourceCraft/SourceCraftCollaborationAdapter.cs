@@ -21,8 +21,6 @@ public sealed class SourceCraftCollaborationAdapter(
                 settings.MaxPages,
                 (pageToken, token) => FetchIssuesAsync(repositoryId, pageToken, token),
                 cancellationToken);
-            if (issues.Count == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<IssueInfo>>("source returned no issues");
 
             var results = issues.Select(MapIssue).ToArray();
             var lookupCount = Math.Min(results.Length, settings.MaxResponseLookups);
@@ -52,8 +50,6 @@ public sealed class SourceCraftCollaborationAdapter(
                 settings.MaxPages,
                 (pageToken, token) => FetchPullRequestsAsync(repositoryId, pageToken, token),
                 cancellationToken);
-            if (pullRequests.Count == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<MergeRequestInfo>>("source returned no merge requests");
 
             var results = pullRequests.Select(MapPullRequest).ToArray();
             var lookupCount = Math.Min(results.Length, settings.MaxResponseLookups);

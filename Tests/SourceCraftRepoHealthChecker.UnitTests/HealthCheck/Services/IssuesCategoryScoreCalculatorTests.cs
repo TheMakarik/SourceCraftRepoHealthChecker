@@ -62,7 +62,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
         // Assert
         actual.Score.Should().Be(100);
         actual.DataStatus.Should().Be(DataStatus.Available);
-        actual.Metrics.Should().HaveCount(5);
+        actual.Metrics.Should().HaveCount(4);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesFirstResponse).DataStatus.Should().Be(DataStatus.NoData);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesCloseTime).DataStatus.Should().Be(DataStatus.NoData);
     }
@@ -83,7 +83,9 @@ public sealed class IssuesCategoryScoreCalculatorTests
         // Assert
         actual.Score.Should().Be(63);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesOpen).RawValue.Should().Be(1);
-        actual.Metrics.Single(x => x.Code == MetricCode.IssuesFirstResponse).DataStatus.Should().Be(DataStatus.NoData);
+        var firstResponse = actual.Metrics.Single(x => x.Code == MetricCode.IssuesFirstResponse);
+        firstResponse.DataStatus.Should().Be(DataStatus.Available);
+        firstResponse.RawValue.Should().Be(7);
         actual.Metrics.Single(x => x.Code == MetricCode.IssuesCloseTime).DataStatus.Should().Be(DataStatus.NoData);
     }
 
@@ -101,7 +103,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Issues, facts);
 
         // Assert
-        actual.Score.Should().Be(82);
+        actual.Score.Should().Be(76);
         var closeTime = actual.Metrics.Single(x => x.Code == MetricCode.IssuesCloseTime);
         closeTime.DataStatus.Should().Be(DataStatus.Available);
         closeTime.RawValue.Should().Be(10);
@@ -208,7 +210,7 @@ public sealed class IssuesCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.Issues, facts);
 
         // Assert
-        actual.Metrics.Where(x => x.DataStatus == DataStatus.NoData).Should().HaveCount(2);
+        actual.Metrics.Where(x => x.DataStatus == DataStatus.NoData).Should().HaveCount(1);
         actual.Metrics.Where(x => x.DataStatus == DataStatus.Available).Should().HaveCount(3);
     }
 

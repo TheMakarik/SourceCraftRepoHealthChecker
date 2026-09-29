@@ -37,9 +37,6 @@ public sealed class SourceCraftPipelineAdapter(
                     run.Dates?.FinishedAt));
             }
 
-            if (pipelineRuns.Count == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<PipelineRun>>("source returned no pipeline runs");
-
             return new SourceCraftResult<IReadOnlyCollection<PipelineRun>>(DataStatus.Available, pipelineRuns, null);
         }
         catch (OperationCanceledException)

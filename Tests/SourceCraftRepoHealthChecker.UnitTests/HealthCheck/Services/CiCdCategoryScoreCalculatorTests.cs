@@ -143,7 +143,7 @@ public sealed class CiCdCategoryScoreCalculatorTests
     }
 
     [Fact]
-    public void Calculate_WhenNoRunFinished_ScoresDurationAtMaximum()
+    public void Calculate_WhenNoRunFinished_MarksDurationAsNoData()
     {
         // Arrange
         var runs = new PipelineRun[]
@@ -156,10 +156,11 @@ public sealed class CiCdCategoryScoreCalculatorTests
         var actual = systemUnderTests.Calculate(ScoreCategory.CiCd, facts);
 
         // Assert
-        actual.Score.Should().Be(37);
+        actual.Score.Should().Be(10);
         var duration = actual.Metrics.Single(x => x.Code == MetricCode.CiCdPipelineDuration);
+        duration.DataStatus.Should().Be(DataStatus.NoData);
         duration.RawValue.Should().Be(0);
-        duration.NormalizedScore.Should().Be(100);
+        duration.NormalizedScore.Should().Be(0);
     }
 
     [Fact]

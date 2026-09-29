@@ -193,7 +193,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
             WhyImportant = "Документация упрощает сопровождение.",
             Evidence = "Отсутствует: лицензия.",
             Action = "Улучшите документацию",
-            ExpectedImpact = "+10 баллов",
+            ExpectedImpact = 10,
             SourceReference = "Documentation"
         });
         run.Recommendations.Add(new Recommendation
@@ -205,7 +205,7 @@ public sealed class RepositoryAnalysisTests : IDisposable
             WhyImportant = "Уязвимости влияют на безопасность.",
             Evidence = "Открытые уязвимости AppSec: критических 1.",
             Action = "Устраните уязвимости",
-            ExpectedImpact = "+20 баллов",
+            ExpectedImpact = 20,
             SourceReference = "Security"
         });
 

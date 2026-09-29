@@ -10,6 +10,7 @@ public sealed class RepositoryAccessGuard(IRepoHealthCheckerDbContext dbContext)
     public async Task<RepositoryAccessDecision> EvaluateAsync(string sourceCraftId, HttpContext context, CancellationToken cancellationToken)
     {
         var repository = await dbContext.Repositories
+            .AsNoTracking()
             .FirstOrDefaultAsync(item => item.SourceCraftId == sourceCraftId, cancellationToken);
         if (repository is null)
             return RepositoryAccessDecision.Unknown;
@@ -22,14 +23,13 @@ public sealed class RepositoryAccessGuard(IRepoHealthCheckerDbContext dbContext)
     public async Task<IReadOnlySet<string>> GetAccessibleRepositoryIdsAsync(HttpContext context, CancellationToken cancellationToken)
     {
         var currentUserId = context.GetCurrentUserId();
-        var repositories = await dbContext.Repositories
-            .Select(item => new { item.SourceCraftId, item.IsPrivate, item.OwnerId })
-            .ToListAsync(cancellationToken);
+        var repositories = dbContext.Repositories.AsNoTracking();
+        var accessible = currentUserId is null
+            ? repositories.Where(item => !item.IsPrivate)
+            : repositories.Where(item => !item.IsPrivate || item.OwnerId == currentUserId);
 
-        return repositories
-            .Where(item => IsAccessible(item.IsPrivate, item.OwnerId, currentUserId))
-            .Select(item => item.SourceCraftId)
-            .ToHashSet(StringComparer.Ordinal);
+        var sourceCraftIds = await accessible.Select(item => item.SourceCraftId).ToListAsync(cancellationToken);
+        return sourceCraftIds.ToHashSet(StringComparer.Ordinal);
     }
 
     public static bool IsAccessible(bool isPrivate, Guid? ownerId, Guid? currentUserId) =>

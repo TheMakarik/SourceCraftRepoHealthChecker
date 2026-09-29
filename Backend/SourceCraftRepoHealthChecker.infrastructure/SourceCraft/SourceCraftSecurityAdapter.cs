@@ -29,8 +29,6 @@ public sealed class SourceCraftSecurityAdapter(
                 cancellationToken);
 
             var findings = groups.Select(MapFinding).ToArray();
-            if (findings.Length == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<SecurityFinding>>("source returned no security findings");
 
             return new SourceCraftResult<IReadOnlyCollection<SecurityFinding>>(DataStatus.Available, findings, null);
         }
@@ -73,25 +71,26 @@ public sealed class SourceCraftSecurityAdapter(
             defectGroup.CvssScore == 0 ? null : defectGroup.CvssScore);
     }
 
-    private static SecurityFindingKind MapKind(int engineType, string? engine)
-    {
-        switch (engine?.ToUpperInvariant())
-        {
-            case "SECRETS":
-            case "SECRET":
-            case "SECRET_SCANNING":
-                return SecurityFindingKind.SecretScanning;
-            case "SCA":
-                return SecurityFindingKind.Sca;
-        }
+    private static SecurityFindingKind MapKind(int engineType, string? engine) =>
+        MapEngineType((AppSecEngineType)engineType)
+        ?? MapEngine(engine)
+        ?? SecurityFindingKind.Sast;
 
-        return engineType switch
-        {
-            0 => SecurityFindingKind.SecretScanning,
-            1 => SecurityFindingKind.Sca,
-            _ => SecurityFindingKind.Sast
-        };
-    }
+    private static SecurityFindingKind? MapEngineType(AppSecEngineType engineType) => engineType switch
+    {
+        AppSecEngineType.Secrets => SecurityFindingKind.SecretScanning,
+        AppSecEngineType.Sca => SecurityFindingKind.Sca,
+        AppSecEngineType.Sast => SecurityFindingKind.Sast,
+        _ => null
+    };
+
+    private static SecurityFindingKind? MapEngine(string? engine) => engine?.ToUpperInvariant() switch
+    {
+        "SECRETS" or "SECRET" or "SECRET_SCANNING" => SecurityFindingKind.SecretScanning,
+        "SCA" => SecurityFindingKind.Sca,
+        "SAST" => SecurityFindingKind.Sast,
+        _ => null
+    };
 
     private static SecuritySeverity MapSeverity(int severity) => severity switch
     {

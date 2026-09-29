@@ -22,8 +22,6 @@ public sealed class SourceCraftActivityAdapter(
         using (workingCopy)
         {
             var activity = await gitRepositoryReader.GetCommitActivityAsync(workingCopy.Path, cancellationToken);
-            if (activity.TotalCount == 0)
-                return SourceCraftFailure.NoData<CommitActivity>("repository has no commits");
 
             return new SourceCraftResult<CommitActivity>(DataStatus.Available, activity, null);
         }
@@ -39,8 +37,6 @@ public sealed class SourceCraftActivityAdapter(
         using (workingCopy)
         {
             var contributors = await gitRepositoryReader.GetContributorsAsync(workingCopy.Path, cancellationToken);
-            if (contributors.Count == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<Contributor>>("repository has no contributors");
 
             return new SourceCraftResult<IReadOnlyCollection<Contributor>>(DataStatus.Available, contributors, null);
         }
@@ -61,8 +57,6 @@ public sealed class SourceCraftActivityAdapter(
                 .Where(release => string.Equals(release.Status, "published", StringComparison.Ordinal))
                 .Select(MapRelease)
                 .ToArray();
-            if (published.Length == 0)
-                return SourceCraftFailure.NoData<IReadOnlyCollection<ReleaseInfo>>("source returned no published releases");
 
             return new SourceCraftResult<IReadOnlyCollection<ReleaseInfo>>(DataStatus.Available, published, null);
         }

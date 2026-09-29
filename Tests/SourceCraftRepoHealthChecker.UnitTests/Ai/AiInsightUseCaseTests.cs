@@ -81,7 +81,7 @@ public sealed class AiInsightUseCaseTests
     }
 
     private static RepositoryAnalysis CreateAnalysis() =>
-        new("sc-1", "demo", "owner/demo", "https://sourcecraft.dev/owner/demo", "C#", false, null, 5, 80, DateTimeOffset.UtcNow,
+        new("sc-1", "demo", "owner/demo", "https://sourcecraft.dev/owner/demo", "C#", false, null, 5, 80, DataStatus.Available, DateTimeOffset.UtcNow,
             [
                 new RepositoryAnalysisCategory(ScoreCategory.Security, 90, DataStatus.Available),
                 new RepositoryAnalysisCategory(ScoreCategory.Documentation, 20, DataStatus.Available)
@@ -89,7 +89,7 @@ public sealed class AiInsightUseCaseTests
             [new RepositoryAnalysisMetric(MetricCode.DocumentationReadme, 0, 0, 0.3, DataStatus.Available)],
             [new RepositoryAnalysisCategory(ScoreCategory.Security, 90, DataStatus.Available)],
             [new RepositoryAnalysisCategory(ScoreCategory.Documentation, 20, DataStatus.Available)],
-            [new RepositoryAnalysisRecommendation(RecommendationPriority.Critical, "title", "problem", "why", "evidence", "action", "impact", "source")],
+            [new RepositoryAnalysisRecommendation(RecommendationPriority.Critical, "title", "problem", "why", "evidence", "action", 5, "source")],
             [new RepositoryAnalysisFinding("Sast", "Medium", "Open", "exec-detected", "python", "prepare_modules.py", null)]);
 
     private static IRepoHealthCheckerDbContext CreateDbContext(Guid? userId)

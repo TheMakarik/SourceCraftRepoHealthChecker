@@ -27,7 +27,7 @@ public sealed class ActivityCategoryScoreCalculatorTests
     public void Calculate_WhenActivityUnavailable_ReturnsNoData()
     {
         // Arrange
-        var facts = RepositoryFactsBuilder.Build(activityAvailability: DataStatus.Unavailable);
+        var facts = RepositoryFactsBuilder.Build(activityAvailability: DataStatus.Unavailable, collaborationAvailability: DataStatus.Unavailable);
 
         // Act
         var actual = systemUnderTests.Calculate(ScoreCategory.Activity, facts);
@@ -41,7 +41,7 @@ public sealed class ActivityCategoryScoreCalculatorTests
     public void Calculate_WhenActivityNoData_ReturnsNoData()
     {
         // Arrange
-        var facts = RepositoryFactsBuilder.Build(activityAvailability: DataStatus.NoData);
+        var facts = RepositoryFactsBuilder.Build(activityAvailability: DataStatus.NoData, collaborationAvailability: DataStatus.NoData);
 
         // Act
         var actual = systemUnderTests.Calculate(ScoreCategory.Activity, facts);

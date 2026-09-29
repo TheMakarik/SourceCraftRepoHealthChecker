@@ -31,12 +31,12 @@ public sealed class GetRepositoryLeaderboardUseCase(IRepoHealthCheckerDbContext 
             x.Language,
             x.LastActivityAt,
             Score = x.AnalysisRuns
-                .Where(a => a.Status == AnalysisStatus.Completed)
+                .Where(a => a.Status == AnalysisStatus.Completed && a.DataStatus == DataStatus.Available)
                 .OrderByDescending(a => a.CompletedAt)
-                .Select(a => (int?)a.Score)
+                .Select(a => a.Score)
                 .FirstOrDefault(),
             AnalyzedAt = x.AnalysisRuns
-                .Where(a => a.Status == AnalysisStatus.Completed)
+                .Where(a => a.Status == AnalysisStatus.Completed && a.DataStatus == DataStatus.Available)
                 .OrderByDescending(a => a.CompletedAt)
                 .Select(a => (DateTimeOffset?)a.CompletedAt)
                 .FirstOrDefault()

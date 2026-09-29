@@ -8,7 +8,6 @@ using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
 using SourceCraftRepoHealthChecker.infrastructure.SourceCraft;
 using SourceCraftRepoHealthChecker.IntegrationTests.Infrastructure;
 using Xunit.Abstractions;
-using Xunit.Sdk;
 
 namespace SourceCraftRepoHealthChecker.IntegrationTests;
 
@@ -81,7 +80,10 @@ public sealed class LargeRepositoryTests : IDisposable
         // Arrange
         var repositoryPath = Environment.GetEnvironmentVariable(LargeRepositoryPathEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(repositoryPath) || !Directory.Exists(repositoryPath))
-            throw SkipException.ForSkip($"Set {LargeRepositoryPathEnvironmentVariable} to a large repository working copy to run this test.");
+        {
+            _output.WriteLine($"Set {LargeRepositoryPathEnvironmentVariable} to a large repository working copy to run this test.");
+            return;
+        }
 
         using var cancellationTokenSource = new CancellationTokenSource(GatedTimeout);
         var stopwatch = Stopwatch.StartNew();

@@ -136,6 +136,7 @@ public sealed class RepositoryLeaderboardTests : IDisposable
         repositoryB.AnalysisRuns.Add(CreateRun(90, ActivityB.AddDays(1)));
 
         var repositoryC = CreateRepository("c", "C#", likes: 50, activity: ActivityC);
+        repositoryC.AnalysisRuns.Add(CreateRun(100, ActivityC.AddDays(1), DataStatus.NoData));
 
         var privateRepository = CreateRepository("private", "C#", likes: 100, activity: ActivityB);
         privateRepository.IsPrivate = true;
@@ -157,12 +158,12 @@ public sealed class RepositoryLeaderboardTests : IDisposable
         CreatedAt = activity
     };
 
-    private static AnalysisRun CreateRun(int score, DateTimeOffset completedAt) => new()
+    private static AnalysisRun CreateRun(int score, DateTimeOffset completedAt, DataStatus dataStatus = DataStatus.Available) => new()
     {
         Id = Guid.NewGuid(),
         Score = score,
         Status = AnalysisStatus.Completed,
-        DataStatus = DataStatus.Available,
+        DataStatus = dataStatus,
         StartedAt = completedAt,
         CompletedAt = completedAt
     };

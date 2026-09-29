@@ -137,7 +137,6 @@ public sealed class CategoryScoreCalculator(
             return NoData(ScoreCategory.CiCd);
 
         var settings = _options.CiCd;
-        var maximum = _options.ScoreScale.MaximumScore;
         var minimum = _options.ScoreScale.MinimumScore;
         var runs = facts.PipelineRuns;
 
@@ -149,30 +148,22 @@ public sealed class CategoryScoreCalculator(
 
         var finished = runs.Where(x => x.Status is PipelineStatus.Success or PipelineStatus.Failed).ToArray();
         var successRatio = finished.Length == 0 ? 0 : (double)finished.Count(x => x.Status == PipelineStatus.Success) / finished.Length;
-        var successScore = normalizer.Normalize(successRatio, 0, settings.MinimumSuccessRatio);
+        var successStatus = finished.Length == 0 ? DataStatus.NoData : DataStatus.Available;
+        var successScore = finished.Length == 0 ? minimum : normalizer.Normalize(successRatio, 0, settings.MinimumSuccessRatio);
 
         var durations = runs
             .Where(x => x.FinishedAt is not null)
             .Select(x => (x.FinishedAt!.Value - x.StartedAt).TotalMinutes)
             .ToArray();
-        double durationScore;
-        double averageMinutes;
-        if (durations.Length == 0)
-        {
-            averageMinutes = 0;
-            durationScore = maximum;
-        }
-        else
-        {
-            averageMinutes = durations.Average();
-            durationScore = normalizer.Normalize(averageMinutes, settings.MaxPipelineDurationMinutes, 0);
-        }
+        var durationStatus = durations.Length == 0 ? DataStatus.NoData : DataStatus.Available;
+        var averageMinutes = durations.Length == 0 ? 0 : durations.Average();
+        var durationScore = durations.Length == 0 ? minimum : normalizer.Normalize(averageMinutes, settings.MaxPipelineDurationMinutes, 0);
 
         var metrics = new List<MetricScore>
         {
             Metric(MetricCode.CiCdPresence, runs.Count, presenceScore, 1, DataStatus.Available),
-            Metric(MetricCode.CiCdSuccessRatio, Math.Round(successRatio, 4), successScore, 1, DataStatus.Available),
-            Metric(MetricCode.CiCdPipelineDuration, Math.Round(averageMinutes, 2), durationScore, 1, DataStatus.Available)
+            Metric(MetricCode.CiCdSuccessRatio, Math.Round(successRatio, 4), successScore, 1, successStatus),
+            Metric(MetricCode.CiCdPipelineDuration, Math.Round(averageMinutes, 2), durationScore, 1, durationStatus)
         };
 
         return FromMetrics(ScoreCategory.CiCd, metrics);
@@ -180,40 +171,42 @@ public sealed class CategoryScoreCalculator(
 
     private CategoryScoreResult CalculateIssues(RepositoryFacts facts)
     {
-        if (facts.CollaborationAvailability != DataStatus.Available)
+        if (facts.IssuesAvailability != DataStatus.Available)
             return NoData(ScoreCategory.Issues);
 
         var settings = _options.Issues;
         var now = timeProvider.GetUtcNow();
-        var maximum = _options.ScoreScale.MaximumScore;
         var issues = facts.Issues;
 
         var open = issues.Where(x => x.State == IssueState.Open).ToArray();
         var closed = issues.Where(x => x.State == IssueState.Closed).ToArray();
         var stale = open.Count(x => (now - (x.UpdatedAt ?? x.CreatedAt)).TotalDays > settings.StaleIssueAgeDays);
+        var staleRatio = open.Length == 0 ? 0 : (double)stale / open.Length;
 
         var openScore = normalizer.Normalize(open.Length, settings.MaxOpenIssues, 0);
-        var total = issues.Count;
-        var closedRatio = total == 0 ? 0 : (double)closed.Length / total;
-        var closedScore = total == 0 ? maximum : normalizer.Normalize(closedRatio, 0, 1);
-        var staleRatio = open.Length == 0 ? 0 : (double)stale / open.Length;
         var staleScore = normalizer.Normalize(staleRatio, 1, 0);
 
         var metrics = new List<MetricScore>
         {
             Metric(MetricCode.IssuesOpen, open.Length, openScore, 1, DataStatus.Available),
-            Metric(MetricCode.IssuesClosed, closed.Length, closedScore, 1, DataStatus.Available),
-            Metric(MetricCode.IssuesStale, stale, staleScore, 1, DataStatus.Available)
+            Metric(MetricCode.IssuesStale, Math.Round(staleRatio, 4), staleScore, 1, DataStatus.Available)
         };
 
-        var responseDays = issues
+        var respondedDays = issues
             .Where(x => x.FirstResponseAt is not null)
             .Select(x => (x.FirstResponseAt!.Value - x.CreatedAt).TotalDays)
-            .ToArray();
-        if (responseDays.Length == 0)
+            .ToList();
+        var unrespondedOpen = open.Count(x => x.FirstResponseAt is null);
+        if (respondedDays.Count == 0 && unrespondedOpen == 0)
             metrics.Add(Metric(MetricCode.IssuesFirstResponse, 0, _options.ScoreScale.MinimumScore, 1, DataStatus.NoData));
         else
-            metrics.Add(Metric(MetricCode.IssuesFirstResponse, Math.Round(responseDays.Average(), 2), normalizer.Normalize(responseDays.Average(), settings.MaxFirstResponseDays, 0), 1, DataStatus.Available));
+        {
+            var responseDays = respondedDays
+                .Concat(Enumerable.Repeat((double)settings.MaxFirstResponseDays, unrespondedOpen))
+                .ToArray();
+            var averageResponseDays = responseDays.Average();
+            metrics.Add(Metric(MetricCode.IssuesFirstResponse, Math.Round(averageResponseDays, 2), normalizer.Normalize(averageResponseDays, settings.MaxFirstResponseDays, 0), 1, DataStatus.Available));
+        }
 
         var closeDays = closed
             .Where(x => x.ClosedAt is not null)
@@ -233,18 +226,20 @@ public sealed class CategoryScoreCalculator(
             return NoData(ScoreCategory.CodeHealth);
 
         var settings = _options.CodeHealth;
-        var maximum = _options.ScoreScale.MaximumScore;
-        var minimum = _options.ScoreScale.MinimumScore;
+        var scale = _options.ScoreScale;
         var report = facts.CodeHealth;
 
-        var oldestCommentDays = report.OldestCommentAge?.TotalDays;
-        var isStale = oldestCommentDays is not null && oldestCommentDays > settings.StaleCommentAgeDays;
+        var oldestCommentDays = report.OldestCommentAge?.TotalDays ?? 0;
+        var freshness = normalizer.Normalize(oldestCommentDays, settings.StaleCommentMaxAgeDays, settings.StaleCommentAgeDays);
+        var freshnessRange = scale.MaximumScore - scale.MinimumScore;
+        var freshnessRatio = freshnessRange <= 0 ? 1 : (freshness - scale.MinimumScore) / freshnessRange;
+        var staleScore = scale.MaximumScore - (1 - freshnessRatio) * settings.StaleCommentPenalty;
 
         var metrics = new List<MetricScore>
         {
             PenaltyMetric(MetricCode.CodeHealthTodo, report.TodoCount, settings.TodoPenalty),
             PenaltyMetric(MetricCode.CodeHealthFixme, report.FixmeCount, settings.FixmePenalty),
-            Metric(MetricCode.CodeHealthStaleComments, oldestCommentDays ?? 0, isStale ? Math.Clamp(maximum - settings.StaleCommentPenalty, minimum, maximum) : maximum, settings.StaleCommentPenalty, DataStatus.Available)
+            Metric(MetricCode.CodeHealthStaleComments, oldestCommentDays, Math.Clamp(staleScore, scale.MinimumScore, scale.MaximumScore), settings.StaleCommentWeight, DataStatus.Available)
         };
 
         return FromMetrics(ScoreCategory.CodeHealth, metrics);

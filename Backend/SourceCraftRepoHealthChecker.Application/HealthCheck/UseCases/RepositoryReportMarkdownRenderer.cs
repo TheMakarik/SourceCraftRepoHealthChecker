@@ -14,7 +14,7 @@ public static class RepositoryReportMarkdownRenderer
         builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Ссылка: {analysis.Url}"));
         builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Язык: {analysis.Language}"));
         builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Лайки: {analysis.LikesCount}"));
-        builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Repo Health Score: {analysis.Score}/100"));
+        builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Repo Health Score: {ScoreText(analysis.Score)}"));
         builder.AppendLine(analysis.AnalyzedAt is null
             ? "- Дата последнего анализа: нет данных"
             : string.Create(CultureInfo.InvariantCulture, $"- Дата последнего анализа: {analysis.AnalyzedAt.Value:yyyy-MM-dd HH:mm} UTC"));
@@ -77,7 +77,7 @@ public static class RepositoryReportMarkdownRenderer
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Почему важно: {recommendation.WhyImportant}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Подтверждающие факты: {recommendation.Evidence}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Действие: {recommendation.Action}"));
-                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Ожидаемый эффект: {recommendation.ExpectedImpact}"));
+                builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Ожидаемый эффект: {ImpactText(recommendation.ExpectedImpact)}"));
                 builder.AppendLine(string.Create(CultureInfo.InvariantCulture, $"- Источник: {recommendation.SourceReference}"));
                 builder.AppendLine();
             }
@@ -104,4 +104,10 @@ public static class RepositoryReportMarkdownRenderer
         DataStatus.NoData => "Нет данных",
         _ => "Источник недоступен"
     };
+
+    private static string ScoreText(int? score) =>
+        score is null ? "нет данных" : string.Create(CultureInfo.InvariantCulture, $"{score}/100");
+
+    private static string ImpactText(int? impact) =>
+        impact is null ? "—" : string.Create(CultureInfo.InvariantCulture, $"+{impact} балл(ов) к итоговому Repo Health Score");
 }

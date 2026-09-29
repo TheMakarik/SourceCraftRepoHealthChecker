@@ -30,7 +30,9 @@ public static class TestHealthCheckOptionsFactory
             TodoPenalty = 1,
             FixmePenalty = 2,
             StaleCommentAgeDays = 60,
-            StaleCommentPenalty = 5
+            StaleCommentMaxAgeDays = 120,
+            StaleCommentPenalty = 5,
+            StaleCommentWeight = 1
         },
         Activity = new ActivityScoringOptions
         {

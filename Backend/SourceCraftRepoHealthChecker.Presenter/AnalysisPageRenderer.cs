@@ -71,7 +71,7 @@ public static class AnalysisPageRenderer
                 builder.Append($"<br>Почему важно: {WebUtility.HtmlEncode(recommendation.WhyImportant)}");
                 builder.Append($"<br>Подтверждающие факты: {WebUtility.HtmlEncode(recommendation.Evidence)}");
                 builder.Append($"<br>→ {WebUtility.HtmlEncode(recommendation.Action)}");
-                builder.Append($"<br><i>{WebUtility.HtmlEncode(recommendation.ExpectedImpact)}</i></li>");
+                builder.Append($"<br><i>{WebUtility.HtmlEncode(recommendation.ExpectedImpact?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "—")}</i></li>");
             }
             builder.Append("</ul>");
         }

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Interfaces;
 using SourceCraftRepoHealthChecker.Application.SourceCraft.Models;
+using SourceCraftRepoHealthChecker.Domain.Entities;
 using SourceCraftRepoHealthChecker.Domain.Enums;
 using SourceCraftRepoHealthChecker.infrastructure.Persistence;
 
@@ -18,6 +19,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     public static readonly string ConnectionString =
         Environment.GetEnvironmentVariable("SRHC_TEST_POSTGRES")
         ?? "Host=127.0.0.1;Port=55432;Database=sourcecraft_repo_health;Username=postgres;Password=postgres";
+
+    public const string InternalToken = "test-internal-token";
 
     private readonly string _keyDirectory = Path.Join(Path.GetTempPath(), "srhc-dp-" + Guid.NewGuid().ToString("N"));
 
@@ -32,6 +35,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ScalingOptions:SchedulerEnabled", "false");
         builder.UseSetting("DatabaseOptions:AutoMigrate", "false");
         builder.UseSetting("Authentication:FrontendRedirectUrl", "");
+        builder.UseSetting("SourceCraftServiceOptions:InternalToken", InternalToken);
 
         builder.ConfigureServices(services =>
         {
@@ -48,6 +52,38 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         var dbContext = scope.ServiceProvider.GetRequiredService<RepoHealthCheckerDbContext>();
         dbContext.Database.EnsureDeleted();
         dbContext.Database.Migrate();
+    }
+
+    public void SeedRepository(string sourceCraftId, bool isPrivate, Guid? ownerId, string name = "demo")
+    {
+        using var scope = Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<RepoHealthCheckerDbContext>();
+        if (ownerId is not null)
+        {
+            dbContext.Users.Add(new User
+            {
+                Id = ownerId.Value,
+                YaId = $"ya-{ownerId.Value:N}",
+                Login = $"owner-{ownerId.Value:N}",
+                DisplayName = "Owner",
+                CreatedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            });
+        }
+
+        dbContext.Repositories.Add(new Repository
+        {
+            Id = Guid.NewGuid(),
+            SourceCraftId = sourceCraftId,
+            Name = name,
+            FullName = $"owner/{name}",
+            Url = $"https://sourcecraft.dev/owner/{name}",
+            Language = "C#",
+            IsPrivate = isPrivate,
+            OwnerId = ownerId,
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
+            LastActivityAt = DateTimeOffset.UtcNow
+        });
+        dbContext.SaveChanges();
     }
 
     protected override void Dispose(bool disposing)

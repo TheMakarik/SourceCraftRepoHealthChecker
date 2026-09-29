@@ -76,6 +76,8 @@ public sealed class GetRepositoryAnalysisUseCase(
                 item.CvssScore))
             .ToArray();
 
+        var score = run.DataStatus == DataStatus.Available ? run.Score : null;
+
         return new RepositoryAnalysis(
             repository.SourceCraftId,
             repository.Name,
@@ -85,7 +87,8 @@ public sealed class GetRepositoryAnalysisUseCase(
             repository.IsPrivate,
             repository.OwnerId,
             repository.LikesCount,
-            run.Score,
+            score,
+            run.DataStatus,
             run.CompletedAt,
             categories,
             metrics,
